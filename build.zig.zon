@@ -1,0 +1,17 @@
+.{
+    .name = "playground",
+    .version = "0.0.0-alpha",
+
+    .dependencies = .{
+        .picolibc = .{
+            .url = "https://github.com/elpekenin/picolibc/archive/refs/heads/zig.tar.gz",
+            .hash = "122084ccbf67bf917b5541dacb115ec127db35efa04e9700befe4e7815f7f92ef251"
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "ld",
+        "src"
+    },
+}
