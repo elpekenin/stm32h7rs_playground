@@ -24,10 +24,14 @@ fn default_panic(
     }
 }
 
+extern fn printf([*:0]const u8, ...) callconv(.C) c_int;
 
 export fn main() c_int {
     var ltdc: LTDC = LTDC{};
     _ = hal.HAL_LTDC_Init(&ltdc);
+
+    // Toooo big
+    // _ = printf("Hello %d", @as(u32, 1));
 
     while (true) {}
 

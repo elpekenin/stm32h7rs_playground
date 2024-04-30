@@ -7,10 +7,13 @@ ENTRY(_start)
 __FLASH_BEGIN  = 0x08000000;
 __FLASH_SIZE   = 0x00010000;
 
+/* This is fake 8^) */
+/* __FLASH_SIZE   = 0x10000000; */
+
 __RAM_BEGIN    = 0x24000000;
-__RAM_SIZE     = 0x71C00;
-__STACK_SIZE   = 0x00800;
-__HEAP_SIZE    = 0x60000;
+__RAM_SIZE     = 0x00071C00;
+__STACK_SIZE   = 0x00000800;
+__HEAP_SIZE    = 0x00060000;
 
 /* Memories definition */
 MEMORY
@@ -23,6 +26,15 @@ MEMORY
   BKPSRAM   (rw)  : ORIGIN = 0x38800000, LENGTH = 0x00001000
 
   FLASH     (xrw) : ORIGIN = __FLASH_BEGIN, LENGTH = __FLASH_SIZE
+}
+
+PHDRS
+{
+	text PT_LOAD;
+	ram_init PT_LOAD;
+	ram PT_LOAD;
+	tls_init PT_TLS;
+	tls PT_TLS;
 }
 
 SECTIONS

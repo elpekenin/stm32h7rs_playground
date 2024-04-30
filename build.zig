@@ -1,9 +1,16 @@
 const std = @import("std");
 
-const OPTIMIZE = std.builtin.OptimizeMode.Debug;
+/// It's not like we get much debug info anyway, lets go for release
+const OPTIMIZE = std.builtin.OptimizeMode.ReleaseFast;
+
+/// `.tiny` is not available for the target :(
 const MODEL = std.builtin.CodeModel.small;
+
+/// What are we targetting? ARM Cortex-M7 with no OS.
 var TARGET: std.Build.ResolvedTarget = undefined;
 
+
+/// Some common config for all steps
 fn config_common(
     b: *std.Build,
     compile: *std.Build.Step.Compile
@@ -22,19 +29,38 @@ fn config_common(
     compile.addIncludePath(b.path("lib/hal/Inc"));
 }
 
-fn compile_libc(b: *std.Build) *std.Build.Step.Compile {
+/// Define functions used by libc, such as `read` or `write`
+fn do_zlibc_stubs(b: *std.Build) *std.Build.Step.Compile {
+    const zlibc_stubs = b.addStaticLibrary(.{
+        .name = "zlibc_stubs",
+        .root_source_file = b.path("stubs/libc.zig"),
+        .target = TARGET,
+        .optimize = OPTIMIZE,
+        .code_model = MODEL,
+        .strip = true,
+    });
+
+    return zlibc_stubs;
+}
+
+/// Make our own libc (picolibc for now) because zig does not provide it for
+/// `.freestanding` builds
+fn do_libc(b: *std.Build) *std.Build.Step.Compile {
     const picolibc = b.dependency("picolibc", .{
         .target = TARGET
     });
     return picolibc.artifact("c");
 }
 
-fn compile_hal(b: *std.Build) *std.Build.Step.Compile {
+/// Compile all of STM's HAL files, and a tiny stub to prevent pulling
+/// system_stm32h7rsxx.c and its dependency on a .s startup we dont need
+fn do_hal(b: *std.Build) *std.Build.Step.Compile {
     const hal = b.addStaticLibrary(.{
         .name = "HAL",
         .target = TARGET,
         .optimize = OPTIMIZE,
         .code_model = MODEL,
+        .strip = true,
     });
 
     config_common(b, hal);
@@ -46,15 +72,15 @@ fn compile_hal(b: *std.Build) *std.Build.Step.Compile {
     });
 
     hal.addCSourceFiles(.{
-        .files = stubs_src,
+        .files = &.{"stubs/hal.c"},
         .flags = hal_flags,
-        .root = b.path("stubs"),
     });
 
     return hal;
 }
 
-fn compile_app(b: *std.Build) *std.Build.Step.Compile {
+/// The actual app, written in zig :)
+fn do_app(b: *std.Build) *std.Build.Step.Compile {
     const app = b.addExecutable(
         .{
             .name = "app",
@@ -62,6 +88,7 @@ fn compile_app(b: *std.Build) *std.Build.Step.Compile {
             .target = TARGET,
             .optimize = OPTIMIZE,
             .code_model = MODEL,
+            .strip = true,
         }
     );
     config_common(b, app);
@@ -70,7 +97,10 @@ fn compile_app(b: *std.Build) *std.Build.Step.Compile {
     return app;
 }
 
+
+/// Put everything together
 pub fn build(b: *std.Build) !void {
+    // Solve our query
     TARGET = b.resolveTargetQuery(.{
         .cpu_arch = .thumb,
         .cpu_model = .{.explicit = &std.Target.arm.cpu.cortex_m7},
@@ -78,24 +108,18 @@ pub fn build(b: *std.Build) !void {
         .abi = .eabi,
     });
 
-    // compile each thing
-    const libc = compile_libc(b);
-    const hal = compile_hal(b);
-    const app = compile_app(b);
+    // Compile all the code
+    const zlibc_stubs = do_zlibc_stubs(b);
+    const libc = do_libc(b);
+    const hal = do_hal(b);
+    const app = do_app(b);
 
-    // link em together
+    // Link everything together
+    app.linkLibrary(zlibc_stubs);
     app.linkLibrary(libc);
     app.linkLibrary(hal);
 
-    // dependencies
-    const hal_step = b.step("hal", "compile STM's HAL");
-    hal_step.dependOn(&libc.step);
-
-    const app_step = b.step("app", "build the whole app");
-    app_step.dependOn(&libc.step);
-    app_step.dependOn(&hal.step);
-
-    // convert to .bin
+    // Convert the output (`.elf`) to what we need (`.bin`)
     const elf = b.addInstallArtifact(app, .{});
     b.default_step.dependOn(&elf.step);
 
@@ -106,6 +130,7 @@ pub fn build(b: *std.Build) !void {
     b.default_step.dependOn(&bin.step);
 }
 
+// TODO: check those template files
 const hal_src = &.{
     "stm32h7rsxx_hal_mmc.c",
     "stm32h7rsxx_hal_dts.c",
@@ -219,11 +244,8 @@ const hal_src = &.{
     "stm32h7rsxx_hal_uart.c",
 };
 
-const stubs_src = &.{
-    "hal.c",
-};
-
+// TODO: this should really grab the headers from libc step and not need host headers...
 const hal_flags = &.{
     "-DUSE_HAL_DRIVER", // needed for a proper build
-    "-isystem/usr/include/newlib", // TODO: this should really grab the headers from libc step and not need host headers...
+    "-isystem/usr/include/newlib",
 };
