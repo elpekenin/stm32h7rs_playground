@@ -7,8 +7,19 @@ const hal = @cImport({
 const LTDC: type = hal.LTDC_HandleTypeDef;
 const Status = hal.HAL_StatusTypeDef;
 
+extern fn printf([*:0]const u8, ...) callconv(.C) c_int;
 
-fn default_panic(
+export fn main() c_int {
+    var ltdc: LTDC = LTDC{};
+    const ret: Status = hal.HAL_LTDC_Init(&ltdc);
+
+    _ = printf("Hello %d", @as(u32, 100));
+
+    return @intCast(ret);
+}
+
+
+fn panic(
     msg: []const u8,
     error_return_trace: ?*std.builtin.StackTrace,
     ret_add: ?usize
@@ -22,18 +33,4 @@ fn default_panic(
     while (true) {
         @breakpoint();
     }
-}
-
-extern fn printf([*:0]const u8, ...) callconv(.C) c_int;
-
-export fn main() c_int {
-    var ltdc: LTDC = LTDC{};
-    _ = hal.HAL_LTDC_Init(&ltdc);
-
-    // Toooo big
-    // _ = printf("Hello %d", @as(u32, 1));
-
-    while (true) {}
-
-    return 0;
 }

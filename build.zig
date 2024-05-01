@@ -9,6 +9,8 @@ const MODEL = std.builtin.CodeModel.small;
 /// What are we targetting? ARM Cortex-M7 with no OS.
 var TARGET: std.Build.ResolvedTarget = undefined;
 
+/// Whether to strip symbols
+const STRIP = false;
 
 /// Some common config for all steps
 fn config_common(
@@ -37,7 +39,7 @@ fn do_zlibc_stubs(b: *std.Build) *std.Build.Step.Compile {
         .target = TARGET,
         .optimize = OPTIMIZE,
         .code_model = MODEL,
-        .strip = true,
+        .strip = STRIP,
     });
 
     return zlibc_stubs;
@@ -60,7 +62,7 @@ fn do_hal(b: *std.Build) *std.Build.Step.Compile {
         .target = TARGET,
         .optimize = OPTIMIZE,
         .code_model = MODEL,
-        .strip = true,
+        .strip = STRIP,
     });
 
     config_common(b, hal);
@@ -88,7 +90,7 @@ fn do_app(b: *std.Build) *std.Build.Step.Compile {
             .target = TARGET,
             .optimize = OPTIMIZE,
             .code_model = MODEL,
-            .strip = true,
+            .strip = STRIP,
         }
     );
     config_common(b, app);

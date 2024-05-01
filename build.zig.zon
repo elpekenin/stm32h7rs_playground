@@ -5,7 +5,7 @@
     .dependencies = .{
         .picolibc = .{
             .url = "https://github.com/elpekenin/picolibc/archive/refs/heads/zig.tar.gz",
-            .hash = "122084ccbf67bf917b5541dacb115ec127db35efa04e9700befe4e7815f7f92ef251"
+            .hash = "1220b2806c068cf9d94df00717cb1be7df99fd7a90e18198c412ec60eca92183dc0f"
         },
     },
     .paths = .{
