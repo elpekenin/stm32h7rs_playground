@@ -1,0 +1,357 @@
+#include <sys/cdefs.h>
+#include <stdint.h>
+
+#include "stm32h7s7xx.h"
+
+extern uint8_t __stack[];
+void _start(void);
+
+#define ISR(name) \
+    __used void name (void); \
+    __weak_symbol void name (void) {}
+
+ISR(NMI_Handler);
+ISR(HardFault_Handler);
+ISR(MemManage_Handler);
+ISR(BusFault_Handler);
+ISR(UsageFault_Handler);
+ISR(SVC_Handler);
+ISR(DebugMon_Handler);
+ISR(PendSV_Handler);
+ISR(SysTick_Handler);
+ISR(PVD_PVM_IRQHandler);
+ISR(DTS_IRQHandler);
+ISR(IWDG_IRQHandler);
+ISR(WWDG_IRQHandler);
+ISR(RCC_IRQHandler);
+ISR(FLASH_IRQHandler);
+ISR(RAMECC_IRQHandler);
+ISR(FPU_IRQHandler);
+ISR(TAMP_IRQHandler);
+ISR(EXTI0_IRQHandler);
+ISR(EXTI1_IRQHandler);
+ISR(EXTI2_IRQHandler);
+ISR(EXTI3_IRQHandler);
+ISR(EXTI4_IRQHandler);
+ISR(EXTI5_IRQHandler);
+ISR(EXTI6_IRQHandler);
+ISR(EXTI7_IRQHandler);
+ISR(EXTI8_IRQHandler);
+ISR(EXTI9_IRQHandler);
+ISR(EXTI10_IRQHandler);
+ISR(EXTI11_IRQHandler);
+ISR(EXTI12_IRQHandler);
+ISR(EXTI13_IRQHandler);
+ISR(EXTI14_IRQHandler);
+ISR(EXTI15_IRQHandler);
+ISR(RTC_IRQHandler);
+ISR(SAES_IRQHandler);
+ISR(CRYP_IRQHandler);
+ISR(PKA_IRQHandler);
+ISR(HASH_IRQHandler);
+ISR(RNG_IRQHandler);
+ISR(ADC1_2_IRQHandler);
+ISR(GPDMA1_Channel0_IRQHandler);
+ISR(GPDMA1_Channel1_IRQHandler);
+ISR(GPDMA1_Channel2_IRQHandler);
+ISR(GPDMA1_Channel3_IRQHandler);
+ISR(GPDMA1_Channel4_IRQHandler);
+ISR(GPDMA1_Channel5_IRQHandler);
+ISR(GPDMA1_Channel6_IRQHandler);
+ISR(GPDMA1_Channel7_IRQHandler);
+ISR(TIM1_BRK_IRQHandler);
+ISR(TIM1_UP_IRQHandler);
+ISR(TIM1_TRG_COM_IRQHandler);
+ISR(TIM1_CC_IRQHandler);
+ISR(TIM2_IRQHandler);
+ISR(TIM3_IRQHandler);
+ISR(TIM4_IRQHandler);
+ISR(TIM5_IRQHandler);
+ISR(TIM6_IRQHandler);
+ISR(TIM7_IRQHandler);
+ISR(TIM9_IRQHandler);
+ISR(SPI1_IRQHandler);
+ISR(SPI2_IRQHandler);
+ISR(SPI3_IRQHandler);
+ISR(SPI4_IRQHandler);
+ISR(SPI5_IRQHandler);
+ISR(SPI6_IRQHandler);
+ISR(HPDMA1_Channel0_IRQHandler);
+ISR(HPDMA1_Channel1_IRQHandler);
+ISR(HPDMA1_Channel2_IRQHandler);
+ISR(HPDMA1_Channel3_IRQHandler);
+ISR(HPDMA1_Channel4_IRQHandler);
+ISR(HPDMA1_Channel5_IRQHandler);
+ISR(HPDMA1_Channel6_IRQHandler);
+ISR(HPDMA1_Channel7_IRQHandler);
+ISR(SAI1_A_IRQHandler);
+ISR(SAI1_B_IRQHandler);
+ISR(SAI2_A_IRQHandler);
+ISR(SAI2_B_IRQHandler);
+ISR(I2C1_EV_IRQHandler);
+ISR(I2C1_ER_IRQHandler);
+ISR(I2C2_EV_IRQHandler);
+ISR(I2C2_ER_IRQHandler);
+ISR(I2C3_EV_IRQHandler);
+ISR(I2C3_ER_IRQHandler);
+ISR(USART1_IRQHandler);
+ISR(USART2_IRQHandler);
+ISR(USART3_IRQHandler);
+ISR(UART4_IRQHandler);
+ISR(UART5_IRQHandler);
+ISR(UART7_IRQHandler);
+ISR(UART8_IRQHandler);
+ISR(I3C1_EV_IRQHandler);
+ISR(I3C1_ER_IRQHandler);
+ISR(OTG_HS_IRQHandler);
+ISR(ETH_IRQHandler);
+ISR(CORDIC_IRQHandler);
+ISR(GFXTIM_IRQHandler);
+ISR(DCMIPP_IRQHandler);
+ISR(LTDC_IRQHandler);
+ISR(LTDC_ER_IRQHandler);
+ISR(DMA2D_IRQHandler);
+ISR(JPEG_IRQHandler);
+ISR(GFXMMU_IRQHandler);
+ISR(I3C1_WKUP_IRQHandler);
+ISR(MCE1_IRQHandler);
+ISR(MCE2_IRQHandler);
+ISR(MCE3_IRQHandler);
+ISR(XSPI1_IRQHandler);
+ISR(XSPI2_IRQHandler);
+ISR(FMC_IRQHandler);
+ISR(SDMMC1_IRQHandler);
+ISR(SDMMC2_IRQHandler);
+ISR(OTG_FS_IRQHandler);
+ISR(TIM12_IRQHandler);
+ISR(TIM13_IRQHandler);
+ISR(TIM14_IRQHandler);
+ISR(TIM15_IRQHandler);
+ISR(TIM16_IRQHandler);
+ISR(TIM17_IRQHandler);
+ISR(LPTIM1_IRQHandler);
+ISR(LPTIM2_IRQHandler);
+ISR(LPTIM3_IRQHandler);
+ISR(LPTIM4_IRQHandler);
+ISR(LPTIM5_IRQHandler);
+ISR(SPDIF_RX_IRQHandler);
+ISR(MDIOS_IRQHandler);
+ISR(ADF1_FLT0_IRQHandler);
+ISR(CRS_IRQHandler);
+ISR(UCPD1_IRQHandler);
+ISR(CEC_IRQHandler);
+ISR(PSSI_IRQHandler);
+ISR(LPUART1_IRQHandler);
+ISR(WAKEUP_PIN_IRQHandler);
+ISR(GPDMA1_Channel8_IRQHandler);
+ISR(GPDMA1_Channel9_IRQHandler);
+ISR(GPDMA1_Channel10_IRQHandler);
+ISR(GPDMA1_Channel11_IRQHandler);
+ISR(GPDMA1_Channel12_IRQHandler);
+ISR(GPDMA1_Channel13_IRQHandler);
+ISR(GPDMA1_Channel14_IRQHandler);
+ISR(GPDMA1_Channel15_IRQHandler);
+ISR(HPDMA1_Channel8_IRQHandler);
+ISR(HPDMA1_Channel9_IRQHandler);
+ISR(HPDMA1_Channel10_IRQHandler);
+ISR(HPDMA1_Channel11_IRQHandler);
+ISR(HPDMA1_Channel12_IRQHandler);
+ISR(HPDMA1_Channel13_IRQHandler);
+ISR(HPDMA1_Channel14_IRQHandler);
+ISR(HPDMA1_Channel15_IRQHandler);
+ISR(GPU2D_IRQHandler);
+ISR(GPU2D_ER_IRQHandler);
+ISR(ICACHE_IRQHandler);
+ISR(FDCAN1_IT0_IRQHandler);
+ISR(FDCAN1_IT1_IRQHandler);
+ISR(FDCAN2_IT0_IRQHandler);
+ISR(FDCAN2_IT1_IRQHandler);
+
+typedef void (* const isr)(void);
+
+void _vtor_start(void);
+
+__section(".data.init.enter")
+__used
+isr __interrupt_vector[] = {
+    (void *)__stack,
+    _vtor_start,
+    NMI_Handler,
+    HardFault_Handler,
+    MemManage_Handler,
+    BusFault_Handler,
+    UsageFault_Handler,
+    0,
+    0,
+    0,
+    0,
+    SVC_Handler,
+    DebugMon_Handler,
+    0,
+    PendSV_Handler,
+    SysTick_Handler,
+    PVD_PVM_IRQHandler,
+    0,
+    DTS_IRQHandler,
+    IWDG_IRQHandler,
+    WWDG_IRQHandler,
+    RCC_IRQHandler,
+    0,
+    0,
+    FLASH_IRQHandler,
+    RAMECC_IRQHandler,
+    FPU_IRQHandler,
+    0,
+    0,
+    TAMP_IRQHandler,
+    0,
+    0,
+    EXTI0_IRQHandler,
+    EXTI1_IRQHandler,
+    EXTI2_IRQHandler,
+    EXTI3_IRQHandler,
+    EXTI4_IRQHandler,
+    EXTI5_IRQHandler,
+    EXTI6_IRQHandler,
+    EXTI7_IRQHandler,
+    EXTI8_IRQHandler,
+    EXTI9_IRQHandler,
+    EXTI10_IRQHandler,
+    EXTI11_IRQHandler,
+    EXTI12_IRQHandler,
+    EXTI13_IRQHandler,
+    EXTI14_IRQHandler,
+    EXTI15_IRQHandler,
+    RTC_IRQHandler,
+    SAES_IRQHandler,
+    CRYP_IRQHandler,
+    PKA_IRQHandler,
+    HASH_IRQHandler,
+    RNG_IRQHandler,
+    ADC1_2_IRQHandler,
+    GPDMA1_Channel0_IRQHandler,
+    GPDMA1_Channel1_IRQHandler,
+    GPDMA1_Channel2_IRQHandler,
+    GPDMA1_Channel3_IRQHandler,
+    GPDMA1_Channel4_IRQHandler,
+    GPDMA1_Channel5_IRQHandler,
+    GPDMA1_Channel6_IRQHandler,
+    GPDMA1_Channel7_IRQHandler,
+    TIM1_BRK_IRQHandler,
+    TIM1_UP_IRQHandler,
+    TIM1_TRG_COM_IRQHandler,
+    TIM1_CC_IRQHandler,
+    TIM2_IRQHandler,
+    TIM3_IRQHandler,
+    TIM4_IRQHandler,
+    TIM5_IRQHandler,
+    TIM6_IRQHandler,
+    TIM7_IRQHandler,
+    TIM9_IRQHandler,
+    SPI1_IRQHandler,
+    SPI2_IRQHandler,
+    SPI3_IRQHandler,
+    SPI4_IRQHandler,
+    SPI5_IRQHandler,
+    SPI6_IRQHandler,
+    HPDMA1_Channel0_IRQHandler,
+    HPDMA1_Channel1_IRQHandler,
+    HPDMA1_Channel2_IRQHandler,
+    HPDMA1_Channel3_IRQHandler,
+    HPDMA1_Channel4_IRQHandler,
+    HPDMA1_Channel5_IRQHandler,
+    HPDMA1_Channel6_IRQHandler,
+    HPDMA1_Channel7_IRQHandler,
+    SAI1_A_IRQHandler,
+    SAI1_B_IRQHandler,
+    SAI2_A_IRQHandler,
+    SAI2_B_IRQHandler,
+    I2C1_EV_IRQHandler,
+    I2C1_ER_IRQHandler,
+    I2C2_EV_IRQHandler,
+    I2C2_ER_IRQHandler,
+    I2C3_EV_IRQHandler,
+    I2C3_ER_IRQHandler,
+    USART1_IRQHandler,
+    USART2_IRQHandler,
+    USART3_IRQHandler,
+    UART4_IRQHandler,
+    UART5_IRQHandler,
+    UART7_IRQHandler,
+    UART8_IRQHandler,
+    I3C1_EV_IRQHandler,
+    I3C1_ER_IRQHandler,
+    OTG_HS_IRQHandler,
+    ETH_IRQHandler,
+    CORDIC_IRQHandler,
+    GFXTIM_IRQHandler,
+    DCMIPP_IRQHandler,
+    LTDC_IRQHandler,
+    LTDC_ER_IRQHandler,
+    DMA2D_IRQHandler,
+    JPEG_IRQHandler,
+    GFXMMU_IRQHandler,
+    I3C1_WKUP_IRQHandler,
+    MCE1_IRQHandler,
+    MCE2_IRQHandler,
+    MCE3_IRQHandler,
+    XSPI1_IRQHandler,
+    XSPI2_IRQHandler,
+    FMC_IRQHandler,
+    SDMMC1_IRQHandler,
+    SDMMC2_IRQHandler,
+    0,
+    0,
+    OTG_FS_IRQHandler,
+    TIM12_IRQHandler,
+    TIM13_IRQHandler,
+    TIM14_IRQHandler,
+    TIM15_IRQHandler,
+    TIM16_IRQHandler,
+    TIM17_IRQHandler,
+    LPTIM1_IRQHandler,
+    LPTIM2_IRQHandler,
+    LPTIM3_IRQHandler,
+    LPTIM4_IRQHandler,
+    LPTIM5_IRQHandler,
+    SPDIF_RX_IRQHandler,
+    MDIOS_IRQHandler,
+    ADF1_FLT0_IRQHandler,
+    CRS_IRQHandler,
+    UCPD1_IRQHandler,
+    CEC_IRQHandler,
+    PSSI_IRQHandler,
+    LPUART1_IRQHandler,
+    WAKEUP_PIN_IRQHandler,
+    GPDMA1_Channel8_IRQHandler,
+    GPDMA1_Channel9_IRQHandler,
+    GPDMA1_Channel10_IRQHandler,
+    GPDMA1_Channel11_IRQHandler,
+    GPDMA1_Channel12_IRQHandler,
+    GPDMA1_Channel13_IRQHandler,
+    GPDMA1_Channel14_IRQHandler,
+    GPDMA1_Channel15_IRQHandler,
+    HPDMA1_Channel8_IRQHandler,
+    HPDMA1_Channel9_IRQHandler,
+    HPDMA1_Channel10_IRQHandler,
+    HPDMA1_Channel11_IRQHandler,
+    HPDMA1_Channel12_IRQHandler,
+    HPDMA1_Channel13_IRQHandler,
+    HPDMA1_Channel14_IRQHandler,
+    HPDMA1_Channel15_IRQHandler,
+    GPU2D_IRQHandler,
+    GPU2D_ER_IRQHandler,
+    ICACHE_IRQHandler,
+    FDCAN1_IT0_IRQHandler,
+    FDCAN1_IT1_IRQHandler,
+    FDCAN2_IT0_IRQHandler,
+    FDCAN2_IT1_IRQHandler,
+};
+
+__used
+void _vtor_start(void) {
+    // what does this do? is it even useful/needed?
+    SCB->VTOR = (uint32_t)&__interrupt_vector[0];
+
+    _start();
+}

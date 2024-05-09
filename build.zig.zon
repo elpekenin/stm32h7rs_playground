@@ -3,15 +3,7 @@
     .version = "0.0.0-alpha",
 
     .dependencies = .{
-        .picolibc = .{
-            .url = "https://github.com/elpekenin/picolibc/archive/refs/heads/zig.tar.gz",
-            .hash = "1220b2806c068cf9d94df00717cb1be7df99fd7a90e18198c412ec60eca92183dc0f"
-        },
+        .picolibc = .{ .url = "https://github.com/elpekenin/picolibc/archive/refs/heads/zig.tar.gz", .hash = "12201b7e387054f664153aab79f8b0ca31e6afd915d138d00928c964e60cfb8843a3" },
     },
-    .paths = .{
-        "build.zig",
-        "build.zig.zon",
-        "ld",
-        "src"
-    },
+    .paths = .{ "build.zig", "build.zig.zon", "ld", "src" },
 }

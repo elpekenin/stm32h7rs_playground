@@ -2,30 +2,33 @@
 
 /* TODO: Start/Size TBD based on devkit */
 
-ENTRY(_start)
+ENTRY(_vtor_start)
 
-__FLASH_BEGIN  = 0x08000000;
-__FLASH_SIZE   = 0x00010000;
+__flash      = 0x08000000;
+__flash_size = 0x00010000;
 
-/* This is fake 8^) */
-/* __FLASH_SIZE   = 0x10000000; */
+__ram      = 0x24000000;
+__ram_size = 0x00071C00;
 
-__RAM_BEGIN    = 0x24000000;
-__RAM_SIZE     = 0x00071C00;
-__STACK_SIZE   = 0x00000800;
-__HEAP_SIZE    = 0x00060000;
-
-/* Memories definition */
+/*
+ * These values should be provided by the application. We'll include
+ * some phony values here to make things link for testing
+ */
 MEMORY
 {
-  RAM       (xrw) : ORIGIN = __RAM_BEGIN, LENGTH = __RAM_SIZE
+	flash (rx!w) :
+		ORIGIN = DEFINED(__flash) ? __flash : 0x10000000,
+		LENGTH = DEFINED(__flash_size) ? __flash_size : 0x00010000
+
+	ram (w!rx) :
+		ORIGIN = DEFINED(__ram) ? __ram : 0x20000000,
+		LENGTH = DEFINED(__ram_size) ? __ram_size : 0x00008000
 
   ITCM      (xrw) : ORIGIN = 0x00000000, LENGTH = 0x00010000
   DTCM       (rw) : ORIGIN = 0x20000000, LENGTH = 0x00010000
   SRAMAHB   (rw)  : ORIGIN = 0x30000000, LENGTH = 0x00008000
   BKPSRAM   (rw)  : ORIGIN = 0x38800000, LENGTH = 0x00001000
 
-  FLASH     (xrw) : ORIGIN = __FLASH_BEGIN, LENGTH = __FLASH_SIZE
 }
 
 PHDRS
@@ -39,13 +42,13 @@ PHDRS
 
 SECTIONS
 {
-	PROVIDE(__stack = ORIGIN(RAM) + LENGTH(RAM));
+	PROVIDE(__stack = ORIGIN(ram) + LENGTH(ram));
 
 	.init : {
 		KEEP (*(.text.init.enter))
 		KEEP (*(.data.init.enter))
 		KEEP (*(SORT_BY_NAME(.init) SORT_BY_NAME(.init.*)))
-	} >FLASH AT>FLASH :text
+	} >flash AT>flash :text
 
 	.text : {
 
@@ -79,7 +82,7 @@ SECTIONS
 		KEEP (*(.fini_array .dtors))
 		PROVIDE_HIDDEN ( __fini_array_end = . );
 
-	} >FLASH AT>FLASH :text
+	} >flash AT>flash :text
 
 	.rodata : {
 
@@ -94,14 +97,14 @@ SECTIONS
 		*(.srodata.cst2)
 		*(.srodata .srodata.*)
 
-	} >FLASH AT>FLASH :text
+	} >flash AT>flash :text
 
 	.data.rel.ro : {
 
 		/* data that needs relocating */
 		*(.data.rel.ro .data.rel.ro.*)
 
-	} >FLASH AT>FLASH :text
+	} >flash AT>flash :text
 
 	/*
 	 * Needs to be in its own segment with the PLT entries first
@@ -111,11 +114,37 @@ SECTIONS
 	.got : {
 		*(.got.plt)
 		*(.got)
-	} >FLASH AT>FLASH :text
+	} >flash AT>flash :text
 
 	.toc : {
 		*(.toc .toc.*)
-	} >FLASH AT>FLASH :text
+	} >flash AT>flash :text
+
+	/* additional sections when compiling with C++ exception support */
+	/*
+	.except_ordered : {
+		*(.gcc_except_table *.gcc_except_table.*)
+		*(.ARM.extab* .gnu.linkonce.armextab.*)
+	} >flash AT>flash :text
+	.eh_frame_hdr : {
+		PROVIDE_HIDDEN ( __eh_frame_hdr_start = . );
+		*(.eh_frame_hdr) *(.eh_frame_entry .eh_frame_entry.*)
+		PROVIDE_HIDDEN ( __eh_frame_hdr_end = . );
+	} >flash AT>flash :text
+	.eh_frame : {
+		PROVIDE_HIDDEN ( __eh_frame_start = . );
+		KEEP (*(.eh_frame .eh_frame.*))
+		PROVIDE_HIDDEN ( __eh_frame_end = . );
+	} >flash AT>flash :text
+
+	.except_unordered : {
+		. = ALIGN(8);
+
+		PROVIDE(__exidx_start = .);
+		*(.ARM.exidx*)
+		PROVIDE(__exidx_end = .);
+	} >flash AT>flash :text
+		*/
 
 	/*
 	 * Data values which are preserved across reset
@@ -125,7 +154,7 @@ SECTIONS
 		KEEP(*(SORT_BY_NAME(.preserve.*)))
 		KEEP(*(.preserve))
 		PROVIDE(__preserve_end__ = .);
-	} >RAM AT>RAM :ram
+	} >ram AT>ram :ram
 
 	.data : /* For ld.bfd:  ALIGN_WITH_INPUT */ {
 		*(.data .data.*)
@@ -138,7 +167,7 @@ SECTIONS
 		PROVIDE( _gp = . + 0x8000);
 		*(.sdata .sdata.* .sdata2.*)
 		*(.gnu.linkonce.s.*)
-	} >RAM AT>FLASH :ram_init
+	} >ram AT>flash :ram_init
 	PROVIDE(__data_start = ADDR(.data));
 	PROVIDE(__data_source = LOADADDR(.data));
 
@@ -158,7 +187,7 @@ SECTIONS
 		*(.tdata .tdata.* .gnu.linkonce.td.*)
 		PROVIDE(__data_end = .);
 		PROVIDE(__tdata_end = .);
-	} >RAM AT>FLASH :tls_init :ram_init
+	} >ram AT>flash :tls_init :ram_init
 	PROVIDE( __tls_base = ADDR(.tdata));
 	PROVIDE( __tdata_start = ADDR(.tdata));
 	PROVIDE( __tdata_source = LOADADDR(.tdata) );
@@ -177,7 +206,7 @@ SECTIONS
 		*(.tcommon)
 		PROVIDE( __tls_end = . );
 		PROVIDE( __tbss_end = . );
-	} >RAM AT>RAM :tls :ram
+	} >ram AT>ram :tls :ram
 	PROVIDE( __bss_start = ADDR(.tbss));
 	PROVIDE( __tbss_start = ADDR(.tbss));
 	PROVIDE( __tbss_offset = ADDR(.tbss) - ADDR(.tdata) );
@@ -210,7 +239,7 @@ SECTIONS
 		/* Align the heap */
 		. = ALIGN(8);
 		__bss_end = .;
-	} >RAM AT>RAM :ram
+	} >ram AT>ram :ram
 	PROVIDE( __non_tls_bss_start = ADDR(.bss) );
 	PROVIDE( __end = __bss_end );
 	_end = __bss_end;
@@ -225,12 +254,12 @@ SECTIONS
         /* Allow a minimum heap size to be specified */
         .heap (NOLOAD) : {
                 . += (DEFINED(__heap_size_min) ? __heap_size_min : 0);
-        } >RAM :ram
+        } >ram :ram
 
 	/* Define a stack region to make sure it fits in memory */
 	.stack (NOLOAD) : {
 		. += (DEFINED(__stack_size) ? __stack_size : 0x00001000);
-	} >RAM :ram
+	} >ram :ram
 
 	/* Throw away C++ exception handling information */
 

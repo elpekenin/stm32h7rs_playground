@@ -1,131 +1,109 @@
 const std = @import("std");
 
 /// It's not like we get much debug info anyway, lets go for release
-const OPTIMIZE = std.builtin.OptimizeMode.ReleaseFast;
+/// Results with a couple function calls (.bin size in bytes)
+///     - Debug: Flash overflown by 14564
+///     - Safe: 19272
+///     - Fast: 12528
+///     - Small: 11064
+const OPTIMIZE = std.builtin.OptimizeMode.ReleaseSafe;
 
 /// `.tiny` is not available for the target :(
 const MODEL = std.builtin.CodeModel.small;
 
-/// What are we targetting? ARM Cortex-M7 with no OS.
-var TARGET: std.Build.ResolvedTarget = undefined;
+inline fn preprocesor_config(b: *std.Build, compile: *std.Build.Step.Compile) void {
+    // for some reason headers from the picolibc step wont be "seen"
+    compile.addSystemIncludePath(std.Build.LazyPath{ .cwd_relative = "/usr/include/newlib" });
 
-/// Whether to strip symbols
-const STRIP = false;
+    const include_paths = .{
+        b.path("src/c"), // hal_conf.h
+        b.path("lib/cmsis/Include"),
+        b.path("lib/CMSIS_5/CMSIS/Core/Include"),
+        b.path("lib/hal/Inc"),
+    };
 
-/// Some common config for all steps
-fn config_common(
-    b: *std.Build,
-    compile: *std.Build.Step.Compile
-) void {
-    // prevent CMSIS from providing a defalt entrypoint
-    // zig does not properly handle the typedef in a func and C->zig fails
-    // ... and we shouldnt need "copy_table_t" or "zero_table_t"
-    compile.root_module.addCMacro("__PROGRAM_START", "_start");
+    inline for (include_paths) |path| {
+        compile.addIncludePath(path);
+    }
 
-    // usually defined by STM32IDE (im assuming, not seen on any file)
-    compile.root_module.addCMacro("STM32H7S7xx", "1");
-
-    compile.addIncludePath(b.path(".")); // for STM code to grab hal_conf.h
-    compile.addIncludePath(b.path("lib/cmsis/Include"));
-    compile.addIncludePath(b.path("lib/CMSIS_5/CMSIS/Core/Include"));
-    compile.addIncludePath(b.path("lib/hal/Inc"));
-}
-
-/// Define functions used by libc, such as `read` or `write`
-fn do_zlibc_stubs(b: *std.Build) *std.Build.Step.Compile {
-    const zlibc_stubs = b.addStaticLibrary(.{
-        .name = "zlibc_stubs",
-        .root_source_file = b.path("stubs/libc.zig"),
-        .target = TARGET,
-        .optimize = OPTIMIZE,
-        .code_model = MODEL,
-        .strip = STRIP,
-    });
-
-    return zlibc_stubs;
+    inline for (c_macros) |macro| {
+        compile.root_module.c_macros.append(b.allocator, macro) catch @panic("OOM");
+    }
 }
 
 /// Make our own libc (picolibc for now) because zig does not provide it for
-/// `.freestanding` builds
-fn do_libc(b: *std.Build) *std.Build.Step.Compile {
+/// `.freestanding` builds. Then compile it along all of STM's HAL files,
+/// and some C stubs needed for a successful build.
+fn do_c(b: *std.Build, target: std.Build.ResolvedTarget) *std.Build.Step.Compile {
     const picolibc = b.dependency("picolibc", .{
-        .target = TARGET
+        .target = target,
+        .optimize = OPTIMIZE,
+        .tinystdio = true,
     });
-    return picolibc.artifact("c");
-}
+    const libc = picolibc.artifact("c");
 
-/// Compile all of STM's HAL files, and a tiny stub to prevent pulling
-/// system_stm32h7rsxx.c and its dependency on a .s startup we dont need
-fn do_hal(b: *std.Build) *std.Build.Step.Compile {
-    const hal = b.addStaticLibrary(.{
-        .name = "HAL",
-        .target = TARGET,
+    const hal = b.addExecutable(.{
+        .name = "app.elf",
+        .target = target,
         .optimize = OPTIMIZE,
         .code_model = MODEL,
-        .strip = STRIP,
     });
-
-    config_common(b, hal);
+    preprocesor_config(b, hal);
 
     hal.addCSourceFiles(.{
         .files = hal_src,
-        .flags = hal_flags,
+        .flags = c_macros,
         .root = b.path("lib/hal/Src"),
     });
 
     hal.addCSourceFiles(.{
-        .files = &.{"stubs/hal.c"},
-        .flags = hal_flags,
+        .files = c_src,
+        .flags = c_macros,
+        .root = b.path("src/c"),
     });
+
+    hal.linkLibrary(libc);
+    hal.setLinkerScript(b.path("ld/app.ld"));
 
     return hal;
 }
 
 /// The actual app, written in zig :)
-fn do_app(b: *std.Build) *std.Build.Step.Compile {
-    const app = b.addExecutable(
-        .{
-            .name = "app",
-            .root_source_file = b.path("src/app.zig"),
-            .target = TARGET,
-            .optimize = OPTIMIZE,
-            .code_model = MODEL,
-            .strip = STRIP,
-        }
-    );
-    config_common(b, app);
-    app.setLinkerScript(b.path("ld/app.ld"));
+fn do_zig(b: *std.Build, target: std.Build.ResolvedTarget) *std.Build.Step.Compile {
+    const app = b.addStaticLibrary(.{
+        .name = "zig",
+        .root_source_file = b.path("src/zig/app.zig"),
+        .target = target,
+        .optimize = OPTIMIZE,
+        .code_model = MODEL,
+    });
+    preprocesor_config(b, app);
 
     return app;
 }
 
-
 /// Put everything together
 pub fn build(b: *std.Build) !void {
-    // Solve our query
-    TARGET = b.resolveTargetQuery(.{
+    // Targetting ARM Cortex-M7 with no OS.
+    const target = b.resolveTargetQuery(.{
         .cpu_arch = .thumb,
-        .cpu_model = .{.explicit = &std.Target.arm.cpu.cortex_m7},
+        .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m7 },
         .os_tag = .freestanding,
-        .abi = .eabi,
+        .abi = .eabihf,
     });
 
     // Compile all the code
-    const zlibc_stubs = do_zlibc_stubs(b);
-    const libc = do_libc(b);
-    const hal = do_hal(b);
-    const app = do_app(b);
+    const c = do_c(b, target);
+    const zig = do_zig(b, target);
 
     // Link everything together
-    app.linkLibrary(zlibc_stubs);
-    app.linkLibrary(libc);
-    app.linkLibrary(hal);
+    c.linkLibrary(zig);
 
     // Convert the output (`.elf`) to what we need (`.bin`)
-    const elf = b.addInstallArtifact(app, .{});
+    const elf = b.addInstallArtifact(c, .{});
     b.default_step.dependOn(&elf.step);
 
-    const elf2bin = b.addObjCopy(app.getEmittedBin(), .{.format = .bin});
+    const elf2bin = b.addObjCopy(c.getEmittedBin(), .{ .format = .bin });
     elf2bin.step.dependOn(&elf.step);
 
     const bin = b.addInstallBinFile(elf2bin.getOutput(), "app.bin");
@@ -160,7 +138,6 @@ const hal_src = &.{
     "stm32h7rsxx_hal_gfxmmu.c",
     "stm32h7rsxx_hal_dma.c",
     "stm32h7rsxx_ll_utils.c",
-    "stm32h7rsxx_hal_msp_template.c",
     "stm32h7rsxx_util_i3c.c",
     "stm32h7rsxx_hal_smbus.c",
     "stm32h7rsxx_hal_rcc.c",
@@ -194,7 +171,6 @@ const hal_src = &.{
     "stm32h7rsxx_hal_irda.c",
     "stm32h7rsxx_hal_pcd_ex.c",
     "stm32h7rsxx_hal_i2s_ex.c",
-    "stm32h7rsxx_hal_timebase_rtc_wakeup_template.c",
     "stm32h7rsxx_hal_i2c_ex.c",
     "stm32h7rsxx_hal_i2s.c",
     "stm32h7rsxx_hal_dma_ex.c",
@@ -220,7 +196,6 @@ const hal_src = &.{
     "stm32h7rsxx_hal_eth.c",
     "stm32h7rsxx_hal_smartcard_ex.c",
     "stm32h7rsxx_hal_tim.c",
-    "stm32h7rsxx_hal_timebase_tim_template.c",
     "stm32h7rsxx_hal_usart_ex.c",
     "stm32h7rsxx_ll_i3c.c",
     "stm32h7rsxx_hal_i2c.c",
@@ -244,10 +219,28 @@ const hal_src = &.{
     "stm32h7rsxx_hal_iwdg.c",
     "stm32h7rsxx_hal_rng_ex.c",
     "stm32h7rsxx_hal_uart.c",
+
+    // "stm32h7rsxx_hal_timebase_rtc_wakeup_template.c",
+    // "stm32h7rsxx_hal_timebase_tim_template.c",
 };
 
-// TODO: this should really grab the headers from libc step and not need host headers...
-const hal_flags = &.{
-    "-DUSE_HAL_DRIVER", // needed for a proper build
-    "-isystem/usr/include/newlib",
+const c_src = &.{
+    "dummy_syscalls.c",
+    "interrupt_table.c",
+    "system_stm32rsxx.c",
+    "stm32h7rsxx_hal_msp.c",
+    "stm32h7rsxx_hal_timebase_tim.c",
+};
+
+const c_macros = &.{
+    // prevent CMSIS from providing a defalt entrypoint
+    // zig does not properly handle the typedef in a func and C->zig fails
+    // ... and we shouldnt need "copy_table_t" or "zero_table_t"
+    "-D__PROGRAM_START=_start",
+
+    // needed for a HAL code to be compiled
+    "-DUSE_HAL_DRIVER",
+
+    // usually defined by STM32IDE (im assuming, not seen on any file)
+    "-DSTM32H7S7xx=1",
 };
