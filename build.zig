@@ -6,10 +6,10 @@ const std = @import("std");
 ///     - Safe: 19272
 ///     - Fast: 12528
 ///     - Small: 11064
-const OPTIMIZE = std.builtin.OptimizeMode.ReleaseSafe;
+const OPTIMIZE: std.builtin.OptimizeMode = .ReleaseFast;
 
 /// `.tiny` is not available for the target :(
-const MODEL = std.builtin.CodeModel.small;
+const MODEL: std.builtin.CodeModel = .small;
 
 inline fn preprocesor_config(b: *std.Build, compile: *std.Build.Step.Compile) void {
     // for some reason headers from the picolibc step wont be "seen"
@@ -26,7 +26,7 @@ inline fn preprocesor_config(b: *std.Build, compile: *std.Build.Step.Compile) vo
         compile.addIncludePath(path);
     }
 
-    inline for (c_macros) |macro| {
+    inline for (common_c_macros) |macro| {
         compile.root_module.c_macros.append(b.allocator, macro) catch @panic("OOM");
     }
 }
@@ -52,13 +52,13 @@ fn do_c(b: *std.Build, target: std.Build.ResolvedTarget) *std.Build.Step.Compile
 
     hal.addCSourceFiles(.{
         .files = hal_src,
-        .flags = c_macros,
+        .flags = c_flags,
         .root = b.path("lib/hal/Src"),
     });
 
     hal.addCSourceFiles(.{
         .files = c_src,
-        .flags = c_macros,
+        .flags = c_flags,
         .root = b.path("src/c"),
     });
 
@@ -224,6 +224,10 @@ const hal_src = &.{
     // "stm32h7rsxx_hal_timebase_tim_template.c",
 };
 
+const c_flags = &.{
+    "-fno-sanitize=undefined",
+};
+
 const c_src = &.{
     "dummy_syscalls.c",
     "interrupt_table.c",
@@ -232,15 +236,15 @@ const c_src = &.{
     "stm32h7rsxx_hal_timebase_tim.c",
 };
 
-const c_macros = &.{
+const common_c_macros = &.{
     // prevent CMSIS from providing a defalt entrypoint
     // zig does not properly handle the typedef in a func and C->zig fails
     // ... and we shouldnt need "copy_table_t" or "zero_table_t"
     "-D__PROGRAM_START=_start",
 
     // needed for a HAL code to be compiled
-    "-DUSE_HAL_DRIVER",
-
     // usually defined by STM32IDE (im assuming, not seen on any file)
-    "-DSTM32H7S7xx=1",
+    "-DSTM32H7S7xx",
+    "-DUSE_HAL_DRIVER",
+    // "-DUSE_FULL_LL_DRIVER", // for .Debug, but still not working.
 };

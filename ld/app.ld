@@ -2,7 +2,8 @@
 
 /* TODO: Start/Size TBD based on devkit */
 
-ENTRY(_vtor_start)
+/* Not really a thing on embedded, but logical entrypoint is main */
+ENTRY(main)
 
 __flash      = 0x08000000;
 __flash_size = 0x00010000;
