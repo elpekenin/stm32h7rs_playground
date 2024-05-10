@@ -353,5 +353,9 @@ void _vtor_start(void) {
     // what does this do? is it even useful/needed?
     SCB->VTOR = (uint32_t)&__interrupt_vector[0];
 
+#if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
+  SCB->CPACR |= ((3UL << 20U)|(3UL << 22U));  /* set CP10 and CP11 Full Access */
+#endif
+
     _start();
 }
