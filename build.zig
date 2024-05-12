@@ -1,3 +1,5 @@
+// TODO: Flag/step to select between actual app and bootloader
+
 const std = @import("std");
 
 /// It's not like we get much debug info anyway, lets go for release
@@ -63,7 +65,7 @@ fn do_c(b: *std.Build, target: std.Build.ResolvedTarget) *std.Build.Step.Compile
     });
 
     hal.linkLibrary(libc);
-    hal.setLinkerScript(b.path("ld/app.ld"));
+    hal.setLinkerScript(b.path("ld/bootloader.ld"));
 
     return hal;
 }
@@ -72,7 +74,7 @@ fn do_c(b: *std.Build, target: std.Build.ResolvedTarget) *std.Build.Step.Compile
 fn do_zig(b: *std.Build, target: std.Build.ResolvedTarget) *std.Build.Step.Compile {
     const app = b.addStaticLibrary(.{
         .name = "zig",
-        .root_source_file = b.path("src/zig/app.zig"),
+        .root_source_file = b.path("src/zig/bootloader.zig"),
         .target = target,
         .optimize = OPTIMIZE,
         .code_model = MODEL,

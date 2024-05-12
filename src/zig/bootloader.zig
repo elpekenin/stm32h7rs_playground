@@ -1,29 +1,20 @@
-/// Let's just bootstrap the actual logic of the app, it doesn't like
-/// trying to `@import("common/...")`, so let's inject dependencies.
+/// Let's just bootstrap the actual logic of the code, it doesn't like
+/// trying to `@import("common/...")` inside the folder, so let's
+/// inject dependencies.
 const std = @import("std");
 
-const board = @import("common/board.zig");
-const hal = @import("common/hal.zig");
+const bootloader = @import("bootloader/main.zig");
 
 /// Note: Arguments' signature doesn't really matter as picolibc will be
 /// doing `int ret = main(0, NULL)`. But, according to C11, argv should be a
 /// non-const, null-terminated list of null-terminated strings.
-pub export fn main(argc: i32, argv: [*c][*:0]u8) noreturn {
+pub export fn main(argc: i32, argv: [*c][*:0]u8) i32 {
     _ = argc;
     _ = argv;
 
-    hal.early_init();
+    bootloader.run();
 
-    for (board.LEDS) |led| {
-        led.init_out();
-    }
-
-    while (true) {
-        for (board.LEDS) |led| {
-            led.toggle();
-        }
-        hal.HAL_Delay(1000);
-    }
+    return 0;
 }
 
 pub fn panic(msg: []const u8, error_return_trace: ?*std.builtin.StackTrace, ret_add: ?usize) noreturn {
