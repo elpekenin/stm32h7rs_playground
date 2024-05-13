@@ -1,5 +1,3 @@
-/// Let's just bootstrap the actual logic of the app, it doesn't like
-/// trying to `@import("common/...")`, so let's inject dependencies.
 const std = @import("std");
 
 const board = @import("common/board.zig");

@@ -1,7 +1,7 @@
-/// Let's just bootstrap the actual logic of the code, it doesn't like
-/// trying to `@import("common/...")` inside the folder, so let's
-/// inject dependencies.
 const std = @import("std");
+
+const board = @import("common/board.zig");
+const hal = @import("common/hal.zig");
 
 const bootloader = @import("bootloader/main.zig");
 
@@ -24,7 +24,17 @@ pub fn panic(msg: []const u8, error_return_trace: ?*std.builtin.StackTrace, ret_
     _ = error_return_trace;
     _ = ret_add;
 
+    inline for (board.LEDS, 0..) |led, i| {
+        const active = if (i <= 1) .High else .Low;
+
+        led.as_out(active).set(true);
+    }
+
     while (true) {
-        @breakpoint();
+        inline for (board.LEDS) |led| {
+            // .Low / .High ignored here, we just toggling
+            led.as_out(.Low).toggle();
+            hal.HAL_Delay(100);
+        }
     }
 }
