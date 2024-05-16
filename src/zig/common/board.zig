@@ -71,6 +71,14 @@ fn sd1_clk_enable() void {
     tmpreg.* = RCC.AHB5ENR;
 }
 
+fn sd1_force_reset() void {
+    RCC.AHB5RSTR |= hal.RCC_AHB5RSTR_SDMMC1RST;
+}
+
+fn sd1_release_reset() void {
+    RCC.AHB5RSTR &= ~hal.RCC_AHB5RSTR_SDMMC1RST;
+}
+
 pub const BasePin = struct {
     const Self = @This();
 
@@ -175,8 +183,14 @@ pub const SDType = struct {
     instance: *hal.SDMMC_TypeDef,
     hsd: ?hal.SD_HandleTypeDef = null,
 
-    pub fn ready(self: Self) bool {
-        return self.hsd != null;
+    pub fn ready(self: *Self) bool {
+        if (self.hsd) |*hsd| {
+            if (hal.HAL_SD_GetCardState(hsd) == hal.HAL_SD_CARD_TRANSFER) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     pub fn init(self: *Self) !void {
@@ -193,8 +207,6 @@ pub const SDType = struct {
             .ClockDiv = 1,
         } };
 
-        self.hsd = hsd;
-
         if (hal.HAL_SD_Init(&hsd) != hal.HAL_OK) {
             std.log.err("Could not initialize SD.", .{});
             return error.HalError;
@@ -208,11 +220,11 @@ pub const SDType = struct {
 
         for (0..500) |_| {
             if (hal.HAL_SD_GetCardState(&hsd) == hal.HAL_SD_CARD_TRANSFER) {
+                self.hsd = hsd;
                 return;
             }
         }
 
-        self.hsd = null;
         std.log.err("SD did not enter ready state.", .{});
         return error.SDNotReady;
     }
@@ -223,6 +235,8 @@ pub const SDType = struct {
                 std.log.err("Failed reading.", .{});
                 return error.HalError;
             }
+
+            while (hal.HAL_SD_GetCardState(hsd) != hal.HAL_SD_CARD_TRANSFER) {}
         } else {
             std.log.err("SD was not ready.", .{});
             return error.SDNotReady;
@@ -235,18 +249,21 @@ pub const SDType = struct {
                 std.log.err("Failed reading.", .{});
                 return error.HalError;
             }
+
+            while (hal.HAL_SD_GetCardState(hsd) != hal.HAL_SD_CARD_TRANSFER) {}
         } else {
             std.log.err("SD was not ready.", .{});
             return error.SDNotReady;
         }
     }
 
-    pub fn erase_range(self: *Self, first_block: u32, last_block: u32) !void {
-        if (self.hsd) |hsd| {
-            if (hal.HAL_SD_Erase(&hsd, first_block, last_block) != hal.HAL_OK) {
-                std.log.err("Could not erase from SD card.", .{});
+    pub fn card_info(self: *Self) !hal.HAL_SD_CardInfoTypeDef {
+        if (self.hsd) |*hsd| {
+            var info: hal.HAL_SD_CardInfoTypeDef = undefined;
+            if (hal.HAL_SD_GetCardInfo(hsd, &info) != hal.HAL_OK) {
                 return error.HalError;
             }
+            return info;
         } else {
             std.log.err("SD was not ready.", .{});
             return error.SDNotReady;
@@ -267,7 +284,6 @@ fn HAL_SD_MspInit_Impl(hsd: *hal.SD_HandleTypeDef) !void {
         .PeriphClockSelection = hal.RCC_PERIPHCLK_SDMMC12,
         .Sdmmc12ClockSelection = hal.RCC_SDMMC12CLKSOURCE_PLL2S,
     };
-
     if (hal.HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != hal.HAL_OK) {
         std.log.err("Could not configure SD clock.", .{});
         return error.HalError;
@@ -303,6 +319,43 @@ fn HAL_SD_MspInit_Impl(hsd: *hal.SD_HandleTypeDef) !void {
         .Alternate = hal.GPIO_AF11_SDMMC1,
     };
     hal.HAL_GPIO_Init(hal.GPIOC, &GPIO_InitStruct);
+
+    var RCC_OscInitStruct: hal.RCC_OscInitTypeDef = undefined;
+    RCC_OscInitStruct = .{
+        .OscillatorType = hal.RCC_OSCILLATORTYPE_HSI,
+        .HSIState = hal.RCC_HSI_ON,
+        .HSIDiv = hal.RCC_HSI_DIV1,
+        .HSICalibrationValue = hal.RCC_HSICALIBRATION_DEFAULT,
+        .PLL1 = .{
+            .PLLState = hal.RCC_PLL_ON,
+            .PLLSource = hal.RCC_PLLSOURCE_HSI,
+            .PLLM = 16,
+            .PLLN = 275,
+            .PLLP = 2,
+            .PLLQ = 2,
+            .PLLR = 2,
+            .PLLS = 2,
+            .PLLT = 2,
+            .PLLFractional = 0,
+        },
+        .PLL2 = .{ .PLLState = hal.RCC_PLL_NONE },
+        .PLL3 = .{ .PLLState = hal.RCC_PLL_NONE },
+    };
+    if (hal.HAL_RCC_OscConfig(&RCC_OscInitStruct) != hal.HAL_OK) {
+        return error.HalError;
+    }
+
+    var RCC_PeriphClkInit: hal.RCC_PeriphCLKInitTypeDef = undefined;
+    RCC_PeriphClkInit = .{
+        .PeriphClockSelection = hal.RCC_PERIPHCLK_SDMMC12,
+        .Sdmmc12ClockSelection = hal.RCC_SDMMC12CLKSOURCE_PLL2S,
+    };
+    if (hal.HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphClkInit) != hal.HAL_OK) {
+        return error.HalError;
+    }
+
+    sd1_force_reset();
+    sd1_release_reset();
 }
 
 // ^ Types

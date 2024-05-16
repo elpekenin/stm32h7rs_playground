@@ -79,18 +79,29 @@ pub const Disk = struct {
     }
 
     pub fn ioctl(interface: *fatfs.Disk, cmd: fatfs.IoCtl, buff: [*]u8) fatfs.Disk.Error!void {
-        _ = interface;
+        if (interface.getStatus().initialized != true) {
+            return error.DiskNotReady;
+        }
+
+        const self: *Disk = @fieldParentPtr("interface", interface);
+        const info = self.sd.card_info() catch return error.DiskNotReady;
 
         switch (cmd) {
             .sync => return,
             .get_sector_count => {
-                const sectors = 32 * 1024 * 1024 / Disk.sector_size;
-                buff[0] = sectors & 0xFF;
-                buff[1] = (sectors >> 8) & 0xFF;
+                const sectors = info.LogBlockNbr;
+                const ptr: [*]u32 = @alignCast(@ptrCast(buff));
+                ptr[0] = sectors;
             },
-            .get_sector_size, .get_block_size => {
-                buff[0] = Disk.sector_size & 0xFF;
-                buff[1] = (Disk.sector_size >> 8) & 0xFF;
+            .get_sector_size => {
+                const size = info.LogBlockSize;
+                const ptr: [*]u16 = @alignCast(@ptrCast(buff));
+                ptr[0] = @intCast(size);
+            },
+            .get_block_size => {
+                const size = info.LogBlockSize / Disk.sector_size;
+                const ptr: [*]u16 = @alignCast(@ptrCast(buff));
+                ptr[0] = @intCast(size);
             },
 
             else => return error.InvalidParameter,
