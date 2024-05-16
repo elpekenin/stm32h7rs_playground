@@ -85,15 +85,15 @@ pub const Disk = struct {
             .sync => return,
             .get_sector_count => {
                 const sectors = 32 * 1024 * 1024 / Disk.sector_size;
-                buff[0] = sectors & 0xFF; 
+                buff[0] = sectors & 0xFF;
                 buff[1] = (sectors >> 8) & 0xFF;
             },
             .get_sector_size, .get_block_size => {
-                buff[0] = Disk.sector_size & 0xFF; 
+                buff[0] = Disk.sector_size & 0xFF;
                 buff[1] = (Disk.sector_size >> 8) & 0xFF;
             },
-            
-            else => return error.InvalidParameter
+
+            else => return error.InvalidParameter,
         }
     }
 };

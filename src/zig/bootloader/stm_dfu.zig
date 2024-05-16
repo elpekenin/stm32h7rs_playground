@@ -26,7 +26,6 @@ pub fn jump() noreturn {
         led.set(false);
     }
 
-
     disable_irq();
 
     var SysTick = @as(*hal.SysTick_Type, @ptrFromInt(hal.SysTick_BASE));

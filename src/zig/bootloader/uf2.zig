@@ -23,7 +23,7 @@ pub fn check() bool {
 
 pub inline fn app_jump() noreturn {
     std.log.err("Unimplemented.", .{});
-    while (true) { }
+    while (true) {}
     // _jump(ext_flash.BASE);
 }
 

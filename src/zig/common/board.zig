@@ -5,7 +5,7 @@ const hal = @import("hal.zig");
 
 const TIMEOUT = 500;
 
-pub const Error = error {
+pub const Error = error{
     HalError,
     SDNotReady,
 };
@@ -212,6 +212,7 @@ pub const SDType = struct {
             }
         }
 
+        self.hsd = null;
         std.log.err("SD did not enter ready state.", .{});
         return error.SDNotReady;
     }
