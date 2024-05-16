@@ -13,6 +13,9 @@ const OPTIMIZE: std.builtin.OptimizeMode = .ReleaseFast;
 /// `.tiny` is not available for the target :(
 const MODEL: std.builtin.CodeModel = .small;
 
+/// Which platform are we compiling for. CortexM7 with no OS
+var TARGET: std.Build.ResolvedTarget = undefined;
+
 inline fn preprocesor_config(b: *std.Build, compile: *std.Build.Step.Compile) void {
     // for some reason headers from the picolibc step wont be "seen"
     compile.addSystemIncludePath(std.Build.LazyPath{ .cwd_relative = "/usr/include/newlib" });
@@ -36,9 +39,9 @@ inline fn preprocesor_config(b: *std.Build, compile: *std.Build.Step.Compile) vo
 /// Make our own libc (picolibc for now) because zig does not provide it for
 /// `.freestanding` builds. Then compile it along all of STM's HAL files,
 /// and some C stubs needed for a successful build.
-fn do_c(b: *std.Build, target: std.Build.ResolvedTarget) *std.Build.Step.Compile {
+fn do_c(b: *std.Build) *std.Build.Step.Compile {
     const picolibc = b.dependency("picolibc", .{
-        .target = target,
+        .target = TARGET,
         .optimize = OPTIMIZE,
         .tinystdio = true,
     });
@@ -46,7 +49,7 @@ fn do_c(b: *std.Build, target: std.Build.ResolvedTarget) *std.Build.Step.Compile
 
     const hal = b.addExecutable(.{
         .name = "app.elf",
-        .target = target,
+        .target = TARGET,
         .optimize = OPTIMIZE,
         .code_model = MODEL,
     });
@@ -71,23 +74,29 @@ fn do_c(b: *std.Build, target: std.Build.ResolvedTarget) *std.Build.Step.Compile
 }
 
 /// The actual app, written in zig :)
-fn do_zig(b: *std.Build, target: std.Build.ResolvedTarget) *std.Build.Step.Compile {
+fn do_zig(b: *std.Build) *std.Build.Step.Compile {
     const app = b.addStaticLibrary(.{
         .name = "zig",
         .root_source_file = b.path("src/zig/bootloader.zig"),
-        .target = target,
+        .target = TARGET,
         .optimize = OPTIMIZE,
         .code_model = MODEL,
     });
     preprocesor_config(b, app);
+
+    const zfat = b.dependency("zfat", .{
+        .target = TARGET,
+        .optimize = OPTIMIZE,
+    });
+    const fatfs = zfat.module("fatfs");
+    app.root_module.addImport("fatfs", fatfs);
 
     return app;
 }
 
 /// Put everything together
 pub fn build(b: *std.Build) !void {
-    // Targetting ARM Cortex-M7 with no OS.
-    const target = b.resolveTargetQuery(.{
+    TARGET = b.resolveTargetQuery(.{
         .cpu_arch = .thumb,
         .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m7 },
         .os_tag = .freestanding,
@@ -95,8 +104,8 @@ pub fn build(b: *std.Build) !void {
     });
 
     // Compile all the code
-    const c = do_c(b, target);
-    const zig = do_zig(b, target);
+    const c = do_c(b);
+    const zig = do_zig(b);
 
     // Link everything together
     c.linkLibrary(zig);

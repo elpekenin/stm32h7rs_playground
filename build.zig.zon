@@ -2,8 +2,6 @@
     .name = "playground",
     .version = "0.0.0-alpha",
 
-    .dependencies = .{
-        .picolibc = .{ .url = "https://github.com/elpekenin/picolibc/archive/refs/heads/zig.tar.gz", .hash = "12201b7e387054f664153aab79f8b0ca31e6afd915d138d00928c964e60cfb8843a3" },
-    },
+    .dependencies = .{ .picolibc = .{ .url = "https://github.com/elpekenin/picolibc/archive/refs/heads/zig.tar.gz", .hash = "12201b7e387054f664153aab79f8b0ca31e6afd915d138d00928c964e60cfb8843a3" }, .zfat = .{ .url = "https://github.com/elpekenin/zfat/archive/refs/heads/0.12.tar.gz", .hash = "1220d6741777d31b6cbdb298d6f13f39056adc399b097e491e08324c299921a92dc8" } },
     .paths = .{ "build.zig", "build.zig.zon", "ld", "src" },
 }

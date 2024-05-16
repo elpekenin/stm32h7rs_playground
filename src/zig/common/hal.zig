@@ -1,5 +1,7 @@
 // "Singleton" C import
 
+const std = @import("std");
+
 const c = @cImport({
     @cInclude("stm32h7rsxx_hal.h");
     @cInclude("stm32h7rsxx_hal_conf.h");
@@ -16,6 +18,6 @@ pub fn early_init() void {
 
     const ret = c.HAL_Init();
     if (ret != c.HAL_OK) {
-        @panic("HAL initialization failed");
+        std.debug.panic("HAL initialization failed.", .{});
     }
 }

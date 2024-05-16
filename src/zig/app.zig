@@ -1,7 +1,7 @@
 const std = @import("std");
 
-const board = @import("common/board.zig");
 const hal = @import("common/hal.zig");
+const board = @import("common/board.zig");
 
 /// Note: Arguments' signature doesn't really matter as picolibc will be
 /// doing `int ret = main(0, NULL)`. But, according to C11, argv should be a

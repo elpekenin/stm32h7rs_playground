@@ -1,5 +1,5 @@
-const board = @import("../common/board.zig");
 const hal = @import("../common/hal.zig");
+const board = @import("../common/board.zig");
 
 const _jump = @import("jump.zig").to;
 
@@ -14,15 +14,18 @@ inline fn enable_irq() void {
 }
 
 pub fn check() bool {
-    return board.USER.as_in(.High).read();
+    const in = board.USER.as_in(.High) catch return false;
+    return in.read();
 }
 
 pub fn jump() noreturn {
-    const led = board.LD3.as_out(.Low);
+    const maybe_led = board.LD3.as_out(.Low) catch null;
+    if (maybe_led) |led| {
+        led.set(true);
+        hal.HAL_Delay(500);
+        led.set(false);
+    }
 
-    led.set(true);
-    hal.HAL_Delay(500);
-    led.set(false);
 
     disable_irq();
 

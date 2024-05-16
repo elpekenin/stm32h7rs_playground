@@ -1,5 +1,7 @@
-const board = @import("../common/board.zig");
+const std = @import("std");
+
 const hal = @import("../common/hal.zig");
+const board = @import("../common/board.zig");
 
 const ext_flash = @import("ext_flash.zig");
 const _jump = @import("jump.zig").to;
@@ -20,14 +22,17 @@ pub fn check() bool {
 }
 
 pub inline fn app_jump() noreturn {
-    @panic("Unimplemented");
+    std.log.err("Unimplemented.", .{});
+    while (true) { }
     // _jump(ext_flash.BASE);
 }
 
 pub fn main() noreturn {
     // indicate that we are in bootloader
-    const led = board.LD1.as_out(.High);
-    led.set(true);
+    const maybe_led = board.LD1.as_out(.High) catch null;
+    if (maybe_led) |led| {
+        led.set(true);
+    }
 
     while (true) {
         // expose USB MSC
@@ -39,6 +44,8 @@ pub fn main() noreturn {
     // if correct, write it to flash
 
     // upon completion
-    led.set(false);
+    if (maybe_led) |led| {
+        led.set(false);
+    }
     return app_jump();
 }

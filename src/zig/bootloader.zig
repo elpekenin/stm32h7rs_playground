@@ -1,7 +1,8 @@
 const std = @import("std");
 
-const board = @import("common/board.zig");
 const hal = @import("common/hal.zig");
+const board = @import("common/board.zig");
+const logging = @import("common/logging.zig");
 
 const bootloader = @import("bootloader/main.zig");
 
@@ -27,14 +28,23 @@ pub fn panic(msg: []const u8, error_return_trace: ?*std.builtin.StackTrace, ret_
     inline for (board.LEDS, 0..) |led, i| {
         const active = if (i <= 1) .High else .Low;
 
-        led.as_out(active).set(true);
+        if (led.as_out(active) catch null) |l| {
+            l.set(true);
+        }
     }
 
     while (true) {
         inline for (board.LEDS) |led| {
             // .Low / .High ignored here, we just toggling
-            led.as_out(.Low).toggle();
+            if (led.as_out(.Low) catch null) |l| {
+                l.toggle();
+            }
             hal.HAL_Delay(100);
         }
     }
 }
+
+pub const std_options = .{
+    .log_level = .debug,
+    .logFn = logging.log,
+};
