@@ -4,132 +4,120 @@ const std = @import("std");
 
 const fatfs = @import("fatfs");
 
+const root = @import("root");
+
 const hal = @import("../../common/hal.zig");
 const board = @import("../../common/board.zig");
+const logging = @import("../logging.zig");
+const sd = @import("bindings/sd.zig");
 
-const MOUNT = "0:/";
+const Context = struct {
+    const Self = @This();
+
+    path: [:0]const u8,
+
+    fn get_full_path(comptime level: std.log.Level) [:0]const u8 {
+        return switch (level) {
+            .debug, .info => @typeName(root) ++ ".out",
+            .warn, .err => @typeName(root) ++ ".err",
+        };
+    }
+
+    pub fn new(comptime level: std.log.Level) Self {
+        return Self{
+            .path = Self.get_full_path(level),
+        };
+    }
+};
 
 // requires pointer stability
 var global_fs: fatfs.FileSystem = undefined;
 
 // requires pointer stability
-var disk: Disk = .{
+var sd_disk: sd.Disk = .{
     .sd = board.SD,
 };
 
-var full_path: [30]u8 = undefined;
+const UnionDisk = union(enum) {
+    sd: *sd.Disk,
+};
 
-pub const Disk = struct {
-    const sector_size = 512;
+// race conditions on their way!!
+var buff: [100]u8 = undefined;
 
-    sd: board.SDType,
+const Backend = struct {
+    const Self = @This();
 
-    interface: fatfs.Disk = fatfs.Disk{
-        .getStatusFn = getStatus,
-        .initializeFn = initialize,
-        .readFn = read,
-        .writeFn = write,
-        .ioctlFn = ioctl,
-    },
+    mount: [:0]const u8,
+    disk: UnionDisk,
 
-    pub fn getStatus(interface: *fatfs.Disk) fatfs.Disk.Status {
-        const self: *Disk = @fieldParentPtr("interface", interface);
+    pub fn full_path(self: Self, file_path: []const u8) [:0]const u8 {
+        @memset(&buff, 0);
 
-        // TODO?: .disk_present based on SD detection
+        @memcpy(buff[0..], self.mount);
+        @memcpy(buff[self.mount.len..], file_path);
+        buff[self.mount.len + file_path.len] = 0;
 
-        const ready = self.sd.ready();
-
-        return fatfs.Disk.Status{
-            .initialized = ready,
-            .disk_present = ready,
-            .write_protected = false,
-        };
-    }
-
-    pub fn initialize(interface: *fatfs.Disk) fatfs.Disk.Error!fatfs.Disk.Status {
-        const self: *Disk = @fieldParentPtr("interface", interface);
-
-        if (!self.sd.ready()) {
-            self.sd.init() catch return error.DiskNotReady;
-        }
-
-        return fatfs.Disk.Status{
-            .initialized = true,
-            .disk_present = true,
-            .write_protected = false,
-        };
-    }
-
-    pub fn read(interface: *fatfs.Disk, buff: [*]u8, sector: fatfs.LBA, count: c_uint) fatfs.Disk.Error!void {
-        if (interface.getStatus().initialized != true) {
-            return error.DiskNotReady;
-        }
-
-        const self: *Disk = @fieldParentPtr("interface", interface);
-        self.sd.read(buff, sector, count) catch return error.DiskNotReady;
-    }
-
-    pub fn write(interface: *fatfs.Disk, buff: [*]const u8, sector: fatfs.LBA, count: c_uint) fatfs.Disk.Error!void {
-        if (interface.getStatus().initialized != true) {
-            return error.DiskNotReady;
-        }
-
-        const self: *Disk = @fieldParentPtr("interface", interface);
-        self.sd.write(buff, sector, count) catch return error.DiskNotReady;
-    }
-
-    pub fn ioctl(interface: *fatfs.Disk, cmd: fatfs.IoCtl, buff: [*]u8) fatfs.Disk.Error!void {
-        if (interface.getStatus().initialized != true) {
-            return error.DiskNotReady;
-        }
-
-        const self: *Disk = @fieldParentPtr("interface", interface);
-        const info = self.sd.card_info() catch return error.DiskNotReady;
-
-        switch (cmd) {
-            .sync => return,
-            .get_sector_count => {
-                const sectors = info.LogBlockNbr;
-                const ptr: [*]u32 = @alignCast(@ptrCast(buff));
-                ptr[0] = sectors;
-            },
-            .get_sector_size => {
-                const size = info.LogBlockSize;
-                const ptr: [*]u16 = @alignCast(@ptrCast(buff));
-                ptr[0] = @intCast(size);
-            },
-            .get_block_size => {
-                const size = info.LogBlockSize / Disk.sector_size;
-                const ptr: [*]u16 = @alignCast(@ptrCast(buff));
-                ptr[0] = @intCast(size);
-            },
-
-            else => return error.InvalidParameter,
-        }
+        // zig doesnt understand that we added the sentinel ourselves
+        // "force" it into liking the function by casting
+        return @ptrCast(&buff);
     }
 };
 
-pub fn log(path: [:0]const u8, bytes: []const u8) !void {
-    fatfs.disks[0] = &disk.interface;
+const BACKENDS: [1]Backend = .{
+    .{ .mount = "0:/", .disk = UnionDisk{ .sd = &sd_disk } },
+};
 
-    try global_fs.mount(MOUNT, true);
-    defer fatfs.FileSystem.unmount(MOUNT) catch std.debug.panic("Failed to unmount.", .{});
+const WriteError = anyerror;
 
-    var i: usize = 0;
-    var j: usize = 0;
-    while (i < MOUNT.len) : (i += 1) {
-        full_path[i] = MOUNT[i];
+fn write(context: Context, bytes: []const u8) WriteError!usize {
+    inline for (BACKENDS, 0..) |backend, i| {
+        var interface: fatfs.Disk = switch (backend.disk) {
+            .sd => |*disk_ptr| disk_ptr.*.interface,
+        };
+
+        fatfs.disks[i] = &interface;
+
+        try global_fs.mount(backend.mount, true);
+        defer fatfs.FileSystem.unmount(backend.mount) catch std.debug.panic("Failed to unmount.", .{});
+
+        var file = try fatfs.File.open(backend.full_path(context.path), .{
+            .mode = .open_append,
+            .access = .write_only,
+        });
+        defer file.close();
+
+        _ = try file.write(bytes);
     }
-    while (j < path.len) : (j += 1) {
-        full_path[i + j] = path.ptr[i];
+
+    return bytes.len;
+}
+
+const Writer = std.io.GenericWriter(Context, WriteError, write);
+
+var ever_failed = false;
+
+pub fn log(
+    comptime level: std.log.Level,
+    comptime scope: @TypeOf(.EnumLiteral),
+    comptime format: []const u8,
+    args: anytype,
+) void {
+    if (ever_failed) {
+        return;
     }
-    full_path[i + j] = 0;
 
-    var file = try fatfs.File.open(@ptrCast(&full_path), .{
-        .mode = .open_append,
-        .access = .write_only,
-    });
-    defer file.close();
+    if (scope == .fatfs) {
+        // otherwise we will get a bunch of noise
+        // TODO?: Over USB/UART/Something
+        return;
+    }
 
-    _ = try file.write(bytes);
+    const prefix = comptime logging.prefix(level, scope);
+    const context = Context.new(level);
+    const writer = Writer{ .context = context };
+
+    writer.print(prefix ++ format ++ "\n", args) catch {
+        ever_failed = true;
+    };
 }

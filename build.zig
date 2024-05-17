@@ -84,13 +84,6 @@ fn do_zig(b: *std.Build) *std.Build.Step.Compile {
     });
     preprocesor_config(b, app);
 
-    const zfat = b.dependency("zfat", .{
-        .target = TARGET,
-        .optimize = OPTIMIZE,
-    });
-    const fatfs = zfat.module("fatfs");
-    app.root_module.addImport("fatfs", fatfs);
-
     return app;
 }
 
@@ -103,9 +96,21 @@ pub fn build(b: *std.Build) !void {
         .abi = .eabihf,
     });
 
-    // Compile all the code
+    // Compile all my code
     const c = do_c(b);
     const zig = do_zig(b);
+
+    // External deps
+    const zfat = b.dependency("zfat", .{
+        .target = TARGET,
+        .optimize = OPTIMIZE,
+    });
+    const fatfs = zfat.module("fatfs");
+    zig.root_module.addImport("fatfs", fatfs);
+
+    const rtt_dep = b.dependency("segger-rtt", .{});
+    const rtt = rtt_dep.module("rtt");
+    zig.root_module.addImport("rtt", rtt);
 
     // Link everything together
     c.linkLibrary(zig);
