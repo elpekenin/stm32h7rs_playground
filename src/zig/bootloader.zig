@@ -1,50 +1,69 @@
+//! Second-stage bootloader, allowing to jump into STM-DFU,
+//! or use UF2
+
 const std = @import("std");
 
-const hal = @import("common/hal.zig");
+const bootstrap = @import("common/bootstrap.zig");
+comptime {
+    _ = bootstrap;
+}
+
+const stm_dfu = @import("bootloader/stm_dfu.zig");
+const uf2 = @import("bootloader/uf2.zig");
+
+const fatfs = @import("fatfs");
 const board = @import("common/board.zig");
-const logging = @import("common/logging.zig");
+const sd = @import("common/fatfs_bindings/sd.zig");
 
-const bootloader = @import("bootloader/main.zig");
+// requires pointer stability
+var global_fs: fatfs.FileSystem = undefined;
 
-/// Note: Arguments' signature doesn't really matter as picolibc will be
-/// doing `int ret = main(0, NULL)`. But, according to C11, argv should be a
-/// non-const, null-terminated list of null-terminated strings.
-pub export fn main(argc: i32, argv: [*c][*:0]u8) i32 {
-    _ = argc;
-    _ = argv;
-
-    bootloader.run();
-
-    return 0;
-}
-
-pub fn panic(msg: []const u8, error_return_trace: ?*std.builtin.StackTrace, ret_add: ?usize) noreturn {
-    @setCold(true);
-
-    _ = msg;
-    _ = error_return_trace;
-    _ = ret_add;
-
-    inline for (board.LEDS, 0..) |led, i| {
-        const active = if (i <= 1) .High else .Low;
-
-        if (led.as_out(active) catch null) |l| {
-            l.set(true);
-        }
-    }
-
-    while (true) {
-        inline for (board.LEDS) |led| {
-            // .Low / .High ignored here, we just toggling
-            if (led.as_out(.Low) catch null) |l| {
-                l.toggle();
-            }
-            hal.HAL_Delay(100);
-        }
-    }
-}
-
-pub const std_options = .{
-    .log_level = .debug,
-    .logFn = logging.log,
+// requires pointer stability
+var sd_disk: sd.Disk = .{
+    .sd = board.SD,
 };
+
+pub fn run() noreturn {
+    // button pressed on boot => STM DFU
+    if (stm_dfu.check()) {
+        std.log.debug("Jumping to STM-DFU", .{});
+        return stm_dfu.jump();
+    }
+
+    // double press, or app code setting sentinel + reset => UF2 bootloader
+    if (uf2.check()) {
+        std.log.debug("Jumping to UF2 bootloader", .{});
+        uf2.clear_flag();
+        return uf2.main();
+    }
+
+    // give chance for a double reset into bootloader
+    uf2.chance();
+
+    // jump to user code
+    std.log.debug("Jumping to application", .{});
+    fatfs.disks[0] = &sd_disk.interface;
+
+    {
+        global_fs.mount("0:/", true) catch std.debug.panic("Could not mount.", .{});
+
+        defer fatfs.FileSystem.unmount("0:/") catch std.debug.panic("Could not unmount.", .{});
+
+        var file = fatfs.File.open("0:/test.txt", .{
+            .mode = .open_append,
+            .access = .write_only,
+        }) catch std.debug.panic("Could not open file.", .{});
+        defer file.close();
+
+        const bytes: [4]u8 = .{ 'A', 'C', 'A', 'B' };
+        _ = file.write(&bytes) catch std.debug.panic("Could not write", .{});
+    }
+
+    return uf2.app_jump();
+}
+
+const logging = @import("common/logging.zig");
+pub const std_options = logging.std_options;
+
+const panic_ = @import("common/panic.zig");
+pub const panic = panic_.panic;

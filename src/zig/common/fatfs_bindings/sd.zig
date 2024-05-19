@@ -1,6 +1,11 @@
+//! Glue code to make FatFS capable of writing/reading from
+//! a SD Card
+
+const std = @import("std");
+
 const fatfs = @import("fatfs");
 
-const board = @import("../../../common/board.zig");
+const board = @import("../board.zig");
 
 pub const Disk = struct {
     const sector_size = 512;
@@ -18,13 +23,9 @@ pub const Disk = struct {
     pub fn getStatus(interface: *fatfs.Disk) fatfs.Disk.Status {
         const self: *Disk = @fieldParentPtr("interface", interface);
 
-        // TODO?: .disk_present based on SD detection
-
-        const ready = self.sd.ready();
-
         return fatfs.Disk.Status{
-            .initialized = ready,
-            .disk_present = ready,
+            .initialized = self.sd.is_initialized(),
+            .disk_present = self.sd.is_connected(),
             .write_protected = false,
         };
     }
@@ -32,9 +33,7 @@ pub const Disk = struct {
     pub fn initialize(interface: *fatfs.Disk) fatfs.Disk.Error!fatfs.Disk.Status {
         const self: *Disk = @fieldParentPtr("interface", interface);
 
-        if (!self.sd.ready()) {
-            self.sd.init() catch return error.DiskNotReady;
-        }
+        self.sd.init() catch return error.DiskNotReady;
 
         return fatfs.Disk.Status{
             .initialized = true,

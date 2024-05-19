@@ -1,4 +1,4 @@
-// TODO: Low-level SD card for private API
+//! Logging backend to write data into a filesystem (or many)
 
 const std = @import("std");
 
@@ -6,10 +6,10 @@ const fatfs = @import("fatfs");
 
 const root = @import("root");
 
-const hal = @import("../../common/hal.zig");
-const board = @import("../../common/board.zig");
+const hal = @import("../hal.zig");
+const board = @import("../board.zig");
 const logging = @import("../logging.zig");
-const sd = @import("bindings/sd.zig");
+const sd = @import("../fatfs_bindings/sd.zig");
 
 const Context = struct {
     const Self = @This();
@@ -38,18 +38,14 @@ var sd_disk: sd.Disk = .{
     .sd = board.SD,
 };
 
-const UnionDisk = union(enum) {
-    sd: *sd.Disk,
-};
-
-// race conditions on their way!!
-var buff: [100]u8 = undefined;
-
 const Backend = struct {
     const Self = @This();
 
+    // race conditions on their way!!
+    var buff: [100]u8 = undefined;
+
     mount: [:0]const u8,
-    disk: UnionDisk,
+    disk: *fatfs.Disk,
 
     pub fn full_path(self: Self, file_path: []const u8) [:0]const u8 {
         @memset(&buff, 0);
@@ -65,18 +61,14 @@ const Backend = struct {
 };
 
 const BACKENDS: [1]Backend = .{
-    .{ .mount = "0:/", .disk = UnionDisk{ .sd = &sd_disk } },
+    .{ .mount = "0:/", .disk = &sd_disk.interface },
 };
 
-const WriteError = anyerror;
+const FatFSWriteError = anyerror;
 
-fn write(context: Context, bytes: []const u8) WriteError!usize {
+fn fatfs_write(context: Context, bytes: []const u8) FatFSWriteError!usize {
     inline for (BACKENDS, 0..) |backend, i| {
-        var interface: fatfs.Disk = switch (backend.disk) {
-            .sd => |*disk_ptr| disk_ptr.*.interface,
-        };
-
-        fatfs.disks[i] = &interface;
+        fatfs.disks[i] = backend.disk;
 
         try global_fs.mount(backend.mount, true);
         defer fatfs.FileSystem.unmount(backend.mount) catch std.debug.panic("Failed to unmount.", .{});
@@ -93,9 +85,7 @@ fn write(context: Context, bytes: []const u8) WriteError!usize {
     return bytes.len;
 }
 
-const Writer = std.io.GenericWriter(Context, WriteError, write);
-
-var ever_failed = false;
+const FatFSWriter = std.io.GenericWriter(Context, FatFSWriteError, fatfs_write);
 
 pub fn log(
     comptime level: std.log.Level,
@@ -103,21 +93,29 @@ pub fn log(
     comptime format: []const u8,
     args: anytype,
 ) void {
-    if (ever_failed) {
+    const state = struct {
+        var ever_failed = false;
+        var nesting: u8 = 0;
+    };
+
+    if (state.ever_failed or scope == .fatfs) {
         return;
     }
 
-    if (scope == .fatfs) {
-        // otherwise we will get a bunch of noise
-        // TODO?: Over USB/UART/Something
+    // dont allow nesting, (yet?)
+    if (state.nesting != 0) {
         return;
     }
+
+    state.nesting += 1;
 
     const prefix = comptime logging.prefix(level, scope);
     const context = Context.new(level);
-    const writer = Writer{ .context = context };
+    const writer = FatFSWriter{ .context = context };
 
     writer.print(prefix ++ format ++ "\n", args) catch {
-        ever_failed = true;
+        state.ever_failed = true;
     };
+
+    state.nesting -= 1;
 }

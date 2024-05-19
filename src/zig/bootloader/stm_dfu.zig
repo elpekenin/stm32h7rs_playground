@@ -1,3 +1,6 @@
+//! Logic to define when and how to jump into STM's
+//! builtin bootloader in the silicon, programatically.
+
 const hal = @import("../common/hal.zig");
 const board = @import("../common/board.zig");
 
@@ -14,12 +17,12 @@ inline fn enable_irq() void {
 }
 
 pub fn check() bool {
-    const in = board.USER.as_in(.High) catch return false;
+    const in = board.USER.as_in(.High) orelse return false;
     return in.read();
 }
 
 pub fn jump() noreturn {
-    const maybe_led = board.LD3.as_out(.Low) catch null;
+    const maybe_led = board.LD3.as_out(.Low);
     if (maybe_led) |led| {
         led.set(true);
         hal.HAL_Delay(500);

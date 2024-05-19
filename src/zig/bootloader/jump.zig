@@ -1,4 +1,4 @@
-// Little module to jump into code whose start vector is in the given address
+//! Little module to jump into code whose start vector (`sp` and `_start`) is in the given address
 
 const EntryPoint = struct {
     sp: u32,

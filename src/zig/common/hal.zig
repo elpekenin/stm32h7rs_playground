@@ -1,4 +1,5 @@
-// "Singleton" C import
+//! Import the C code used by the project, and do so a single time.
+//! Also provide a function to get the HAL properly configured.
 
 const std = @import("std");
 
@@ -20,4 +21,22 @@ pub fn early_init() void {
     if (ret != c.HAL_OK) {
         std.debug.panic("HAL initialization failed.", .{});
     }
+}
+
+/// This gets called by HAL_Init for board-specific init
+export fn HAL_MspInit() callconv(.C) void {
+    HAL_MspInit_Impl() catch std.log.err("HAL_MspInit_Impl failed.", .{});
+}
+
+export fn HAL_MspDeInit() callconv(.C) void {}
+
+// Enable power on M and O ports
+fn HAL_MspInit_Impl() !void {
+    const ret = c.HAL_PWREx_EnableUSBVoltageDetector();
+    if (ret != c.HAL_OK) {
+        std.log.err("Could not enable USB voltage level detector", .{});
+        return error.HalError;
+    }
+
+    c.HAL_PWREx_EnableXSPIM1();
 }

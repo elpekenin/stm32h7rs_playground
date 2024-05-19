@@ -99,6 +99,7 @@ pub fn build(b: *std.Build) !void {
     // Compile all my code
     const c = do_c(b);
     const zig = do_zig(b);
+    zig.is_linking_libc = true;
 
     // External deps
     const zfat = b.dependency("zfat", .{
@@ -248,7 +249,6 @@ const c_src = &.{
     "dummy_syscalls.c",
     "interrupt_table.c",
     "system_stm32rsxx.c",
-    "stm32h7rsxx_hal_msp.c",
     "stm32h7rsxx_hal_timebase_tim.c",
 };
 

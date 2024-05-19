@@ -5,10 +5,7 @@
     .dependencies = .{
         .picolibc = .{ .url = "https://github.com/elpekenin/picolibc/archive/refs/heads/zig.tar.gz", .hash = "12201b7e387054f664153aab79f8b0ca31e6afd915d138d00928c964e60cfb8843a3" },
         .zfat = .{ .url = "https://github.com/elpekenin/zfat/archive/refs/heads/0.12.tar.gz", .hash = "1220d6741777d31b6cbdb298d6f13f39056adc399b097e491e08324c299921a92dc8" },
-        .@"segger-rtt" = .{
-            .url = "https://github.com/vesim987/segger-rtt/archive/5bd11bed3148692d390d598b29e249052cc84b51.tar.gz",
-            .hash = "12203c3a31499e328c790d7628cfe6e8fc6eaf5e1fd3fe203309621e8319e856ccaf",
-        },
+        .@"segger-rtt" = .{ .url = "https://github.com/elpekenin/segger-rtt/archive/refs/heads/time_getter.tar.gz", .hash = "12206812bf16e697049b257fbccba955113a076f470b6e39e064e9f43e3febc249c7" },
     },
     .paths = .{ "build.zig", "build.zig.zon", "ld", "src" },
 }

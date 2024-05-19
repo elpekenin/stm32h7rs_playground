@@ -1,3 +1,6 @@
+//! UF2 logic to receive, write and execute user-land code
+//! over USB
+
 const std = @import("std");
 
 const hal = @import("../common/hal.zig");
@@ -17,19 +20,24 @@ pub fn clear_flag() void {
     uf2_var = 0;
 }
 
+pub fn chance() void {
+    set_flag();
+    hal.HAL_Delay(500);
+    clear_flag();
+}
+
 pub fn check() bool {
     return uf2_var == UF2_FLAG;
 }
 
 pub inline fn app_jump() noreturn {
-    std.log.err("Unimplemented.", .{});
-    while (true) {}
+    std.debug.panic("Unimplemented.", .{});
     // _jump(ext_flash.BASE);
 }
 
 pub fn main() noreturn {
     // indicate that we are in bootloader
-    const maybe_led = board.LD1.as_out(.High) catch null;
+    const maybe_led = board.LD1.as_out(.High);
     if (maybe_led) |led| {
         led.set(true);
     }
