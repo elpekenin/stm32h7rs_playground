@@ -7,7 +7,6 @@ const fatfs = @import("fatfs");
 const root = @import("root");
 
 const hal = @import("../hal.zig");
-const board = @import("../board.zig");
 const logging = @import("../logging.zig");
 const sd = @import("../fatfs_bindings/sd.zig");
 
@@ -35,7 +34,7 @@ var global_fs: fatfs.FileSystem = undefined;
 
 // requires pointer stability
 var sd_disk: sd.Disk = .{
-    .sd = board.SD,
+    .sd = &hal.zig.SD,
 };
 
 const Backend = struct {
@@ -71,7 +70,7 @@ fn fatfs_write(context: Context, bytes: []const u8) FatFSWriteError!usize {
         fatfs.disks[i] = backend.disk;
 
         try global_fs.mount(backend.mount, true);
-        defer fatfs.FileSystem.unmount(backend.mount) catch std.debug.panic("Failed to unmount.", .{});
+        defer fatfs.FileSystem.unmount(backend.mount) catch std.debug.panic("Unmount", .{});
 
         var file = try fatfs.File.open(backend.full_path(context.path), .{
             .mode = .open_append,

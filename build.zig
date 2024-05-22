@@ -8,7 +8,7 @@ const std = @import("std");
 ///     - Safe: 19272
 ///     - Fast: 12528
 ///     - Small: 11064
-const OPTIMIZE: std.builtin.OptimizeMode = .ReleaseFast;
+const OPTIMIZE: std.builtin.OptimizeMode = .ReleaseSmall;
 
 /// `.tiny` is not available for the target :(
 const MODEL: std.builtin.CodeModel = .small;

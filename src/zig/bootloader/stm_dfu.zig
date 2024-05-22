@@ -2,7 +2,6 @@
 //! builtin bootloader in the silicon, programatically.
 
 const hal = @import("../common/hal.zig");
-const board = @import("../common/board.zig");
 
 const _jump = @import("jump.zig").to;
 
@@ -17,27 +16,24 @@ inline fn enable_irq() void {
 }
 
 pub fn check() bool {
-    const in = board.USER.as_in(.High) orelse return false;
-    return in.read();
+    return hal.zig.USER.as_in(.High).read();
 }
 
 pub fn jump() noreturn {
-    const maybe_led = board.LD3.as_out(.Low);
-    if (maybe_led) |led| {
-        led.set(true);
-        hal.HAL_Delay(500);
-        led.set(false);
-    }
+    const led = hal.zig.LD3.as_out(.Low);
+    led.set(true);
+    hal.c.HAL_Delay(500);
+    led.set(false);
 
     disable_irq();
 
-    var SysTick = @as(*hal.SysTick_Type, @ptrFromInt(hal.SysTick_BASE));
+    var SysTick = @as(*hal.c.SysTick_Type, @ptrFromInt(hal.c.SysTick_BASE));
     SysTick.CTRL = 0;
 
     // FIXME: handle this?
-    _ = hal.HAL_RCC_DeInit();
+    _ = hal.c.HAL_RCC_DeInit();
 
-    var NVIC = @as(*hal.NVIC_Type, @ptrFromInt(hal.NVIC_BASE));
+    var NVIC = @as(*hal.c.NVIC_Type, @ptrFromInt(hal.c.NVIC_BASE));
     for (0..5) |i| {
         NVIC.ICER[i] = 0xFFFFFFFF;
         NVIC.ICPR[i] = 0xFFFFFFFF;

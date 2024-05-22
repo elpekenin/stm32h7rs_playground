@@ -5,12 +5,12 @@ const std = @import("std");
 
 const fatfs = @import("fatfs");
 
-const board = @import("../board.zig");
+const sd_hal_wrapper = @import("../hal_wrappers/sd.zig");
 
 pub const Disk = struct {
     const sector_size = 512;
 
-    sd: board.SDType,
+    sd: *sd_hal_wrapper.SDType,
 
     interface: fatfs.Disk = fatfs.Disk{
         .getStatusFn = getStatus,
@@ -43,19 +43,11 @@ pub const Disk = struct {
     }
 
     pub fn read(interface: *fatfs.Disk, buff: [*]u8, sector: fatfs.LBA, count: c_uint) fatfs.Disk.Error!void {
-        if (interface.getStatus().initialized != true) {
-            return error.DiskNotReady;
-        }
-
         const self: *Disk = @fieldParentPtr("interface", interface);
         self.sd.read(buff, sector, count) catch return error.DiskNotReady;
     }
 
     pub fn write(interface: *fatfs.Disk, buff: [*]const u8, sector: fatfs.LBA, count: c_uint) fatfs.Disk.Error!void {
-        if (interface.getStatus().initialized != true) {
-            return error.DiskNotReady;
-        }
-
         const self: *Disk = @fieldParentPtr("interface", interface);
         self.sd.write(buff, sector, count) catch return error.DiskNotReady;
     }

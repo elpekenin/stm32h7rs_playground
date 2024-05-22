@@ -1,13 +1,12 @@
 //! Logging backend for the RTT protocol
 
 const std = @import("std");
+const hal = @import("../hal.zig");
 
 const rtt = @import("rtt");
 
-const hal = @import("../hal.zig");
-
 fn time_getter() rtt.Time {
-    return rtt.Time{ .seconds = hal.HAL_GetTick(), .microseconds = 0 };
+    return rtt.Time{ .seconds = hal.c.HAL_GetTick(), .microseconds = 0 };
 }
 
 fn init() void {

@@ -6,38 +6,36 @@
 
 const std = @import("std");
 
-const rtt = @import("logging/rtt.zig");
+const logging = @import("logging.zig");
 
 const hal = @import("hal.zig");
-const board = @import("board.zig");
+
+/// Function used by STM HAL on panics, expose it as a way of executing zig's panic
+export fn Error_Handler() callconv(.C) noreturn {
+    std.debug.panic("[C] HAL Panic", .{});
+}
 
 pub fn panic(msg: []const u8, error_return_trace: ?*std.builtin.StackTrace, ret_add: ?usize) noreturn {
     @setCold(true);
 
-    rtt.log(.err, .panic,
+    logging.fs.log(.err, .panic, "{s}", .{msg});
+    logging.rtt.log(.err, .panic,
         \\
-        \\===============
-        \\           msg: {s}
-        \\   error trace: {any}
-        \\return address: 0x{X:0>8}
-        \\===============
+        \\   msg: {s}
+        \\ trace: {any}
+        \\return: 0x{X:0>8}
     , .{ msg, error_return_trace, ret_add orelse 0 });
 
-    inline for (board.LEDS, 0..) |pin, i| {
+    inline for (hal.zig.LEDS, 0..) |led, i| {
         const active = if (i <= 1) .High else .Low;
-
-        if (pin.as_out(active)) |led| {
-            led.set(true);
-        }
+        led.as_out(active).set(true);
     }
 
     while (true) {
-        inline for (board.LEDS) |pin| {
+        inline for (hal.zig.LEDS) |led| {
             // .Low / .High ignored here, we just toggling
-            if (pin.as_out(.Low)) |led| {
-                led.toggle();
-            }
-            hal.HAL_Delay(100);
+            led.as_out(.Low).toggle();
+            hal.c.HAL_Delay(100);
         }
     }
 }

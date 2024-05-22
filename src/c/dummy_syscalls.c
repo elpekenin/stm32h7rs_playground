@@ -106,3 +106,10 @@ isatty (int fd)
         (void) fd;
 	return 1;
 }
+
+void
+_exit (int exit)
+{
+        (void)exit;
+        while (1) {}
+}

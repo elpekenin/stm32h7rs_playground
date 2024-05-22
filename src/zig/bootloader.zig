@@ -3,36 +3,25 @@
 
 const std = @import("std");
 
-const bootstrap = @import("common/bootstrap.zig");
-comptime {
-    _ = bootstrap;
-}
-
 const stm_dfu = @import("bootloader/stm_dfu.zig");
 const uf2 = @import("bootloader/uf2.zig");
 
-const fatfs = @import("fatfs");
-const board = @import("common/board.zig");
-const sd = @import("common/fatfs_bindings/sd.zig");
-
-// requires pointer stability
-var global_fs: fatfs.FileSystem = undefined;
-
-// requires pointer stability
-var sd_disk: sd.Disk = .{
-    .sd = board.SD,
-};
+pub const hal = @import("common/hal.zig");
+// Please zig, do not garbage-collect this, we need it to export C funcs
+comptime {
+    _ = hal;
+}
 
 pub fn run() noreturn {
     // button pressed on boot => STM DFU
     if (stm_dfu.check()) {
-        std.log.debug("Jumping to STM-DFU", .{});
+        std.log.debug("Running STM-DFU", .{});
         return stm_dfu.jump();
     }
 
     // double press, or app code setting sentinel + reset => UF2 bootloader
     if (uf2.check()) {
-        std.log.debug("Jumping to UF2 bootloader", .{});
+        std.log.debug("Running UF2 bootloader", .{});
         uf2.clear_flag();
         return uf2.main();
     }
@@ -41,23 +30,7 @@ pub fn run() noreturn {
     uf2.chance();
 
     // jump to user code
-    std.log.debug("Jumping to application", .{});
-    fatfs.disks[0] = &sd_disk.interface;
-
-    {
-        global_fs.mount("0:/", true) catch std.debug.panic("Could not mount.", .{});
-
-        defer fatfs.FileSystem.unmount("0:/") catch std.debug.panic("Could not unmount.", .{});
-
-        var file = fatfs.File.open("0:/test.txt", .{
-            .mode = .open_append,
-            .access = .write_only,
-        }) catch std.debug.panic("Could not open file.", .{});
-        defer file.close();
-
-        const bytes: [4]u8 = .{ 'A', 'C', 'A', 'B' };
-        _ = file.write(&bytes) catch std.debug.panic("Could not write", .{});
-    }
+    std.log.debug("Running user code", .{});
 
     return uf2.app_jump();
 }

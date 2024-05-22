@@ -1,42 +1,58 @@
 //! Import the C code used by the project, and do so a single time.
-//! Also provide a function to get the HAL properly configured.
+//!
+//! Also provide some zig wrappers on top of it
+//!
+//! This module also contains the initialization on main, before jumping to
+//! root's logic.
 
 const std = @import("std");
 
-const c = @cImport({
+const root = @import("root");
+
+/// Initializations to be run prior to user logic
+const init = @import("init.zig");
+
+/// Low-level (de)initialization routines needed/used by STM's HAL
+const msp = @import("msp.zig");
+// Please zig, do not garbage-collect this, we need it to export C funcs
+comptime {
+    _ = msp;
+}
+
+/// Raw C code from STM
+pub const c = @cImport({
+    @cInclude("dk_pins.h"); // pin names exported by CubeMX
     @cInclude("stm32h7rsxx_hal.h");
     @cInclude("stm32h7rsxx_hal_conf.h");
 });
 
-pub usingnamespace c;
+/// "Tiny" zig wrappers on top
+pub const zig = @import("hal_wrappers.zig");
 
-pub fn early_init() void {
-    // Initialize MCU
-    c.HAL_MPU_Disable();
-    // hal.SCB_EnableICache(); // zig does not like :/
-    // hal.SCB_EnableDCache(); // zig does not like :/
-    c.SystemCoreClockUpdate();
+/// Arguments' signature doesn't really matter as picolibc will be
+/// doing `int ret = main(0, NULL)`
+///
+/// But, just for reference, according to C11, `argv` should be a
+/// non-const, null-terminated list of null-terminated strings.
+///
+/// Our main consists on doing some initial setup of HAL compontents to
+/// then jump into application code.
+export fn main(argc: i32, argv: [*c][*:0]u8) callconv(.C) i32 {
+    _ = argc;
+    _ = argv;
 
     const ret = c.HAL_Init();
     if (ret != c.HAL_OK) {
-        std.debug.panic("HAL initialization failed.", .{});
-    }
-}
-
-/// This gets called by HAL_Init for board-specific init
-export fn HAL_MspInit() callconv(.C) void {
-    HAL_MspInit_Impl() catch std.log.err("HAL_MspInit_Impl failed.", .{});
-}
-
-export fn HAL_MspDeInit() callconv(.C) void {}
-
-// Enable power on M and O ports
-fn HAL_MspInit_Impl() !void {
-    const ret = c.HAL_PWREx_EnableUSBVoltageDetector();
-    if (ret != c.HAL_OK) {
-        std.log.err("Could not enable USB voltage level detector", .{});
-        return error.HalError;
+        std.debug.panic("HAL_Init", .{});
     }
 
-    c.HAL_PWREx_EnableXSPIM1();
+    init.clock_config();
+    c.SystemCoreClockUpdate();
+
+    init.gpio();
+    init.xspi1();
+    init.xspi2();
+
+    // Actual entrypoint of the app
+    root.run();
 }
