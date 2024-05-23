@@ -2,15 +2,11 @@
 //! a SD Card
 
 const std = @import("std");
-
+const hal = @import("../hal.zig");
 const fatfs = @import("fatfs");
-
-const sd_hal_wrapper = @import("../hal_wrappers/sd.zig");
 
 pub const Disk = struct {
     const sector_size = 512;
-
-    sd: *sd_hal_wrapper.SDType,
 
     interface: fatfs.Disk = fatfs.Disk{
         .getStatusFn = getStatus,
@@ -20,36 +16,30 @@ pub const Disk = struct {
         .ioctlFn = ioctl,
     },
 
-    pub fn getStatus(interface: *fatfs.Disk) fatfs.Disk.Status {
-        const self: *Disk = @fieldParentPtr("interface", interface);
-
+    pub fn getStatus(_: *fatfs.Disk) fatfs.Disk.Status {
         return fatfs.Disk.Status{
-            .initialized = self.sd.is_initialized(),
-            .disk_present = self.sd.is_connected(),
+            .initialized = hal.zig.sd.is_initialized(),
+            .disk_present = hal.zig.sd.is_connected(),
             .write_protected = false,
         };
     }
 
-    pub fn initialize(interface: *fatfs.Disk) fatfs.Disk.Error!fatfs.Disk.Status {
-        const self: *Disk = @fieldParentPtr("interface", interface);
-
-        self.sd.init() catch return error.DiskNotReady;
+    pub fn initialize(_: *fatfs.Disk) fatfs.Disk.Error!fatfs.Disk.Status {
+        hal.zig.sd.init() catch return error.DiskNotReady;
 
         return fatfs.Disk.Status{
-            .initialized = true,
-            .disk_present = true,
+            .initialized = hal.zig.sd.is_initialized(),
+            .disk_present = hal.zig.sd.is_connected(),
             .write_protected = false,
         };
     }
 
-    pub fn read(interface: *fatfs.Disk, buff: [*]u8, sector: fatfs.LBA, count: c_uint) fatfs.Disk.Error!void {
-        const self: *Disk = @fieldParentPtr("interface", interface);
-        self.sd.read(buff, sector, count) catch return error.DiskNotReady;
+    pub fn read(_: *fatfs.Disk, buff: [*]u8, sector: fatfs.LBA, count: c_uint) fatfs.Disk.Error!void {
+        hal.zig.sd.read(buff, sector, count) catch return error.DiskNotReady;
     }
 
-    pub fn write(interface: *fatfs.Disk, buff: [*]const u8, sector: fatfs.LBA, count: c_uint) fatfs.Disk.Error!void {
-        const self: *Disk = @fieldParentPtr("interface", interface);
-        self.sd.write(buff, sector, count) catch return error.DiskNotReady;
+    pub fn write(_: *fatfs.Disk, buff: [*]const u8, sector: fatfs.LBA, count: c_uint) fatfs.Disk.Error!void {
+        hal.zig.sd.write(buff, sector, count) catch return error.DiskNotReady;
     }
 
     pub fn ioctl(interface: *fatfs.Disk, cmd: fatfs.IoCtl, buff: [*]u8) fatfs.Disk.Error!void {
@@ -57,8 +47,7 @@ pub const Disk = struct {
             return error.DiskNotReady;
         }
 
-        const self: *Disk = @fieldParentPtr("interface", interface);
-        const info = self.sd.card_info() catch return error.DiskNotReady;
+        const info = hal.zig.sd.card_info() catch return error.DiskNotReady;
 
         switch (cmd) {
             .sync => return,

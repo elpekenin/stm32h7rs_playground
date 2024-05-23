@@ -5,10 +5,8 @@
 //! and publicly re-export this function it to be applied.
 
 const std = @import("std");
-
-const logging = @import("logging.zig");
-
 const hal = @import("hal.zig");
+const logging = @import("logging.zig");
 
 /// Function used by STM HAL on panics, expose it as a way of executing zig's panic
 export fn Error_Handler() callconv(.C) noreturn {

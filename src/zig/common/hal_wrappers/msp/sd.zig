@@ -1,5 +1,5 @@
 const std = @import("std");
-const hal = @import("../hal.zig");
+const hal = @import("../../hal.zig");
 
 export fn HAL_SD_MspInit(hsd: *hal.c.SD_HandleTypeDef) callconv(.C) void {
     if (hsd.Instance != hal.c.SDMMC1) {

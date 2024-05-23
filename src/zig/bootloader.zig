@@ -2,17 +2,44 @@
 //! or use UF2
 
 const std = @import("std");
-
+const hal = @import("common/hal.zig");
 const stm_dfu = @import("bootloader/stm_dfu.zig");
 const uf2 = @import("bootloader/uf2.zig");
 
-pub const hal = @import("common/hal.zig");
-// Please zig, do not garbage-collect this, we need it to export C funcs
-comptime {
-    _ = hal;
+pub const std_options = @import("common/logging.zig").std_options;
+pub const panic = @import("common/panic.zig").panic;
+
+/// Arguments' signature doesn't really matter as picolibc will be
+/// doing `int ret = main(0, NULL)`
+///
+/// But, just for reference, according to C11, `argv` should be a
+/// non-const, null-terminated list of null-terminated strings.
+///
+/// Our main consists on doing some initial setup of HAL compontents to
+/// then jump into application code.
+export fn main(argc: i32, argv: [*c][*:0]u8) callconv(.C) i32 {
+    _ = argc;
+    _ = argv;
+
+    const ret = hal.c.HAL_Init();
+    if (ret != hal.c.HAL_OK) {
+        std.debug.panic("HAL_Init", .{});
+    }
+
+    hal.zig.init.clocks();
+    hal.c.SystemCoreClockUpdate();
+
+    // for LEDs to work in panic handler, regardless of when that happens
+    // but doing it earlier than this might be a bad idea as previous setup
+    // has not be done yet (?)
+    hal.zig.clocks.enable.gpio(hal.c.GPIOM);
+    hal.zig.clocks.enable.gpio(hal.c.GPIOO);
+
+    run();
 }
 
-pub fn run() noreturn {
+/// Actual entrypoint/logic of the bootloader
+fn run() noreturn {
     // button pressed on boot => STM DFU
     if (stm_dfu.check()) {
         std.log.debug("Running STM-DFU", .{});
@@ -34,9 +61,3 @@ pub fn run() noreturn {
 
     return uf2.app_jump();
 }
-
-const logging = @import("common/logging.zig");
-pub const std_options = logging.std_options;
-
-const panic_ = @import("common/panic.zig");
-pub const panic = panic_.panic;

@@ -1,5 +1,5 @@
 const std = @import("std");
-const hal = @import("../hal.zig");
+const hal = @import("../../hal.zig");
 
 export fn HAL_MspInit() callconv(.C) void {
     if (hal.c.HAL_PWREx_ConfigSupply(hal.c.PWR_DIRECT_SMPS_SUPPLY) != hal.c.HAL_OK) {

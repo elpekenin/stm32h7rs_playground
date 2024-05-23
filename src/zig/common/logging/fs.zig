@@ -33,9 +33,7 @@ const Context = struct {
 var global_fs: fatfs.FileSystem = undefined;
 
 // requires pointer stability
-var sd_disk: sd.Disk = .{
-    .sd = &hal.zig.SD,
-};
+var sd_disk = sd.Disk{};
 
 const Backend = struct {
     const Self = @This();
@@ -92,29 +90,13 @@ pub fn log(
     comptime format: []const u8,
     args: anytype,
 ) void {
-    const state = struct {
-        var ever_failed = false;
-        var nesting: u8 = 0;
-    };
-
-    if (state.ever_failed or scope == .fatfs) {
+    if (scope == .fatfs) {
         return;
     }
-
-    // dont allow nesting, (yet?)
-    if (state.nesting != 0) {
-        return;
-    }
-
-    state.nesting += 1;
 
     const prefix = comptime logging.prefix(level, scope);
     const context = Context.new(level);
     const writer = FatFSWriter{ .context = context };
 
-    writer.print(prefix ++ format ++ "\n", args) catch {
-        state.ever_failed = true;
-    };
-
-    state.nesting -= 1;
+    writer.print(prefix ++ format ++ "\n", args) catch return;
 }

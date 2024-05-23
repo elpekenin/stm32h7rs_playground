@@ -8,6 +8,7 @@ const std = @import("std");
 pub const fs = @import("logging/fs.zig");
 pub const rtt = @import("logging/rtt.zig");
 
+// TODO: Add time
 pub fn prefix(
     comptime level: std.log.Level,
     comptime scope: @TypeOf(.EnumLiteral),
@@ -22,10 +23,10 @@ fn logFn(
     comptime format: []const u8,
     args: anytype,
 ) void {
-    // if (@intFromEnum(level) < @intFromEnum(std.log.Level.info)) {
-    //     // no .debug logging
-    //     return;
-    // }
+    if (scope == .fatfs and level == .debug) {
+        // FatFS is too verbose with debug messages ON, lets ignore them
+        return;
+    }
 
     rtt.log(level, scope, format, args);
     fs.log(level, scope, format, args);
