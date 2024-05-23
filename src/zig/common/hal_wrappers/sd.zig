@@ -9,7 +9,8 @@ const clocks = @import("clocks.zig");
 
 const TIMEOUT = 500;
 
-var hsd = std.mem.zeroes(hal.c.SD_HandleTypeDef);
+/// **_DO NOT USE_** only public for IRQ_Handler to access it
+pub var hsd = std.mem.zeroes(hal.c.SD_HandleTypeDef);
 
 const detection = hal.zig.BasePin{
     .port = hal.c.GPIOM,
@@ -60,12 +61,6 @@ pub fn init() !void {
 
     errdefer print_error();
 
-    // force init of detection pin
-    if (!is_connected()) {
-        std.log.err("No card", .{});
-        return error.SDNotReady;
-    }
-
     hsd = .{ .Instance = hal.c.SDMMC1, .Init = .{
         .ClockEdge = hal.c.SDMMC_CLOCK_EDGE_FALLING,
         .ClockPowerSave = hal.c.SDMMC_CLOCK_POWER_SAVE_DISABLE,
@@ -79,6 +74,10 @@ pub fn init() !void {
         return error.HalError;
     }
 
+    // TODO?: Try and change to high speed mode. Does HAL_SD_Init already use
+    //        fastest compatible mode?
+
+    // Not needed?
     // if (!wait_ready()) {
     //     std.log.err("Ready state", .{});
     //     return error.SDNotReady;

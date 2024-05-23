@@ -24,18 +24,18 @@ export fn HAL_XSPI_MspInit(hxspi: *hal.c.XSPI_HandleTypeDef) callconv(.C) void {
     state.counter += 1;
 
     if (state.counter == 1) {
-        hal.zig.clocks.enable.xspim();
+        hal.zig.clocks.XSPIM.enable();
     }
 
     switch (hxspi.Instance) {
         hal.c.XSPI1 => {
-            hal.zig.clocks.enable.xspi1();
-            hal.zig.clocks.enable.gpio(hal.c.GPIOO);
-            hal.zig.clocks.enable.gpio(hal.c.GPIOP);
+            hal.zig.clocks.XSPI1.enable();
+            hal.zig.clocks.GPIOO.enable();
+            hal.zig.clocks.GPIOP.enable();
         },
         hal.c.XSPI2 => {
-            hal.zig.clocks.enable.xspi2();
-            hal.zig.clocks.enable.gpio(hal.c.GPION);
+            hal.zig.clocks.XSPI2.enable();
+            hal.zig.clocks.GPION.enable();
         },
         else => unreachable,
     }
@@ -78,18 +78,18 @@ export fn HAL_XSPI_MspInit(hxspi: *hal.c.XSPI_HandleTypeDef) callconv(.C) void {
 export fn HAL_XSPI_MspDeInit(hxspi: *hal.c.XSPI_HandleTypeDef) callconv(.C) void {
     state.counter -= 1;
     if (state.counter == 0) {
-        hal.zig.clocks.disable.xspim();
+        hal.zig.clocks.XSPIM.disable();
     }
 
     switch (hxspi.Instance) {
         hal.c.XSPI1 => {
-            hal.zig.clocks.disable.xspi1();
+            hal.zig.clocks.XSPI1.disable();
 
             hal.c.HAL_GPIO_DeInit(hal.c.GPIOO, hal.c.HEXASPI_DQS1_Pin | hal.c.HEXASPI_DQS0_Pin | hal.c.HEXASPI_CLK_Pin);
             hal.c.HAL_GPIO_DeInit(hal.c.GPIOP, hal.c.HEXASPI_IO10_Pin | hal.c.HEXASPI_IO12_Pin | hal.c.HEXASPI_IO14_Pin | hal.c.HEXASPI_IO2_Pin | hal.c.HEXASPI_IO5_Pin | hal.c.HEXASPI_IO1_Pin | hal.c.HEXASPI_IO11_Pin | hal.c.HEXASPI_IO15_Pin | hal.c.HEXASPI_IO3_Pin | hal.c.HEXASPI_IO0_Pin | hal.c.HEXASPI_IO7_Pin | hal.c.HEXASPI_IO8_Pin | hal.c.HEXASPI_IO13_Pin | hal.c.HEXASPI_IO4_Pin | hal.c.HEXASPI_IO6_Pin | hal.c.HEXASPI_IO9_Pin);
         },
         hal.c.XSPI2 => {
-            hal.zig.clocks.disable.xspi2();
+            hal.zig.clocks.XSPI2.disable();
 
             hal.c.HAL_GPIO_DeInit(hal.c.GPION, hal.c.OCTOSPI_IO1_Pin | hal.c.OCTOSPI_DQS_Pin | hal.c.OCTOSPI_IO7_Pin | hal.c.OCTOSPI_IO6_Pin | hal.c.OCTOSPI_IO5_Pin | hal.c.OCTOSPI_IO0_Pin | hal.c.OCTOSPI_CLK_Pin | hal.c.OCTOSPI_IO4_Pin | hal.c.OCTOSPI_IO2_Pin | hal.c.OCTOSPI_IO3_Pin);
         },

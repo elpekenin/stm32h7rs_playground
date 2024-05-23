@@ -25,7 +25,7 @@ pub const Disk = struct {
     }
 
     pub fn initialize(_: *fatfs.Disk) fatfs.Disk.Error!fatfs.Disk.Status {
-        hal.zig.sd.init() catch return error.DiskNotReady;
+        hal.zig.sd.init() catch {};
 
         return fatfs.Disk.Status{
             .initialized = hal.zig.sd.is_initialized(),

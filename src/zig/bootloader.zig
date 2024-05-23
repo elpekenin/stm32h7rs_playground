@@ -32,8 +32,13 @@ export fn main(argc: i32, argv: [*c][*:0]u8) callconv(.C) i32 {
     // for LEDs to work in panic handler, regardless of when that happens
     // but doing it earlier than this might be a bad idea as previous setup
     // has not be done yet (?)
-    hal.zig.clocks.enable.gpio(hal.c.GPIOM);
-    hal.zig.clocks.enable.gpio(hal.c.GPIOO);
+    hal.zig.clocks.GPIOM.enable();
+    hal.zig.clocks.GPIOO.enable();
+
+    // warning if SD not available
+    if (!hal.zig.sd.is_connected()) {
+        std.log.warn("404 SD not found", .{});
+    }
 
     run();
 }

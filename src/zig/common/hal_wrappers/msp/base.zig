@@ -6,7 +6,7 @@ export fn HAL_MspInit() callconv(.C) void {
         std.debug.panic("HAL_PWREx_ConfigSupply", .{});
     }
 
-    hal.zig.clocks.enable.sbs();
+    hal.zig.clocks.SBS.enable();
 
     hal.c.HAL_PWREx_EnableXSPIM1();
     hal.c.HAL_PWREx_EnableXSPIM2();

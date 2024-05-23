@@ -74,7 +74,6 @@ fn try_write_flash() void {
 pub inline fn app_jump() noreturn {
     // try_write_flash();
 
-
     std.debug.panic("app_jump unimplemented", .{});
     // jump.to(ext_flash.BASE);
 }

@@ -1,5 +1,5 @@
 //! Helper for octo-SPI external flash (XSPI2)
-//! 
+//!
 //! NOT WORKING: Check full procedure on
 //! <https://github.com/STMicroelectronics/STM32CubeH7RS/blob/e3ade7eff03aae69c3be76221bef0c3611f60c6e/Projects/STM32H7S78-DK/Examples/XSPI/XSPIM_SwappedMode/Boot/Src/main.c>
 

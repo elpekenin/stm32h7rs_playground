@@ -1,13 +1,13 @@
 //! Logging backend to write data into a filesystem (or many)
 
+// TODO?: Lazy writing, it is somewhat slow, and it is best to write a 200byte message
+//        than to write 4x 50byte ones
+
 const std = @import("std");
-
-const fatfs = @import("fatfs");
-
 const root = @import("root");
-
 const hal = @import("../hal.zig");
-const logging = @import("../logging.zig");
+const rtt = @import("rtt.zig");
+const fatfs = @import("fatfs");
 const sd = @import("../fatfs_bindings/sd.zig");
 
 const Context = struct {
@@ -64,7 +64,11 @@ const BACKENDS: [1]Backend = .{
 const FatFSWriteError = anyerror;
 
 fn fatfs_write(context: Context, bytes: []const u8) FatFSWriteError!usize {
-    inline for (BACKENDS, 0..) |backend, i| {
+    for (BACKENDS, 0..) |backend, i| {
+        if (!backend.disk.getStatusFn(backend.disk).disk_present) {
+            continue;
+        }
+
         fatfs.disks[i] = backend.disk;
 
         try global_fs.mount(backend.mount, true);
@@ -84,6 +88,18 @@ fn fatfs_write(context: Context, bytes: []const u8) FatFSWriteError!usize {
 
 const FatFSWriter = std.io.GenericWriter(Context, FatFSWriteError, fatfs_write);
 
+// Mimic rtt's time prefix
+fn get_prefix(
+    comptime level: std.log.Level,
+    comptime scope: @TypeOf(.EnumLiteral),
+) []const u8 {
+    const level_prefix = comptime "[{}.{:0>6}] " ++ level.asText();
+    return comptime level_prefix ++ switch (scope) {
+        .default => ": ",
+        else => " (" ++ @tagName(scope) ++ "): ",
+    };
+}
+
 pub fn log(
     comptime level: std.log.Level,
     comptime scope: @TypeOf(.EnumLiteral),
@@ -94,9 +110,10 @@ pub fn log(
         return;
     }
 
-    const prefix = comptime logging.prefix(level, scope);
+    const prefix = comptime get_prefix(level, scope);
     const context = Context.new(level);
     const writer = FatFSWriter{ .context = context };
 
-    writer.print(prefix ++ format ++ "\n", args) catch return;
+    const time = rtt.time_getter();
+    writer.print(prefix ++ format ++ "\n", .{ time.seconds, time.microseconds } ++ args) catch {};
 }

@@ -8,15 +8,6 @@ const std = @import("std");
 pub const fs = @import("logging/fs.zig");
 pub const rtt = @import("logging/rtt.zig");
 
-// TODO: Add time
-pub fn prefix(
-    comptime level: std.log.Level,
-    comptime scope: @TypeOf(.EnumLiteral),
-) []const u8 {
-    _ = scope;
-    return "[" ++ comptime level.asText() ++ "]: ";
-}
-
 fn logFn(
     comptime level: std.log.Level,
     comptime scope: @TypeOf(.EnumLiteral),

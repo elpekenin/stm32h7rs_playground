@@ -5,7 +5,6 @@ const hal = @import("hal.zig");
 
 pub const clocks = @import("hal_wrappers/clocks.zig");
 pub const digital = @import("hal_wrappers/digital.zig");
-pub const irq = @import("hal_wrappers/irq.zig");
 pub const sd = @import("hal_wrappers/sd.zig");
 pub const usb = @import("hal_wrappers/usb.zig");
 
@@ -80,16 +79,12 @@ pub const init = struct {
     }
 };
 
-const msp = struct {
-    const base = @import("hal_wrappers/msp/base.zig");
-    const sd = @import("hal_wrappers/msp/sd.zig");
-    const xspi = @import("hal_wrappers/msp/xspi.zig");
-};
 // Please zig, do not garbage-collect these, we need to export C funcs, thx!!
 comptime {
-    _ = msp.base;
-    _ = msp.sd;
-    _ = msp.xspi;
+    _ = @import("hal_wrappers/msp/base.zig");
+    _ = @import("hal_wrappers/msp/sd.zig");
+    _ = @import("hal_wrappers/msp/xspi.zig");
+    _ = @import("hal_wrappers/irq.zig");
 }
 
 pub const Active = enum {
@@ -104,7 +99,7 @@ pub const BasePin = struct {
     pin: u16,
 
     pub fn __init(self: Self, mode: c_uint, pull: c_uint, speed: c_uint) void {
-        clocks.enable.gpio(self.port);
+        clocks.enable_gpio(self.port);
 
         var GPIO_InitStruct = std.mem.zeroes(hal.c.GPIO_InitTypeDef);
         GPIO_InitStruct = .{

@@ -2,10 +2,9 @@
 
 const std = @import("std");
 const hal = @import("../hal.zig");
-
 const rtt = @import("rtt");
 
-fn time_getter() rtt.Time {
+pub fn time_getter() rtt.Time {
     return rtt.Time{ .seconds = hal.c.HAL_GetTick(), .microseconds = 0 };
 }
 

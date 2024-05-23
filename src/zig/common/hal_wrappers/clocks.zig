@@ -6,91 +6,146 @@ const std = @import("std");
 
 const hal = @import("../hal.zig");
 
-var RCC = @as(*hal.c.RCC_TypeDef, @ptrFromInt(hal.c.RCC_BASE));
 var _tmpreg: u32 = 0;
 const tmpreg: *volatile u32 = &_tmpreg;
 
-pub const enable = struct {
-    /// This will also give power to O/M ports
-    pub fn gpio(port: *hal.c.GPIO_TypeDef) void {
-        // should use `hal.__HAL_RCC_GPIO%_CLK_ENABLE();`, but zig doesnt like those macros
+const Clock = struct {
+    const Self = @This();
 
-        switch (port) {
-            hal.c.GPIOA => RCC.AHB4ENR |= hal.c.RCC_AHB4ENR_GPIOAEN,
-            hal.c.GPIOB => RCC.AHB4ENR |= hal.c.RCC_AHB4ENR_GPIOBEN,
-            hal.c.GPIOC => RCC.AHB4ENR |= hal.c.RCC_AHB4ENR_GPIOCEN,
-            hal.c.GPIOD => RCC.AHB4ENR |= hal.c.RCC_AHB4ENR_GPIODEN,
-            hal.c.GPIOE => RCC.AHB4ENR |= hal.c.RCC_AHB4ENR_GPIOEEN,
-            hal.c.GPIOF => RCC.AHB4ENR |= hal.c.RCC_AHB4ENR_GPIOFEN,
-            hal.c.GPIOG => RCC.AHB4ENR |= hal.c.RCC_AHB4ENR_GPIOGEN,
-            hal.c.GPIOH => RCC.AHB4ENR |= hal.c.RCC_AHB4ENR_GPIOHEN,
-            hal.c.GPIOM => RCC.AHB4ENR |= hal.c.RCC_AHB4ENR_GPIOMEN,
-            hal.c.GPION => RCC.AHB4ENR |= hal.c.RCC_AHB4ENR_GPIONEN,
-            hal.c.GPIOO => RCC.AHB4ENR |= hal.c.RCC_AHB4ENR_GPIOOEN,
-            hal.c.GPIOP => RCC.AHB4ENR |= hal.c.RCC_AHB4ENR_GPIOPEN,
+    register: *volatile u32,
+    bitmask: u32,
 
-            else => unreachable,
-        }
-
-        tmpreg.* = RCC.AHB4ENR;
+    pub fn enable(self: Self) void {
+        self.register.* |= self.bitmask;
+        tmpreg.* = self.register.*;
     }
 
-    pub fn sdmmc1() void {
-        RCC.AHB5ENR |= hal.c.RCC_AHB5ENR_SDMMC1EN;
-        tmpreg.* = RCC.AHB5ENR;
-    }
-
-    pub fn sbs() void {
-        RCC.APB4ENR |= hal.c.RCC_APB4ENR_SBSEN;
-        tmpreg.* = RCC.APB4ENR;
-    }
-
-    pub fn xspim() void {
-        RCC.AHB5ENR |= hal.c.RCC_AHB5ENR_XSPIMEN;
-        tmpreg.* = RCC.AHB5ENR;
-    }
-
-    pub fn xspi1() void {
-        RCC.AHB5ENR |= hal.c.RCC_AHB5ENR_XSPI1EN;
-        tmpreg.* = RCC.AHB5ENR;
-    }
-
-    pub fn xspi2() void {
-        RCC.AHB5ENR |= hal.c.RCC_AHB5ENR_XSPI2EN;
-        tmpreg.* = RCC.AHB5ENR;
+    pub fn disable(self: Self) void {
+        self.register.* &= ~self.bitmask;
+        tmpreg.* = self.register.*;
     }
 };
 
-pub const disable = struct {
-    pub fn sdmmc1() void {
-        RCC.AHB5ENR &= ~hal.c.RCC_AHB5ENR_SDMMC1EN;
-        tmpreg.* = RCC.AHB5ENR;
-    }
+pub fn addr_of(name: []const u8) *u32 {
+    const rcc_addr = hal.c.RCC_BASE;
+    const offset = @offsetOf(hal.c.RCC_TypeDef, name);
+    return @ptrFromInt(rcc_addr + offset);
+}
 
-    pub fn xspim() void {
-        RCC.AHB5ENR &= ~hal.c.RCC_AHB5ENR_XSPIMEN;
-        tmpreg.* = RCC.AHB5ENR;
-    }
+const AHB4ENR = addr_of("AHB4ENR");
+const AHB5ENR = addr_of("AHB5ENR");
+const APB4ENR = addr_of("APB4ENR");
 
-    pub fn xspi1() void {
-        RCC.AHB5ENR &= ~hal.c.RCC_AHB5ENR_XSPI1EN;
-        tmpreg.* = RCC.AHB5ENR;
-    }
-
-    pub fn xspi2() void {
-        RCC.AHB5ENR &= ~hal.c.RCC_AHB5ENR_XSPI2EN;
-        tmpreg.* = RCC.AHB5ENR;
-    }
+pub const GPIOA = Clock{
+    .register = AHB4ENR,
+    .bitmask = hal.c.RCC_AHB4ENR_GPIOAEN,
 };
 
-pub const force_reset = struct {
-    pub fn sdmmc1() void {
-        RCC.AHB5RSTR |= hal.c.RCC_AHB5RSTR_SDMMC1RST;
-    }
+pub const GPIOB = Clock{
+    .register = AHB4ENR,
+    .bitmask = hal.c.RCC_AHB4ENR_GPIOBEN,
 };
 
-pub const release_reset = struct {
-    pub fn sdmmc1() void {
-        RCC.AHB5RSTR &= ~hal.c.RCC_AHB5RSTR_SDMMC1RST;
-    }
+pub const GPIOC = Clock{
+    .register = AHB4ENR,
+    .bitmask = hal.c.RCC_AHB4ENR_GPIOCEN,
 };
+
+pub const GPIOD = Clock{
+    .register = AHB4ENR,
+    .bitmask = hal.c.RCC_AHB4ENR_GPIODEN,
+};
+
+pub const GPIOE = Clock{
+    .register = AHB4ENR,
+    .bitmask = hal.c.RCC_AHB4ENR_GPIOEEN,
+};
+
+pub const GPIOF = Clock{
+    .register = AHB4ENR,
+    .bitmask = hal.c.RCC_AHB4ENR_GPIOFEN,
+};
+
+pub const GPIOG = Clock{
+    .register = AHB4ENR,
+    .bitmask = hal.c.RCC_AHB4ENR_GPIOGEN,
+};
+
+pub const GPIOH = Clock{
+    .register = AHB4ENR,
+    .bitmask = hal.c.RCC_AHB4ENR_GPIOHEN,
+};
+
+pub const GPIOM = Clock{
+    .register = AHB4ENR,
+    .bitmask = hal.c.RCC_AHB4ENR_GPIOMEN,
+};
+
+pub const GPION = Clock{
+    .register = AHB4ENR,
+    .bitmask = hal.c.RCC_AHB4ENR_GPIONEN,
+};
+
+pub const GPIOO = Clock{
+    .register = AHB4ENR,
+    .bitmask = hal.c.RCC_AHB4ENR_GPIOOEN,
+};
+
+pub const GPIOP = Clock{
+    .register = AHB4ENR,
+    .bitmask = hal.c.RCC_AHB4ENR_GPIOPEN,
+};
+
+pub const SDMMC1 = Clock{
+    .register = AHB5ENR,
+    .bitmask = hal.c.RCC_AHB5ENR_SDMMC1EN,
+};
+
+pub const XSPIM = Clock{
+    .register = AHB5ENR,
+    .bitmask = hal.c.RCC_AHB5ENR_XSPIMEN,
+};
+
+pub const XSPI1 = Clock{
+    .register = AHB5ENR,
+    .bitmask = hal.c.RCC_AHB5ENR_XSPI1EN,
+};
+
+pub const XSPI2 = Clock{
+    .register = AHB5ENR,
+    .bitmask = hal.c.RCC_AHB5ENR_XSPI2EN,
+};
+
+pub const SBS = Clock{
+    .register = APB4ENR,
+    .bitmask = hal.c.RCC_APB4ENR_SBSEN,
+};
+
+fn port_to_clock(port: *hal.c.GPIO_TypeDef) Clock {
+    return switch (port) {
+        hal.c.GPIOA => GPIOA,
+        hal.c.GPIOB => GPIOB,
+        hal.c.GPIOC => GPIOC,
+        hal.c.GPIOD => GPIOD,
+        hal.c.GPIOE => GPIOE,
+        hal.c.GPIOF => GPIOF,
+        hal.c.GPIOG => GPIOG,
+        hal.c.GPIOH => GPIOH,
+        hal.c.GPIOM => GPIOM,
+        hal.c.GPION => GPION,
+        hal.c.GPIOO => GPIOO,
+        hal.c.GPIOP => GPIOP,
+
+        else => unreachable,
+    };
+}
+
+/// Convenience to access GPIO sructs by the pointer to the port
+pub fn enable_gpio(port: *hal.c.GPIO_TypeDef) void {
+    port_to_clock(port).enable();
+}
+
+/// Convenience to access GPIO sructs by the pointer to the port
+pub fn disable_gpio(port: *hal.c.GPIO_TypeDef) void {
+    port_to_clock(port).disable();
+}
