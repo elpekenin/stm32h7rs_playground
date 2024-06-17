@@ -3,9 +3,22 @@
     .version = "0.0.0-alpha",
 
     .dependencies = .{
-        .picolibc = .{ .url = "https://github.com/elpekenin/picolibc/archive/refs/heads/zig.tar.gz", .hash = "12201b7e387054f664153aab79f8b0ca31e6afd915d138d00928c964e60cfb8843a3" },
-        .zfat = .{ .url = "https://github.com/elpekenin/zfat/archive/refs/heads/0.12.tar.gz", .hash = "1220d6741777d31b6cbdb298d6f13f39056adc399b097e491e08324c299921a92dc8" },
-        .@"segger-rtt" = .{ .url = "https://github.com/elpekenin/segger-rtt/archive/refs/heads/time_getter.tar.gz", .hash = "12206812bf16e697049b257fbccba955113a076f470b6e39e064e9f43e3febc249c7" },
+        .picolibc = .{
+            .url = "https://github.com/elpekenin/picolibc/archive/refs/heads/zig_clean.tar.gz",
+            .hash = "12208a0e149e5fbeb7cf01fc56bd3dbdceac429091ada9e61383af868acaeef34e18",
+        },
+        .hal = .{
+            .url = "https://github.com/elpekenin/stm32h7rsxx_hal_driver/archive/refs/heads/zig.tar.gz",
+            .hash = "12209132ad203a21b1fb9c0eef6cb6f1025c967bea861a111304b797ec39b08ff1e0",
+        },
+        .zfat = .{
+            .url = "https://github.com/elpekenin/zfat/archive/refs/heads/tests.tar.gz",
+            .hash = "122053886526b4110622d4bd6fc005aad104fc0ede93e081750f8b15d18552e44e1d",
+        },
+        .rtt = .{
+            .url = "https://github.com/elpekenin/segger-rtt/archive/refs/heads/time_getter.tar.gz",
+            .hash = "12206812bf16e697049b257fbccba955113a076f470b6e39e064e9f43e3febc249c7",
+        },
     },
     .paths = .{ "build.zig", "build.zig.zon", "ld", "src" },
 }

@@ -21,13 +21,10 @@ export fn main(argc: i32, argv: [*c][*:0]u8) callconv(.C) i32 {
     _ = argc;
     _ = argv;
 
-    const ret = hal.c.HAL_Init();
-    if (ret != hal.c.HAL_OK) {
-        std.debug.panic("HAL_Init", .{});
-    }
+    // halts, apparently, right after executing the func
+    // hal.zig.cache.i_cache.enable();
 
-    hal.zig.init.clocks();
-    hal.c.SystemCoreClockUpdate();
+    hal.zig.init();
 
     // for LEDs to work in panic handler, regardless of when that happens
     // but doing it earlier than this might be a bad idea as previous setup

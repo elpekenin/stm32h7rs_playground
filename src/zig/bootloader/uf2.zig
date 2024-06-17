@@ -5,34 +5,10 @@ const std = @import("std");
 const hal = @import("../common/hal.zig");
 const jump = @import("jump.zig");
 
-const ext_flash = @import("ext_flash.zig");
-const ext_ram = @import("ext_ram.zig");
+const ext_flash = @import("mx66uw1g45g.zig");
 
 const UF2_FLAG = 0xBEBECAFE;
 var uf2_var: u32 linksection(".preserve.0") = undefined;
-
-const state = struct {
-    var is_flash_init = false;
-    var is_ram_init = false;
-};
-
-fn init_flash_once() !void {
-    if (state.is_flash_init) {
-        return;
-    }
-
-    try ext_flash.init();
-    state.is_flash_init = true;
-}
-
-fn init_ram_once() void {
-    if (state.is_ram_init) {
-        return;
-    }
-
-    ext_ram.init();
-    state.is_ram_init = true;
-}
 
 pub fn set_flag() void {
     uf2_var = UF2_FLAG;
@@ -52,27 +28,22 @@ pub fn check() bool {
     return uf2_var == UF2_FLAG;
 }
 
-fn try_write_flash() void {
-    init_flash_once() catch {
-        std.debug.panic("ext_flash.init()", .{});
-    };
+fn flash_test() !void {
+    try ext_flash.init();
 
-    const write = [_]u8{0xAA} ** 256;
-    ext_flash.write(0, &write) catch {
-        ext_flash.print_error();
-        std.debug.panic("ext_flash.write()", .{});
-    };
+    const write_buf = [_]u8{'F'} ** 128;
+    try ext_flash.write(0, &write_buf);
+    std.log.info("written to flash", .{});
 
-    var read: [5]u8 = undefined;
-    ext_flash.read(0, &read) catch {
-        std.debug.panic("ext_flash.read()", .{});
-    };
-
-    std.log.debug("read {s}", .{read});
+    var read_buf: [write_buf.len]u8 = undefined;
+    try ext_flash.read(0, &read_buf);
+    std.log.info("read: {any}", .{read_buf});
 }
 
-pub inline fn app_jump() noreturn {
-    // try_write_flash();
+pub fn app_jump() noreturn {
+    flash_test() catch {
+        std.debug.panic("testing external flash", .{});
+    };
 
     std.debug.panic("app_jump unimplemented", .{});
     // jump.to(ext_flash.BASE);

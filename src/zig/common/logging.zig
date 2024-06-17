@@ -27,3 +27,8 @@ pub const std_options = .{
     .log_level = .debug,
     .logFn = logFn,
 };
+
+/// Name that STM HAL expects to find
+export fn assert_failed(file: [*:0]const u8, line: u32) callconv(.C) void {
+    std.log.err("assert failed {s}:{}", .{ file, line });
+}

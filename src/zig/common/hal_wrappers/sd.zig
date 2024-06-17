@@ -80,7 +80,7 @@ pub fn init() !void {
     // Not needed?
     // if (!wait_ready()) {
     //     std.log.err("Ready state", .{});
-    //     return error.SDNotReady;
+    //     return error.NotReady;
     // }
 
     state.init = true;
@@ -89,7 +89,7 @@ pub fn init() !void {
 /// Read data from card.
 pub fn read(data: [*]u8, first_block: u32, n_blocks: u32) !void {
     if (!is_initialized()) {
-        return error.SDNotReady;
+        return error.NotReady;
     }
 
     if (hal.c.HAL_SD_ReadBlocks(&hsd, data, first_block, n_blocks, TIMEOUT) != hal.c.HAL_OK) {
@@ -103,7 +103,7 @@ pub fn read(data: [*]u8, first_block: u32, n_blocks: u32) !void {
 /// Write data onto card.
 pub fn write(data: [*]const u8, first_block: u32, n_blocks: u32) !void {
     if (!is_initialized()) {
-        return error.SDNotReady;
+        return error.NotReady;
     }
 
     if (hal.c.HAL_SD_WriteBlocks(&hsd, data, first_block, n_blocks, TIMEOUT) != hal.c.HAL_OK) {
@@ -117,7 +117,7 @@ pub fn write(data: [*]const u8, first_block: u32, n_blocks: u32) !void {
 /// Get card's information.
 pub fn card_info() !hal.c.HAL_SD_CardInfoTypeDef {
     if (!is_initialized()) {
-        return error.SDNotReady;
+        return error.NotReady;
     }
 
     var info = std.mem.zeroes(hal.c.HAL_SD_CardInfoTypeDef);

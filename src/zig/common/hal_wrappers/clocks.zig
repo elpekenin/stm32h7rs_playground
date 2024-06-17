@@ -3,7 +3,6 @@
 //! Eg, to enable GPIO ports.
 
 const std = @import("std");
-
 const hal = @import("../hal.zig");
 
 var _tmpreg: u32 = 0;

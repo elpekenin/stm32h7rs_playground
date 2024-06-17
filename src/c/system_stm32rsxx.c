@@ -1,9 +1,20 @@
-/* Note: Extracted from system_stm32h7rsxx.c
+/* NOTE: Adapted from cmsis_device_h7rs/Source/Templates/system_stm32h7rsxx.c
  *
  * SystemCoreClock variable was needed, but it also added dependency on 
  * startup files written in assembly, and some symbols which arent defined
  * nor needed, as picolibc is taking care of the bootstraping.
  *
+ */
+
+/*
+ * Copyright (c) 2022 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
  */
 
 #include "stm32h7rsxx.h"
