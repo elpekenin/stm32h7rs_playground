@@ -1,9 +1,3 @@
-[submodule "lib/cmsis"]
-	path = lib/cmsis
-	url = https://github.com/elpekenin/cmsis_device_h7rs
-[submodule "lib/CMSIS_5"]
-	path = lib/CMSIS_5
-	url = https://github.com/elpekenin/CMSIS_5
 [submodule "lib/picolibc"]
 	path = lib/picolibc
 	url = https://github.com/kassane/picolibc-zig

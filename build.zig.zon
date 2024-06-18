@@ -9,16 +9,17 @@
         },
         .hal = .{
             .url = "https://github.com/elpekenin/stm32h7rsxx_hal_driver/archive/refs/heads/zig.tar.gz",
-            .hash = "12209132ad203a21b1fb9c0eef6cb6f1025c967bea861a111304b797ec39b08ff1e0",
+            .hash = "122086281ca9e6446aeeb278e726e93225a85c4ce2b2688245fdf44ee20aa30a3402",
         },
         .zfat = .{
-            .url = "https://github.com/elpekenin/zfat/archive/refs/heads/tests.tar.gz",
-            .hash = "122053886526b4110622d4bd6fc005aad104fc0ede93e081750f8b15d18552e44e1d",
+            .url = "https://github.com/ZigEmbeddedGroup/zfat/archive/refs/heads/main.tar.gz",
+            .hash = "122064858e32ce4448b7c02813379658a74ebf85f026f9936fa627b1a40c3bb9cc39",
         },
         .rtt = .{
             .url = "https://github.com/elpekenin/segger-rtt/archive/refs/heads/time_getter.tar.gz",
             .hash = "12206812bf16e697049b257fbccba955113a076f470b6e39e064e9f43e3febc249c7",
         },
     },
+
     .paths = .{ "build.zig", "build.zig.zon", "ld", "src" },
 }
