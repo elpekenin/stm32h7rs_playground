@@ -3,6 +3,8 @@
 //! Also provide some zig wrappers on top of it
 
 /// Raw C code from STM
+// These `@cDefine` macros are already defined on the build script
+// but are also here for better LSP support
 pub const c = @cImport({
     @cDefine("__PROGRAM_START", "_start");
     @cDefine("STM32H7S7xx", {});

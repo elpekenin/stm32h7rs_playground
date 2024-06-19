@@ -10,11 +10,11 @@ const ext_flash = @import("mx66uw1g45g.zig");
 const UF2_FLAG = 0xBEBECAFE;
 var uf2_var: u32 linksection(".preserve.0") = undefined;
 
-pub fn set_flag() void {
+inline fn set_flag() void {
     uf2_var = UF2_FLAG;
 }
 
-pub fn clear_flag() void {
+inline fn clear_flag() void {
     uf2_var = 0;
 }
 
@@ -50,9 +50,13 @@ pub fn app_jump() noreturn {
 }
 
 pub fn main() noreturn {
+    clear_flag();
+
     // indicate that we are in bootloader
-    const led = hal.zig.LD1.as_out(.High);
+    const led = hal.dk.LEDS[0].as_out(.High);
     led.set(true);
+    hal.c.HAL_Delay(500);
+    led.set(false);
 
     while (true) {
         // expose USB MSC
@@ -62,9 +66,6 @@ pub fn main() noreturn {
     // check family id
     // ... and start address
     // if correct, write it to flash
-
-    // upon completion
-    led.set(false);
 
     return app_jump();
 }

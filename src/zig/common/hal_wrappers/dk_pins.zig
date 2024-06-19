@@ -589,3 +589,30 @@ pub const VCP = struct {
         .port = hal.c.GPIOD,
     };
 };
+
+pub const BUTTON = Pin{
+    .pin = hal.c.GPIO_PIN_13,
+    .port = hal.c.GPIOC,
+};
+
+pub const LEDS = .{
+    Pin{
+        .pin = hal.c.GPIO_PIN_1,
+        .port = hal.c.GPIOO,
+    },
+
+    Pin{
+        .pin = hal.c.GPIO_PIN_5,
+        .port = hal.c.GPIOO,
+    },
+
+    Pin{
+        .pin = hal.c.GPIO_PIN_2,
+        .port = hal.c.GPIOM,
+    },
+
+    Pin{
+        .pin = hal.c.GPIO_PIN_3,
+        .port = hal.c.GPIOM,
+    },
+};

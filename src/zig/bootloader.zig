@@ -26,12 +26,6 @@ export fn main(argc: i32, argv: [*c][*:0]u8) callconv(.C) i32 {
 
     hal.zig.init();
 
-    // for LEDs to work in panic handler, regardless of when that happens
-    // but doing it earlier than this might be a bad idea as previous setup
-    // has not be done yet (?)
-    hal.zig.clocks.GPIOM.enable();
-    hal.zig.clocks.GPIOO.enable();
-
     // warning if SD not available
     if (!hal.zig.sd.is_connected()) {
         std.log.warn("404 SD not found", .{});
@@ -45,13 +39,12 @@ fn run() noreturn {
     // button pressed on boot => STM DFU
     if (stm_dfu.check()) {
         std.log.debug("Running STM-DFU", .{});
-        return stm_dfu.jump();
+        return stm_dfu.bootloader();
     }
 
     // double press, or app code setting sentinel + reset => UF2 bootloader
     if (uf2.check()) {
         std.log.debug("Running UF2 bootloader", .{});
-        uf2.clear_flag();
         return uf2.main();
     }
 

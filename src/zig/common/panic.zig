@@ -24,13 +24,14 @@ pub fn panic(msg: []const u8, error_return_trace: ?*std.builtin.StackTrace, ret_
         \\return: 0x{X:0>8}
     , .{ msg, error_return_trace, ret_add orelse 0 });
 
-    inline for (hal.zig.LEDS, 0..) |led, i| {
+    inline for (hal.dk.LEDS, 0..) |led, i| {
+        hal.zig.clocks.enable_gpio(led.port);
         const active = if (i <= 1) .High else .Low;
         led.as_out(active).set(true);
     }
 
     while (true) {
-        inline for (hal.zig.LEDS) |led| {
+        inline for (hal.dk.LEDS) |led| {
             // .Low / .High ignored here, we just toggling
             led.as_out(.Low).toggle();
             hal.c.HAL_Delay(100);

@@ -151,36 +151,3 @@ pub const BasePin = struct {
         return ret;
     }
 };
-
-// Constants for DK board
-// Constants for DK board peripherals, with tiny wrappers over
-// HAL functions, for ease of use
-
-// Button
-pub const USER = BasePin{
-    .port = hal.c.GPIOC,
-    .pin = hal.c.GPIO_PIN_13,
-};
-
-// LEDs
-pub const LD1 = BasePin{
-    .port = hal.c.GPIOO,
-    .pin = hal.c.GPIO_PIN_1,
-};
-
-pub const LD2 = BasePin{
-    .port = hal.c.GPIOO,
-    .pin = hal.c.GPIO_PIN_5,
-};
-
-pub const LD3 = BasePin{
-    .port = hal.c.GPIOM,
-    .pin = hal.c.GPIO_PIN_2,
-};
-
-pub const LD4 = BasePin{
-    .port = hal.c.GPIOM,
-    .pin = hal.c.GPIO_PIN_3,
-};
-
-pub const LEDS = .{ LD1, LD2, LD3, LD4 };

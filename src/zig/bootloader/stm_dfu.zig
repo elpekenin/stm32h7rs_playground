@@ -3,7 +3,7 @@
 
 const hal = @import("../common/hal.zig");
 
-const _jump = @import("jump.zig").to;
+const jump = @import("jump.zig");
 
 const BUILTIN_ADDR = 0x1FF18000;
 
@@ -16,11 +16,11 @@ inline fn enable_irq() void {
 }
 
 pub fn check() bool {
-    return hal.zig.USER.as_in(.High).read();
+    return hal.dk.BUTTON.as_in(.High).read();
 }
 
-pub fn jump() noreturn {
-    const led = hal.zig.LD3.as_out(.Low);
+pub fn bootloader() noreturn {
+    const led = hal.dk.LEDS[2].as_out(.Low);
     led.set(true);
     hal.c.HAL_Delay(500);
     led.set(false);
@@ -41,5 +41,5 @@ pub fn jump() noreturn {
 
     enable_irq();
 
-    _jump(BUILTIN_ADDR);
+    jump.to(BUILTIN_ADDR);
 }

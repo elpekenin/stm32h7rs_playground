@@ -25,15 +25,10 @@ const Clock = struct {
     }
 };
 
-pub fn addr_of(name: []const u8) *u32 {
-    const rcc_addr = hal.c.RCC_BASE;
-    const offset = @offsetOf(hal.c.RCC_TypeDef, name);
-    return @ptrFromInt(rcc_addr + offset);
-}
-
-const AHB4ENR = addr_of("AHB4ENR");
-const AHB5ENR = addr_of("AHB5ENR");
-const APB4ENR = addr_of("APB4ENR");
+const RCC: *hal.c.RCC_TypeDef = @ptrFromInt(hal.c.RCC_BASE);
+const AHB4ENR = &RCC.AHB4ENR;
+const AHB5ENR = &RCC.AHB5ENR;
+const APB4ENR = &RCC.APB4ENR;
 
 pub const GPIOA = Clock{
     .register = AHB4ENR,
