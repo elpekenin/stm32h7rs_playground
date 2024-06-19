@@ -5,7 +5,6 @@ const hal = @import("hal.zig");
 
 pub const cache = @import("hal_wrappers/cache.zig");
 pub const clocks = @import("hal_wrappers/clocks.zig");
-pub const digital = @import("hal_wrappers/digital.zig");
 pub const sd = @import("hal_wrappers/sd.zig");
 pub const usb = @import("hal_wrappers/usb.zig");
 pub const xspi = @import("hal_wrappers/xspi.zig");
@@ -94,6 +93,7 @@ pub fn init() void {
     init_power();
     init_clocks();
     hal.c.SystemCoreClockUpdate();
+    hal.dk.init();
 }
 
 // Please zig, do not garbage-collect these, we need to export C funcs, thx!!
@@ -109,45 +109,82 @@ pub const Active = enum {
     High,
 };
 
-pub const BasePin = struct {
+/// Mostly meant to store pin+port combo, but also tiny wrappers for HAL
+pub const Pin = struct {
     const Self = @This();
 
     port: *hal.c.GPIO_TypeDef,
     pin: u16,
 
-    pub fn __init(self: Self, mode: c_uint, pull: c_uint, speed: c_uint) void {
-        clocks.enable_gpio(self.port);
+    pub fn init(pin: Self, mode: c_uint, pull: c_uint, speed: c_uint) void {
+        clocks.enable_gpio(pin.port);
 
         var gpio_init = std.mem.zeroes(hal.c.GPIO_InitTypeDef);
         gpio_init = .{
-            .Pin = self.pin,
+            .Pin = pin.pin,
             .Mode = mode,
             .Pull = pull,
             .Speed = speed,
         };
-        hal.c.HAL_GPIO_Init(self.port, &gpio_init);
+        hal.c.HAL_GPIO_Init(pin.port, &gpio_init);
     }
+};
 
-    /// Initialize a pin as output
-    pub fn as_out(self: Self, active: Active) digital.DigitalOut {
-        const ret = digital.DigitalOut{
-            .base = self,
-            .active = active,
+/// Store the configuration for an input pin (eg button)
+pub const DigitalIn = struct {
+    const Self = @This();
+
+    base: hal.zig.Pin,
+    active: hal.zig.Active,
+
+    /// Configure the pin
+    pub fn init(self: Self) void {
+        const hal_pull = switch (self.active) {
+            .Low => hal.c.GPIO_PULLUP,
+            .High => hal.c.GPIO_PULLDOWN,
         };
 
-        ret.__init();
-
-        return ret;
+        self.base.init(hal.c.GPIO_MODE_INPUT, hal_pull, hal.c.GPIO_SPEED_FREQ_LOW);
     }
 
-    pub fn as_in(self: Self, active: Active) digital.DigitalIn {
-        const ret = digital.DigitalIn{
-            .base = self,
-            .active = active,
+    /// Read input, takin into account the pull, to return "is button pressed"
+    pub fn read(self: Self) bool {
+        const check = switch (self.active) {
+            .Low => hal.c.GPIO_PIN_RESET,
+            .High => hal.c.GPIO_PIN_SET,
         };
 
-        ret.__init();
+        return hal.c.HAL_GPIO_ReadPin(self.base.port, self.base.pin) == check;
+    }
+};
 
-        return ret;
+/// Store the configuration for an output pin (eg LED)
+pub const DigitalOut = struct {
+    const Self = @This();
+
+    base: hal.zig.Pin,
+    active: hal.zig.Active,
+
+    /// Configure the pin and set it at "off" state
+    pub fn init(self: Self) void {
+        // TODO?: Something based on `self.active`
+        self.base.init(hal.c.GPIO_MODE_OUTPUT_PP, hal.c.GPIO_PULLUP, hal.c.GPIO_SPEED_FREQ_VERY_HIGH);
+    }
+
+    /// Set the **logical** output level (according to active-ness)
+    pub fn set(self: Self, value: bool) void {
+        const output = switch (self.active) {
+            .Low => !value,
+            .High => value,
+        };
+
+        const hal_out: c_uint = if (output) hal.c.GPIO_PIN_SET else hal.c.GPIO_PIN_RESET;
+
+        hal.c.HAL_GPIO_WritePin(self.base.port, self.base.pin, hal_out);
+    }
+
+    /// Toggle the output voltage
+    pub fn toggle(self: Self) void {
+        hal.c.HAL_GPIO_TogglePin(self.base.port, self.base.pin);
     }
 };

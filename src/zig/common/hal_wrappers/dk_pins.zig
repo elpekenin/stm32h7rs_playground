@@ -1,7 +1,11 @@
 //! Aliases for STM32H7S78-DK board
 
+const std = @import("std");
 const hal = @import("../hal.zig");
-const Pin = hal.zig.BasePin;
+
+const Pin = hal.zig.Pin;
+const DigitalIn = hal.zig.DigitalIn;
+const DigitalOut = hal.zig.DigitalOut;
 
 pub const DCMI = struct {
     pub const HSYNC = Pin{
@@ -484,6 +488,15 @@ pub const RMII = struct {
 };
 
 pub const SD = struct {
+    /// SD detection pin, low == connected
+    pub const DET = DigitalIn{
+        .base = Pin{
+            .port = hal.c.GPIOM,
+            .pin = hal.c.GPIO_PIN_14,
+        },
+        .active = .Low,
+    };
+
     pub const CMD = Pin{
         .pin = hal.c.GPIO_PIN_2,
         .port = hal.c.GPIOD,
@@ -590,29 +603,57 @@ pub const VCP = struct {
     };
 };
 
-pub const BUTTON = Pin{
-    .pin = hal.c.GPIO_PIN_13,
-    .port = hal.c.GPIOC,
+pub const BUTTON = DigitalIn{
+    .base = Pin{
+        .pin = hal.c.GPIO_PIN_13,
+        .port = hal.c.GPIOC,
+    },
+    .active = .High,
 };
 
 pub const LEDS = .{
-    Pin{
-        .pin = hal.c.GPIO_PIN_1,
-        .port = hal.c.GPIOO,
+    DigitalOut{
+        .base = Pin{
+            .pin = hal.c.GPIO_PIN_1,
+            .port = hal.c.GPIOO,
+        },
+        .active = .High,
     },
 
-    Pin{
-        .pin = hal.c.GPIO_PIN_5,
-        .port = hal.c.GPIOO,
+    DigitalOut{
+        .base = Pin{
+            .pin = hal.c.GPIO_PIN_5,
+            .port = hal.c.GPIOO,
+        },
+        .active = .High,
     },
 
-    Pin{
-        .pin = hal.c.GPIO_PIN_2,
-        .port = hal.c.GPIOM,
+    DigitalOut{
+        .base = Pin{
+            .pin = hal.c.GPIO_PIN_2,
+            .port = hal.c.GPIOM,
+        },
+        .active = .Low,
     },
 
-    Pin{
-        .pin = hal.c.GPIO_PIN_3,
-        .port = hal.c.GPIOM,
+    DigitalOut{
+        .base = Pin{
+            .pin = hal.c.GPIO_PIN_3,
+            .port = hal.c.GPIOM,
+        },
+        .active = .Low,
     },
 };
+
+pub fn init() void {
+    inline for (.{
+        SD.DET,
+        BUTTON,
+    }) |pin| {
+        pin.init();
+    }
+
+    inline for (LEDS) |pin| {
+        pin.init();
+    }
+}

@@ -7,6 +7,9 @@ const jump = @import("jump.zig");
 
 const BUILTIN_ADDR = 0x1FF18000;
 
+// Red LED
+const INDICATOR = hal.dk.LEDS[2];
+
 inline fn disable_irq() void {
     asm volatile ("cpsid i" ::: "memory");
 }
@@ -16,14 +19,13 @@ inline fn enable_irq() void {
 }
 
 pub fn check() bool {
-    return hal.dk.BUTTON.as_in(.High).read();
+    return hal.dk.BUTTON.read();
 }
 
 pub fn bootloader() noreturn {
-    const led = hal.dk.LEDS[2].as_out(.Low);
-    led.set(true);
+    INDICATOR.set(true);
     hal.c.HAL_Delay(500);
-    led.set(false);
+    INDICATOR.set(false);
 
     disable_irq();
 

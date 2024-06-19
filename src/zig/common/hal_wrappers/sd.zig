@@ -3,19 +3,12 @@
 const std = @import("std");
 const hal = @import("../hal.zig");
 
-const digital = hal.zig.digital;
-
 const clocks = @import("clocks.zig");
 
 const TIMEOUT = 500;
 
 /// **_DO NOT USE_** only public for IRQ_Handler to access it
 pub var hsd = std.mem.zeroes(hal.c.SD_HandleTypeDef);
-
-const detection = hal.zig.BasePin{
-    .port = hal.c.GPIOM,
-    .pin = hal.c.GPIO_PIN_14,
-};
 
 const state = struct {
     var init = false;
@@ -29,7 +22,7 @@ fn print_error() void {
 
 /// Check if the card is inserter
 pub fn is_connected() bool {
-    return detection.as_in(.Low).read();
+    return hal.dk.SD.DET.read();
 }
 
 /// Check if this instance has been initialized.

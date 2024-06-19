@@ -7,6 +7,9 @@ const jump = @import("jump.zig");
 
 const ext_flash = @import("mx66uw1g45g.zig");
 
+// Green LED
+const INDICATOR = hal.dk.LEDS[0];
+
 const UF2_FLAG = 0xBEBECAFE;
 var uf2_var: u32 linksection(".preserve.0") = undefined;
 
@@ -52,11 +55,9 @@ pub fn app_jump() noreturn {
 pub fn main() noreturn {
     clear_flag();
 
-    // indicate that we are in bootloader
-    const led = hal.dk.LEDS[0].as_out(.High);
-    led.set(true);
+    INDICATOR.set(true);
     hal.c.HAL_Delay(500);
-    led.set(false);
+    INDICATOR.set(false);
 
     while (true) {
         // expose USB MSC
