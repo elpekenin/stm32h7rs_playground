@@ -5,8 +5,8 @@
 //! and publicly re-export `std_options`
 
 const std = @import("std");
-pub const fs = @import("logging/fs.zig");
-pub const rtt = @import("logging/rtt.zig");
+pub const fs = @import("backends/fs.zig");
+pub const rtt = @import("backends/rtt.zig");
 
 pub fn logFn(
     comptime level: std.log.Level,

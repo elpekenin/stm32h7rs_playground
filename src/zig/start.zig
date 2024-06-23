@@ -1,5 +1,5 @@
 //! Bootstrap logic to start the program and log its execution
-//! 
+//!
 //! This is fed the "actual" logic (bootloader/application) by
 //! a module generated on build.zig
 
@@ -8,7 +8,7 @@ const std = @import("std");
 const hal = @import("hal");
 const app = @import("application");
 
-const logging = @import("common/logging.zig");
+const logging = @import("logging");
 pub const std_options = .{
     .log_level = .debug,
     .logFn = logging.logFn,

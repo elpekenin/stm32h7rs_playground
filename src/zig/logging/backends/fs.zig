@@ -114,6 +114,7 @@ pub fn log(
     const context = Context.new(level);
     const writer = FatFSWriter{ .context = context };
 
+    // TODO: Decouple logging backends
     const time = rtt.time_getter();
     writer.print(prefix ++ format ++ "\n", .{ time.seconds, time.microseconds } ++ args) catch {};
 }

@@ -62,7 +62,6 @@ pub fn build(b: *std.Build) !void {
     });
     start.setLinkerScript(b.path(string_builder.concat("ld/", string_builder.concat(app_type.name(), ".ld"))));
 
-
     // *** Dependencies ***
     const libc_dep = b.dependency("picolibc", .{
         .target = target,
@@ -75,7 +74,6 @@ pub fn build(b: *std.Build) !void {
     }).artifact("hal");
 
     const rtt_dep = b.dependency("rtt", .{}).module("rtt");
-    start.root_module.addImport("rtt", rtt_dep);
 
     const zfat_dep = b.dependency("zfat", .{
         .target = target,
@@ -83,8 +81,6 @@ pub fn build(b: *std.Build) !void {
         .@"static-rtc" = @as([]const u8, "2024-06-17"),
         .@"no-libc" = true,
     }).module("zfat");
-    start.root_module.addImport("fatfs", zfat_dep);
-
 
     // *** zig code ***
     const hal_module = b.addModule("hal", .{
@@ -95,8 +91,7 @@ pub fn build(b: *std.Build) !void {
         .flags = &.{"-fno-sanitize=undefined"},
         .root = b.path("src/c"),
     });
-    hal_module.linkLibrary(hal_dep);
-    hal_dep.addIncludePath(b.path("src/c"));    // hal_conf.h
+    hal_dep.addIncludePath(b.path("src/c")); // hal_conf.h
     hal_module.addIncludePath(b.path("src/c")); // for @cImport
     inline for (.{
         // prevent CMSIS from providing a default entrypoint
@@ -112,23 +107,37 @@ pub fn build(b: *std.Build) !void {
         hal_dep.root_module.c_macros.append(b.allocator, macro) catch @panic("OOM");
         hal_module.c_macros.append(b.allocator, macro) catch @panic("OOM");
     }
-    start.root_module.addImport("hal", hal_module);
 
     const app_module = b.addModule("application", .{
         .root_source_file = b.path(
             string_builder.concat("src/zig/", string_builder.concat(app_type.name(), "/main.zig")),
         ),
     });
-    app_module.addImport("hal", hal_module);
-    start.root_module.addImport("application", app_module);
+
+    const logging_module = b.addModule("logging", .{
+        .root_source_file = b.path("src/zig/logging/logging.zig"),
+    });
 
     const options = b.addOptions();
     options.addOption(bool, "has_zfat", true);
     options.addOption([]const u8, "app_name", app_type.name());
     const options_module = options.createModule();
-    start.root_module.addImport("options", options_module);
+
+    // *** Glue together (sorted alphabetically just because) ***
+    app_module.addImport("hal", hal_module);
     app_module.addImport("options", options_module);
 
+    hal_module.linkLibrary(hal_dep);
+
+    logging_module.addImport("fatfs", zfat_dep);
+    logging_module.addImport("hal", hal_module);
+    logging_module.addImport("options", options_module);
+    logging_module.addImport("rtt", rtt_dep);
+
+    start.root_module.addImport("application", app_module);
+    start.root_module.addImport("hal", hal_module);
+    start.root_module.addImport("logging", logging_module);
+    start.root_module.addImport("options", options_module);
 
     // Pieces that depend on libc must link explicitly against it
     // chain of dependencies doesnt seem to work

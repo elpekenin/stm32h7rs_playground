@@ -1,5 +1,6 @@
-//! Glue code to make FatFS capable of writing/reading from
-//! a SD Card
+//! Glue code to make FatFS capable of writing/reading from a SD Card
+//!
+//! TODO: Break to its module when (if) any other code wants to interact with fs
 
 const std = @import("std");
 const hal = @import("hal");
