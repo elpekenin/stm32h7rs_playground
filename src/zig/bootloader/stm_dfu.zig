@@ -1,7 +1,7 @@
 //! Logic to define when and how to jump into STM's
 //! builtin bootloader in the silicon, programatically.
 
-const hal = @import("../common/hal.zig");
+const hal = @import("hal");
 
 const jump = @import("jump.zig");
 
@@ -22,7 +22,7 @@ pub fn check() bool {
     return hal.dk.BUTTON.read();
 }
 
-pub fn bootloader() noreturn {
+pub fn bootloader() !i32 {
     INDICATOR.set(true);
     hal.c.HAL_Delay(500);
     INDICATOR.set(false);

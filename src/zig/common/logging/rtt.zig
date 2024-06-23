@@ -1,7 +1,7 @@
 //! Logging backend for the RTT protocol
 
 const std = @import("std");
-const hal = @import("../hal.zig");
+const hal = @import("hal");
 const rtt = @import("rtt");
 
 pub fn time_getter() rtt.Time {

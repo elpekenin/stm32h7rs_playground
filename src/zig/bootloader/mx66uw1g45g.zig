@@ -3,7 +3,7 @@
 //! See: https://github.com/STMicroelectronics/stm32-mx66uw1g45g/blob/main/mx66uw1g45g.c
 
 const std = @import("std");
-const hal = @import("../common/hal.zig");
+const hal = @import("hal");
 
 pub const BASE = 0x70000000;
 pub const SIZE = 0x08000000;
@@ -906,7 +906,7 @@ fn get_file_stem(comptime file_path: []const u8) []const u8 {
 }
 
 fn log_error(comptime src: std.builtin.SourceLocation) void {
-    std.log.err("{s}.{s}() failed", .{ get_file_stem(src.file), src.fn_name });
+    std.log.err("{s}.{s}() failed", .{ src.file, src.fn_name });
     hal.zig.xspi.print_error(&hxspi);
 }
 

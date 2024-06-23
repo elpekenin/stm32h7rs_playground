@@ -2,7 +2,7 @@
 //! a SD Card
 
 const std = @import("std");
-const hal = @import("../hal.zig");
+const hal = @import("hal");
 const fatfs = @import("fatfs");
 
 pub const Disk = struct {

@@ -1,9 +1,48 @@
-// TODO: Flag/step to select between actual app and bootloader
-
 const std = @import("std");
 
+const AppType = enum {
+    const Self = @This();
+
+    Bootloader,
+    UserLand,
+
+    pub fn name(self: Self) []const u8 {
+        return switch (self) {
+            .Bootloader => "bootloader",
+            .UserLand => "application",
+        };
+    }
+};
+
+const StringBuilder = struct {
+    const Self = @This();
+
+    allocator: std.mem.Allocator,
+
+    pub fn concat(self: Self, first: []const u8, second: []const u8) []const u8 {
+        const buff = self.allocator.alloc(u8, first.len + second.len) catch @panic("OOM");
+
+        var i: usize = 0;
+        for (first) |val| {
+            buff[i] = val;
+            i += 1;
+        }
+
+        for (second) |val| {
+            buff[i] = val;
+            i += 1;
+        }
+
+        return buff;
+    }
+};
+
 pub fn build(b: *std.Build) !void {
+    // *** Helper for string manipulations ***
+    const string_builder = StringBuilder{ .allocator = b.allocator };
+
     // *** Build configuration ***
+    const app_type = b.option(AppType, "application", "Type of appication being built (bootloader or user)") orelse .Bootloader;
     const target = b.resolveTargetQuery(.{
         .cpu_arch = .thumb,
         .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m7 },
@@ -12,44 +51,53 @@ pub fn build(b: *std.Build) !void {
     });
     const optimize: std.builtin.OptimizeMode = .ReleaseSmall;
 
-    // *** Deps ***
-    const libc = b.dependency("picolibc", .{
+    // *** Entry point ***
+    const start = b.addExecutable(.{
+        .name = string_builder.concat(app_type.name(), ".elf"), // STM32CubeProgrammer does not like the lack of extension
+        .root_source_file = b.path("src/zig/start.zig"),
+        .target = target,
+        .optimize = optimize,
+        .strip = false,
+        .error_tracing = true,
+    });
+    start.setLinkerScript(b.path(string_builder.concat("ld/", string_builder.concat(app_type.name(), ".ld"))));
+
+
+    // *** Dependencies ***
+    const libc_dep = b.dependency("picolibc", .{
         .target = target,
         .optimize = optimize,
     }).artifact("c");
 
-    const hal = b.dependency("hal", .{
+    const hal_dep = b.dependency("hal", .{
         .target = target,
         .optimize = optimize,
     }).artifact("hal");
 
-    const rtt = b.dependency("rtt", .{}).module("rtt");
+    const rtt_dep = b.dependency("rtt", .{}).module("rtt");
+    start.root_module.addImport("rtt", rtt_dep);
 
-    const zfat = b.dependency("zfat", .{
+    const zfat_dep = b.dependency("zfat", .{
         .target = target,
         .optimize = optimize,
         .@"static-rtc" = @as([]const u8, "2024-06-17"),
         .@"no-libc" = true,
     }).module("zfat");
+    start.root_module.addImport("fatfs", zfat_dep);
 
-    // *** Actual zig code ***
-    const zig = b.addExecutable(.{
-        .name = "app.elf", // STM32CubeProgrammer does not like the lack of extension
-        .root_source_file = b.path("src/zig/bootloader.zig"),
-        .target = target,
-        .optimize = optimize,
-        .strip = false,
+
+    // *** zig code ***
+    const hal_module = b.addModule("hal", .{
+        .root_source_file = b.path("src/zig/hal/hal.zig"),
     });
-
-    // *** Put everything together ***
-    zig.addCSourceFiles(.{ // User-level configuration of the HAL
+    hal_module.addCSourceFiles(.{ // User-level configuration of the HAL
         .files = stubs,
         .flags = &.{"-fno-sanitize=undefined"},
         .root = b.path("src/c"),
     });
-    hal.addIncludePath(b.path("src/c")); // hal_conf.h
-
-    // macros required on the toolchain level for HAL compilation
+    hal_module.linkLibrary(hal_dep);
+    hal_dep.addIncludePath(b.path("src/c"));    // hal_conf.h
+    hal_module.addIncludePath(b.path("src/c")); // for @cImport
     inline for (.{
         // prevent CMSIS from providing a default entrypoint
         // zig does not properly handle the typedef in a func and C->zig fails
@@ -61,46 +109,49 @@ pub fn build(b: *std.Build) !void {
         "-DSTM32H7S7xx",
         "-DUSE_HAL_DRIVER",
     }) |macro| {
-        hal.root_module.c_macros.append(b.allocator, macro) catch @panic("OOM");
-        zig.root_module.c_macros.append(b.allocator, macro) catch @panic("OOM");
+        hal_dep.root_module.c_macros.append(b.allocator, macro) catch @panic("OOM");
+        hal_module.c_macros.append(b.allocator, macro) catch @panic("OOM");
     }
+    start.root_module.addImport("hal", hal_module);
+
+    const app_module = b.addModule("application", .{
+        .root_source_file = b.path(
+            string_builder.concat("src/zig/", string_builder.concat(app_type.name(), "/main.zig")),
+        ),
+    });
+    app_module.addImport("hal", hal_module);
+    start.root_module.addImport("application", app_module);
+
+    const options = b.addOptions();
+    options.addOption(bool, "has_zfat", true);
+    options.addOption([]const u8, "app_name", app_type.name());
+    const options_module = options.createModule();
+    start.root_module.addImport("options", options_module);
+    app_module.addImport("options", options_module);
+
 
     // Pieces that depend on libc must link explicitly against it
     // chain of dependencies doesnt seem to work
-    zig.linkLibrary(libc);
-    hal.linkLibrary(libc);
-    zfat.linkLibrary(libc);
-
-    zig.linkLibrary(hal);
-    zig.addIncludePath(b.path("src/c")); // hal_conf.h, for @cImport
-
-    zig.root_module.addImport("rtt", rtt);
-    zig.root_module.addImport("fatfs", zfat);
+    inline for (.{
+        start,
+        hal_dep,
+        zfat_dep,
+        hal_module,
+    }) |module| {
+        module.linkLibrary(libc_dep);
+    }
 
     // strip unused symbols to save space, flash is small
     inline for (.{
-        libc,
-        hal,
+        libc_dep,
+        hal_dep,
     }) |module| {
         module.link_gc_sections = true;
         module.link_data_sections = true;
         module.link_function_sections = true;
     }
 
-    zig.setLinkerScript(b.path("ld/bootloader.ld"));
-
-    // *** .elf -> .bin ***
-    // b.default_step.dependOn(
-    //     &b.addInstallBinFile(
-    //         b.addObjCopy(
-    //             zig.getEmittedBin(),
-    //             .{.format = .bin}
-    //         ).getOutput(),
-    //         "app.bin" // STM32CubeProgrammer does not like the lack of extension
-    //     ).step
-    // );
-
-    b.installArtifact(zig);
+    b.installArtifact(start);
 }
 
 const stubs = &.{

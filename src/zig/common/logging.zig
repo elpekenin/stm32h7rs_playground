@@ -8,7 +8,7 @@ const std = @import("std");
 pub const fs = @import("logging/fs.zig");
 pub const rtt = @import("logging/rtt.zig");
 
-fn logFn(
+pub fn logFn(
     comptime level: std.log.Level,
     comptime scope: @TypeOf(.EnumLiteral),
     comptime format: []const u8,
@@ -22,11 +22,6 @@ fn logFn(
     rtt.log(level, scope, format, args);
     fs.log(level, scope, format, args);
 }
-
-pub const std_options = .{
-    .log_level = .debug,
-    .logFn = logFn,
-};
 
 /// Name that STM HAL expects to find
 export fn assert_failed(file: [*:0]const u8, line: u32) callconv(.C) void {

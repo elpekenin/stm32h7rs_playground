@@ -4,8 +4,8 @@
 //        than to write 4x 50byte ones
 
 const std = @import("std");
-const root = @import("root");
-const hal = @import("../hal.zig");
+const options = @import("options");
+const hal = @import("hal");
 const rtt = @import("rtt.zig");
 const fatfs = @import("fatfs");
 const sd = @import("../fatfs_bindings/sd.zig");
@@ -17,8 +17,8 @@ const Context = struct {
 
     fn get_full_path(comptime level: std.log.Level) [:0]const u8 {
         return switch (level) {
-            .debug, .info => @typeName(root) ++ ".out",
-            .warn, .err => @typeName(root) ++ ".err",
+            .debug, .info => options.app_name ++ ".out",
+            .warn, .err => options.app_name ++ ".err",
         };
     }
 

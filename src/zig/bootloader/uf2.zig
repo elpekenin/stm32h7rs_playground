@@ -2,7 +2,7 @@
 //! over USB
 
 const std = @import("std");
-const hal = @import("../common/hal.zig");
+const hal = @import("hal");
 const jump = @import("jump.zig");
 
 const ext_flash = @import("mx66uw1g45g.zig");
@@ -31,7 +31,7 @@ pub fn check() bool {
     return uf2_var == UF2_FLAG;
 }
 
-fn flash_test() !void {
+fn flash_test() !i32 {
     try ext_flash.init();
 
     const write_buf = [_]u8{'F'} ** 128;
@@ -41,18 +41,18 @@ fn flash_test() !void {
     var read_buf: [write_buf.len]u8 = undefined;
     try ext_flash.read(0, &read_buf);
     std.log.info("read: {any}", .{read_buf});
+
+    return 0;
 }
 
-pub fn app_jump() noreturn {
-    flash_test() catch {
-        std.debug.panic("testing external flash", .{});
-    };
+pub fn app_jump() !i32 {
+    // fails, for now.
+    _ = try flash_test();
 
-    std.debug.panic("app_jump unimplemented", .{});
-    // jump.to(ext_flash.BASE);
+    jump.to(ext_flash.BASE);
 }
 
-pub fn main() noreturn {
+pub fn main() !i32 {
     clear_flag();
 
     INDICATOR.set(true);
@@ -68,5 +68,5 @@ pub fn main() noreturn {
     // ... and start address
     // if correct, write it to flash
 
-    return app_jump();
+    app_jump();
 }
