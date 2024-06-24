@@ -42,7 +42,7 @@ pub fn build(b: *std.Build) !void {
     const string_builder = StringBuilder{ .allocator = b.allocator };
 
     // *** Build configuration ***
-    const app_type = b.option(AppType, "application", "Type of appication being built (bootloader or user)") orelse .Bootloader;
+    const app_type = b.option(AppType, "type", "Type of appication being built (bootloader or user)") orelse @panic("Provide app type");
     const target = b.resolveTargetQuery(.{
         .cpu_arch = .thumb,
         .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m7 },
@@ -127,39 +127,32 @@ pub fn build(b: *std.Build) !void {
     app_module.addImport("hal", hal_module);
     app_module.addImport("options", options_module);
 
+    hal_dep.linkLibrary(libc_dep);
+    hal_dep.link_gc_sections = true;
+    hal_dep.link_data_sections = true;
+    hal_dep.link_function_sections = true;
+
     hal_module.linkLibrary(hal_dep);
+    hal_module.linkLibrary(libc_dep);
+
+    libc_dep.link_gc_sections = true;
+    libc_dep.link_data_sections = true;
+    libc_dep.link_function_sections = true;
 
     logging_module.addImport("fatfs", zfat_dep);
     logging_module.addImport("hal", hal_module);
     logging_module.addImport("options", options_module);
     logging_module.addImport("rtt", rtt_dep);
 
+    start.linkLibrary(libc_dep);
     start.root_module.addImport("application", app_module);
     start.root_module.addImport("hal", hal_module);
     start.root_module.addImport("logging", logging_module);
     start.root_module.addImport("options", options_module);
 
-    // Pieces that depend on libc must link explicitly against it
-    // chain of dependencies doesnt seem to work
-    inline for (.{
-        start,
-        hal_dep,
-        zfat_dep,
-        hal_module,
-    }) |module| {
-        module.linkLibrary(libc_dep);
-    }
+    zfat_dep.linkLibrary(libc_dep);
 
-    // strip unused symbols to save space, flash is small
-    inline for (.{
-        libc_dep,
-        hal_dep,
-    }) |module| {
-        module.link_gc_sections = true;
-        module.link_data_sections = true;
-        module.link_function_sections = true;
-    }
-
+    // *** Output ***
     b.installArtifact(start);
 }
 
