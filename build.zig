@@ -1,48 +1,25 @@
 const std = @import("std");
+const PanicType = @import("src/zig/start.zig").PanicType;
 
-const AppType = enum {
+const Program = enum {
     const Self = @This();
 
     Bootloader,
-    UserLand,
+    Application,
 
     pub fn name(self: Self) []const u8 {
         return switch (self) {
             .Bootloader => "bootloader",
-            .UserLand => "application",
+            .Application => "application",
         };
     }
 };
 
-const StringBuilder = struct {
-    const Self = @This();
-
-    allocator: std.mem.Allocator,
-
-    pub fn concat(self: Self, first: []const u8, second: []const u8) []const u8 {
-        const buff = self.allocator.alloc(u8, first.len + second.len) catch @panic("OOM");
-
-        var i: usize = 0;
-        for (first) |val| {
-            buff[i] = val;
-            i += 1;
-        }
-
-        for (second) |val| {
-            buff[i] = val;
-            i += 1;
-        }
-
-        return buff;
-    }
-};
-
 pub fn build(b: *std.Build) !void {
-    // *** Helper for string manipulations ***
-    const string_builder = StringBuilder{ .allocator = b.allocator };
-
     // *** Build configuration ***
-    const app_type = b.option(AppType, "type", "Type of appication being built (bootloader or user)") orelse @panic("Provide app type");
+    const app_type = b.option(Program, "program", "Program to build (bootloader or app)") orelse @panic("Select target program");
+    const panic_type = b.option(PanicType, "panic", "What to do upon panic") orelse .ToggleLeds;
+
     const target = b.resolveTargetQuery(.{
         .cpu_arch = .thumb,
         .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m7 },
@@ -53,14 +30,14 @@ pub fn build(b: *std.Build) !void {
 
     // *** Entry point ***
     const start = b.addExecutable(.{
-        .name = string_builder.concat(app_type.name(), ".elf"), // STM32CubeProgrammer does not like the lack of extension
+        .name = b.fmt("{s}.elf", .{app_type.name()}), // STM32CubeProgrammer does not like the lack of extension
         .root_source_file = b.path("src/zig/start.zig"),
         .target = target,
         .optimize = optimize,
         .strip = false,
         .error_tracing = true,
     });
-    start.setLinkerScript(b.path(string_builder.concat("ld/", string_builder.concat(app_type.name(), ".ld"))));
+    start.setLinkerScript(b.path(b.fmt("ld/{s}.ld", .{app_type.name()})));
 
     // *** Dependencies ***
     const libc_dep = b.dependency("picolibc", .{
@@ -110,7 +87,7 @@ pub fn build(b: *std.Build) !void {
 
     const app_module = b.addModule("application", .{
         .root_source_file = b.path(
-            string_builder.concat("src/zig/", string_builder.concat(app_type.name(), "/main.zig")),
+            b.fmt("src/zig/{s}/main.zig", .{app_type.name()}),
         ),
     });
 
@@ -121,6 +98,9 @@ pub fn build(b: *std.Build) !void {
     const options = b.addOptions();
     options.addOption(bool, "has_zfat", true);
     options.addOption([]const u8, "app_name", app_type.name());
+    // TODO: Expose to CLI?
+    options.addOption(usize, "panic_type", @intFromEnum(panic_type)); // HAL_Delay after iterating all LEDs
+    options.addOption(u16, "panic_timer", 0); // HAL_Delay between LEDs
     const options_module = options.createModule();
 
     // *** Glue together (sorted alphabetically just because) ***

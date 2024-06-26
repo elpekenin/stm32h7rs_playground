@@ -4,9 +4,9 @@
 //! a module generated on build.zig
 
 const std = @import("std");
-
 const hal = @import("hal");
 const app = @import("application");
+const options = @import("options");
 
 const logging = @import("logging");
 pub const std_options = .{
@@ -14,23 +14,51 @@ pub const std_options = .{
     .logFn = logging.logFn,
 };
 
+pub const PanicType = enum {
+    Nothing,
+    LedsOn,
+    CycleLeds,
+    ToggleLeds,
+};
+
 pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
     @setCold(true);
 
     std.log.err("Panic: {s}", .{msg});
 
-    // synchronize LEDs
-    inline for (hal.dk.LEDS) |led| {
-        led.set(true);
-    }
-
     // endless rainbow
-    while (true) {
-        inline for (hal.dk.LEDS) |led| {
-            led.toggle();
+    const panic_type: PanicType = @intFromEnum(options.panic_type);
+
+    comptime switch (panic_type) {
+        .Nothing => while (true) {},
+        .LedsOn => for (hal.dk.LEDS) |led| {
+            led.set(true);
+        },
+        .CycleLeds => {
+            for (hal.dk.LEDS) |led| {
+                led.set(true);
+            }
+
+            while (true) {
+                for (hal.dk.LEDS) |led| {
+                    led.toggle();
+                    hal.c.HAL_Delay(options.panic_timer);
+                }
+            }
+        },
+        .ToggleLeds => {
+            for (hal.dk.LEDS) |led| {
+                led.set(true);
+            }
+
+            while (true) {
+                for (hal.dk.LEDS) |led| {
+                    led.toggle();
+                }
+                hal.c.HAL_Delay(options.panic_timer);
+            }
         }
-        hal.c.HAL_Delay(500);
-    }
+    };
 }
 
 /// Arguments' signature doesn't really matter as picolibc will be
