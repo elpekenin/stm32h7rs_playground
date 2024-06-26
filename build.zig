@@ -1,5 +1,5 @@
 const std = @import("std");
-const PanicType = @import("src/zig/start.zig").PanicType;
+const PanicType = @import("src/zig/panic_config.zig").PanicType;
 
 const Program = enum {
     const Self = @This();
@@ -18,7 +18,8 @@ const Program = enum {
 pub fn build(b: *std.Build) !void {
     // *** Build configuration ***
     const app_type = b.option(Program, "program", "Program to build (bootloader or app)") orelse @panic("Select target program");
-    const panic_type = b.option(PanicType, "panic", "What to do upon panic") orelse .ToggleLeds;
+    const panic_type = b.option(PanicType, "panic_type", "Control panic behavior") orelse .ToggleLeds;
+    const panic_timer = b.option(u16, "panic_timer", "Control panic behavior") orelse 500;
 
     const target = b.resolveTargetQuery(.{
         .cpu_arch = .thumb,
@@ -100,7 +101,7 @@ pub fn build(b: *std.Build) !void {
     options.addOption([]const u8, "app_name", app_type.name());
     // TODO: Expose to CLI?
     options.addOption(usize, "panic_type", @intFromEnum(panic_type)); // HAL_Delay after iterating all LEDs
-    options.addOption(u16, "panic_timer", 0); // HAL_Delay between LEDs
+    options.addOption(u16, "panic_timer", panic_timer); // HAL_Delay between LEDs
     const options_module = options.createModule();
 
     // *** Glue together (sorted alphabetically just because) ***

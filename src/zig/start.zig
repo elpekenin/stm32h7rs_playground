@@ -14,12 +14,7 @@ pub const std_options = .{
     .logFn = logging.logFn,
 };
 
-pub const PanicType = enum {
-    Nothing,
-    LedsOn,
-    CycleLeds,
-    ToggleLeds,
-};
+const PanicType = @import("panic_config.zig").PanicType;
 
 pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
     @setCold(true);
@@ -27,38 +22,38 @@ pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
     std.log.err("Panic: {s}", .{msg});
 
     // endless rainbow
-    const panic_type: PanicType = @intFromEnum(options.panic_type);
+    const panic_type: PanicType = comptime @enumFromInt(options.panic_type);
 
-    comptime switch (panic_type) {
+    switch (panic_type) {
         .Nothing => while (true) {},
-        .LedsOn => for (hal.dk.LEDS) |led| {
+        .LedsOn => inline for (hal.dk.LEDS) |led| {
             led.set(true);
         },
         .CycleLeds => {
-            for (hal.dk.LEDS) |led| {
+            inline for (hal.dk.LEDS) |led| {
                 led.set(true);
             }
 
             while (true) {
-                for (hal.dk.LEDS) |led| {
+                inline for (hal.dk.LEDS) |led| {
                     led.toggle();
                     hal.c.HAL_Delay(options.panic_timer);
                 }
             }
         },
         .ToggleLeds => {
-            for (hal.dk.LEDS) |led| {
+            inline for (hal.dk.LEDS) |led| {
                 led.set(true);
             }
 
             while (true) {
-                for (hal.dk.LEDS) |led| {
+                inline for (hal.dk.LEDS) |led| {
                     led.toggle();
                 }
                 hal.c.HAL_Delay(options.panic_timer);
             }
         }
-    };
+    }
 }
 
 /// Arguments' signature doesn't really matter as picolibc will be
