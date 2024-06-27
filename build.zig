@@ -24,6 +24,10 @@ pub fn build(b: *std.Build) !void {
     const target = b.resolveTargetQuery(.{
         .cpu_arch = .thumb,
         .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m7 },
+        .cpu_features_add = std.Target.arm.featureSet(&.{
+            // .vfp4d16,
+            // .fp_armv8d16,
+        }),
         .os_tag = .freestanding,
         .abi = .eabihf,
     });

@@ -8,7 +8,7 @@ const uf2 = @import("uf2.zig");
 
 /// Actual entrypoint/logic of the bootloader
 ///
-/// NOTE: It will never actually return an `i32` because all 3 "submain
+/// NOTE: It will never actually return an `i32` because all 3 "submain"
 /// branches have `noreturn` logic, namely: jump into some other code.
 pub fn run() !i32 {
     // button pressed on boot => STM DFU

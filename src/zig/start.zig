@@ -22,12 +22,16 @@ pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
     std.log.err("Panic: {s}", .{msg});
 
     // endless rainbow
-    const panic_type: PanicType = comptime @enumFromInt(options.panic_type);
+    const panic_type: PanicType = @enumFromInt(options.panic_type);
 
     switch (panic_type) {
         .Nothing => while (true) {},
-        .LedsOn => inline for (hal.dk.LEDS) |led| {
-            led.set(true);
+        .LedsOn => {
+            inline for (hal.dk.LEDS) |led| {
+                led.set(true);
+            }
+
+            while (true) {}
         },
         .CycleLeds => {
             inline for (hal.dk.LEDS) |led| {
@@ -52,7 +56,7 @@ pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
                 }
                 hal.c.HAL_Delay(options.panic_timer);
             }
-        }
+        },
     }
 }
 

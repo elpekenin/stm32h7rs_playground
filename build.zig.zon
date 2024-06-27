@@ -9,7 +9,7 @@
         },
         .hal = .{
             .url = "https://github.com/elpekenin/stm32h7rsxx_hal_driver/archive/refs/heads/zig.tar.gz",
-            .hash = "122086281ca9e6446aeeb278e726e93225a85c4ce2b2688245fdf44ee20aa30a3402",
+            .hash = "1220cdf2400e6d37cb9c05aa260c97cf21cb6ccc4fa720562329b79f88ea26c96742",
         },
         .zfat = .{
             .url = "https://github.com/ZigEmbeddedGroup/zfat/archive/refs/heads/main.tar.gz",
