@@ -1,5 +1,6 @@
 //! Details about the Macronix MX66UW1G45G OctoSPI chip
 //!
+//! See: https://github.com/STMicroelectronics/stm32h7s78-dk-bsp/blob/main/stm32h7s78_discovery_xspi.c
 //! See: https://github.com/STMicroelectronics/stm32-mx66uw1g45g/blob/main/mx66uw1g45g.c
 
 const std = @import("std");
