@@ -23,8 +23,7 @@ fn init_power() void {
 }
 
 fn init_clocks() void {
-    var rcc_init = std.mem.zeroes(hal.c.RCC_OscInitTypeDef);
-    rcc_init = .{
+    var rcc_init = std.mem.zeroInit(hal.c.RCC_OscInitTypeDef, .{
         .OscillatorType = hal.c.RCC_OSCILLATORTYPE_HSI48 | hal.c.RCC_OSCILLATORTYPE_HSI,
         .HSIState = hal.c.RCC_HSI_ON,
         .HSIDiv = hal.c.RCC_HSI_DIV1,
@@ -66,13 +65,12 @@ fn init_clocks() void {
             .PLLT = 2,
             .PLLFractional = 0,
         },
-    };
+    });
     if (hal.c.HAL_RCC_OscConfig(&rcc_init) != hal.c.HAL_OK) {
         std.debug.panic("HAL_RCC_OscConfig", .{});
     }
 
-    var rcc_clk = std.mem.zeroes(hal.c.RCC_ClkInitTypeDef);
-    rcc_clk = .{
+    var rcc_clk = std.mem.zeroInit(hal.c.RCC_ClkInitTypeDef, .{
         .ClockType = hal.c.RCC_CLOCKTYPE_HCLK | hal.c.RCC_CLOCKTYPE_SYSCLK | hal.c.RCC_CLOCKTYPE_PCLK1 | hal.c.RCC_CLOCKTYPE_PCLK2 | hal.c.RCC_CLOCKTYPE_PCLK4 | hal.c.RCC_CLOCKTYPE_PCLK5,
         .SYSCLKSource = hal.c.RCC_SYSCLKSOURCE_PLLCLK,
         .SYSCLKDivider = hal.c.RCC_SYSCLK_DIV1,
@@ -81,7 +79,7 @@ fn init_clocks() void {
         .APB2CLKDivider = hal.c.RCC_APB2_DIV2,
         .APB4CLKDivider = hal.c.RCC_APB4_DIV2,
         .APB5CLKDivider = hal.c.RCC_APB5_DIV2,
-    };
+    });
     if (hal.c.HAL_RCC_ClockConfig(&rcc_clk, hal.c.FLASH_LATENCY_6) != hal.c.HAL_OK) {
         std.debug.panic("HAL_RCC_ClockConfig", .{});
     }
@@ -119,13 +117,12 @@ pub const Pin = struct {
     pub fn init(pin: Self, mode: c_uint, pull: c_uint, speed: c_uint) void {
         clocks.enable_gpio(pin.port);
 
-        var gpio_init = std.mem.zeroes(hal.c.GPIO_InitTypeDef);
-        gpio_init = .{
+        var gpio_init = std.mem.zeroInit(hal.c.GPIO_InitTypeDef, .{
             .Pin = pin.pin,
             .Mode = mode,
             .Pull = pull,
             .Speed = speed,
-        };
+        });
         hal.c.HAL_GPIO_Init(pin.port, &gpio_init);
     }
 };

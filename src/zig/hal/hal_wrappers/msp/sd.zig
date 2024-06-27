@@ -6,11 +6,10 @@ export fn HAL_SD_MspInit(hsd: *hal.c.SD_HandleTypeDef) callconv(.C) void {
         std.debug.panic("hsd != SDMMC1", .{});
     }
 
-    var PeriphClkInit = std.mem.zeroes(hal.c.RCC_PeriphCLKInitTypeDef);
-    PeriphClkInit = .{
+    var PeriphClkInit = std.mem.zeroInit(hal.c.RCC_PeriphCLKInitTypeDef, .{
         .PeriphClockSelection = hal.c.RCC_PERIPHCLK_SDMMC12,
         .Sdmmc12ClockSelection = hal.c.RCC_SDMMC12CLKSOURCE_PLL2S,
-    };
+    });
     if (hal.c.HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != hal.c.HAL_OK) {
         std.debug.panic("HAL_RCCEx_PeriphCLKConfig", .{});
     }
@@ -19,14 +18,13 @@ export fn HAL_SD_MspInit(hsd: *hal.c.SD_HandleTypeDef) callconv(.C) void {
     hal.zig.clocks.GPIOC.enable();
     hal.zig.clocks.GPIOD.enable();
 
-    var gpio_init = std.mem.zeroes(hal.c.GPIO_InitTypeDef);
-    gpio_init = .{
+    var gpio_init = std.mem.zeroInit(hal.c.GPIO_InitTypeDef, .{
         .Pin = hal.dk.SD.CMD.pin,
         .Mode = hal.c.GPIO_MODE_AF_PP,
         .Pull = hal.c.GPIO_NOPULL,
         .Speed = hal.c.GPIO_SPEED_FREQ_HIGH,
         .Alternate = hal.c.GPIO_AF11_SDMMC1,
-    };
+    });
     hal.c.HAL_GPIO_Init(hal.dk.SD.CMD.port, &gpio_init);
 
     gpio_init = .{

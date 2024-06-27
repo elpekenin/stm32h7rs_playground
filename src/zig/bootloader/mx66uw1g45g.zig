@@ -583,14 +583,13 @@ fn hxspi_init() !void {
     } };
     try hal.zig.xspi.init(&hxspi);
 
-    var xspi_cfg = std.mem.zeroes(hal.c.XSPIM_CfgTypeDef);
-    xspi_cfg = .{
+    var xspi_cfg = std.mem.zeroInit(hal.c.XSPIM_CfgTypeDef, .{
         .nCSOverride = hal.c.HAL_XSPI_CSSEL_OVR_NCS1,
         .IOPort = hal.c.HAL_XSPIM_IOPORT_2,
         // STM code did not set this (ie: initialized to 0), but that
         // causes an assert error because it is supposed to be 1-256
         .Req2AckTime = 1,
-    };
+    });
     try hal.zig.xspi.configure(&hxspi, &xspi_cfg);
 }
 
@@ -665,14 +664,13 @@ fn auto_polling_ready(protocol: Protocol, rate: Rate) !void {
     };
     try hal.zig.xspi.send_command(&hxspi, &command);
 
-    var config = std.mem.zeroes(hal.c.XSPI_AutoPollingTypeDef);
-    config = .{
+    var config = std.mem.zeroInit(hal.c.XSPI_AutoPollingTypeDef, .{
         .MatchValue = 0,
         .MatchMask = Registers.Status.WIP,
         .MatchMode = hal.c.HAL_XSPI_MATCH_MODE_AND,
         .IntervalTime = AUTOPOLLING_INTERVAL_TIME,
         .AutomaticStop = hal.c.HAL_XSPI_AUTOMATIC_STOP_ENABLE,
-    };
+    });
     try hal.zig.xspi.auto_polling(&hxspi, &config);
 }
 
@@ -712,14 +710,13 @@ fn write_enable(protocol: Protocol, rate: Rate) !void {
     command.DQSMode = dqs_mode(rate);
     try hal.zig.xspi.send_command(&hxspi, &command);
 
-    var config = std.mem.zeroes(hal.c.XSPI_AutoPollingTypeDef);
-    config = .{
+    var config = std.mem.zeroInit(hal.c.XSPI_AutoPollingTypeDef, .{
         .MatchValue = 2,
         .MatchMask = 2,
         .MatchMode = hal.c.HAL_XSPI_MATCH_MODE_AND,
         .IntervalTime = AUTOPOLLING_INTERVAL_TIME,
         .AutomaticStop = hal.c.HAL_XSPI_AUTOMATIC_STOP_ENABLE,
-    };
+    });
     try hal.zig.xspi.auto_polling(&hxspi, &config);
 }
 
@@ -932,18 +929,6 @@ const state = struct {
     var protocol: Protocol = .SPI;
     var rate: Rate = .STR;
 };
-
-fn get_file_stem(comptime file_path: []const u8) []const u8 {
-    var path_iterator = std.mem.split(u8, file_path, "/");
-
-    var filename: []const u8 = undefined;
-    while (path_iterator.next()) |part| {
-        filename = part;
-    }
-
-    var name_iterator = std.mem.split(u8, filename, ".zig");
-    return name_iterator.first();
-}
 
 fn log_error(comptime src: std.builtin.SourceLocation) void {
     std.log.err("{s}.{s}() failed", .{ src.file, src.fn_name });
