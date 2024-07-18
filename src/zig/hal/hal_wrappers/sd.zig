@@ -7,8 +7,7 @@ const clocks = @import("rcc.zig");
 
 const TIMEOUT = 500;
 
-/// **_DO NOT USE_** only public for IRQ_Handler to access it
-pub var hsd = std.mem.zeroes(hal.c.SD_HandleTypeDef);
+var hsd = std.mem.zeroes(hal.c.SD_HandleTypeDef);
 
 const state = struct {
     var init = false;
@@ -119,4 +118,10 @@ pub fn card_info() !hal.c.HAL_SD_CardInfoTypeDef {
     }
 
     return info;
+}
+
+/// Do not use, only public for vector_table.zig to access it
+pub fn isr() callconv(.C) void {
+    std.log.debug("SDMMC1_IRQHandler", .{});
+    hal.c.HAL_SD_IRQHandler(&hsd);
 }

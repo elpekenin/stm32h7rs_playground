@@ -154,11 +154,13 @@ pub fn build(b: *std.Build) !void {
 
     zfat_dep.linkLibrary(libc_dep);
 
+    // otherwise it gets optimized away
+    start.forceUndefinedSymbol("vector_table");
+
     // *** Output ***
     b.installArtifact(start);
 }
 
 const stubs = &.{
     "system_stm32rsxx.c",
-    "stm32h7rsxx_hal_timebase_tim.c",
 };

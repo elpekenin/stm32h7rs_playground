@@ -6,6 +6,7 @@ const hal = @import("hal.zig");
 pub const cache = @import("hal_wrappers/cache.zig");
 pub const rcc = @import("hal_wrappers/rcc.zig");
 pub const sd = @import("hal_wrappers/sd.zig");
+pub const timer = @import("hal_wrappers/timer.zig");
 pub const usb = @import("hal_wrappers/usb.zig");
 pub const xspi = @import("hal_wrappers/xspi.zig");
 

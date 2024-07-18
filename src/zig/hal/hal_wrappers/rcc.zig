@@ -28,6 +28,7 @@ const Clock = struct {
 const RCC: *hal.c.RCC_TypeDef = @ptrFromInt(hal.c.RCC_BASE);
 const AHB4ENR = &RCC.AHB4ENR;
 const AHB5ENR = &RCC.AHB5ENR;
+const APB1ENR1 = &RCC.APB1ENR1;
 const APB4ENR = &RCC.APB4ENR;
 
 pub const GPIOA = Clock{
@@ -113,6 +114,11 @@ pub const XSPI2 = Clock{
 pub const SBS = Clock{
     .register = APB4ENR,
     .bitmask = hal.c.RCC_APB4ENR_SBSEN,
+};
+
+pub const TIM6 = Clock{
+    .register = APB1ENR1,
+    .bitmask = hal.c.RCC_APB1ENR1_TIM5EN,
 };
 
 fn port_to_clock(port: *hal.c.GPIO_TypeDef) Clock {
