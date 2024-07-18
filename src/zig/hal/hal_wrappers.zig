@@ -104,7 +104,6 @@ comptime {
     _ = @import("hal_wrappers/msp/base.zig");
     _ = @import("hal_wrappers/msp/sd.zig");
     _ = @import("hal_wrappers/msp/xspi.zig");
-    _ = @import("hal_wrappers/irq.zig");
 }
 
 pub const Active = enum {
