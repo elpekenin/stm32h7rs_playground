@@ -3,7 +3,7 @@
 const std = @import("std");
 const hal = @import("../hal.zig");
 
-const clocks = @import("clocks.zig");
+const clocks = @import("rcc.zig");
 
 const TIMEOUT = 500;
 

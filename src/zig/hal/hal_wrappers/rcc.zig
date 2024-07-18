@@ -143,3 +143,10 @@ pub fn enable_gpio(port: *hal.c.GPIO_TypeDef) void {
 pub fn disable_gpio(port: *hal.c.GPIO_TypeDef) void {
     port_to_clock(port).disable();
 }
+
+/// Configure RCC
+pub fn config(rcc_config: *hal.c.RCC_OscInitTypeDef) !void {
+    if (hal.c.HAL_RCC_OscConfig(rcc_config) != hal.c.HAL_OK) {
+        std.debug.panic("HAL_RCC_OscConfig", .{});
+    }
+}

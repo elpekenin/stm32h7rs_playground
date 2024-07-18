@@ -11,6 +11,10 @@ pub const SIZE = 0x08000000;
 
 var hxspi = std.mem.zeroes(hal.c.XSPI_HandleTypeDef);
 
+// //////////////////////////// //
+// Adapted from STM header file //
+// //////////////////////////// //
+
 /// 1024 blocks of 64KBytes
 const BLOCK_64K = 64 * 1024;
 /// 16384 sectors of 4KBytes
@@ -39,6 +43,18 @@ const DummyCyclesConfig = struct {
     const READ_OCTAL_DTR = 6;
     const REG_OCTAL = 4;
     const REG_OCTAL_DTR = 5;
+};
+
+const MAX_FREQ = switch (DummyCyclesConfig.READ_OCTAL) {
+    20 => 200000000,
+    18 => 173000000,
+    16 => 166000000,
+    14 => 155000000,
+    12 => 133000000,
+    10 => 104000000,
+    8 => 84000000,
+    6 => 66000000,
+    else => @compileError("Invalid config."),
 };
 
 /// Dummy cycles needed for different operations
@@ -396,9 +412,9 @@ const Info = struct {
 
 /// Protocol
 const Protocol = enum {
-    // 1-1-1 commands, Power on H/W default setting
+    /// 1-1-1 commands, Power on H/W default setting
     SPI,
-    // 8-8-8 commands
+    /// 8-8-8 commands
     OPI,
 };
 
@@ -427,9 +443,6 @@ const AddressWidth = enum {
     /// 4 Bytes address mode
     _4B,
 };
-
-// *** End of STM adapted header ***
-// *********************************
 
 // //////////////////////////////////////////////// //
 // Helpers for protocol-/transfer- dependant config //
@@ -561,61 +574,57 @@ inline fn address_width(addr_width: AddressWidth) u32 {
 /// Assert that the flash has been initilized before acting
 fn assert_init() !void {
     if (!state.init) {
-        std.log.err("external flash not ready", .{});
-        return error.NotReady;
+        return error.NotInit;
     }
 }
 
 /// Assert that we don't try and user SPI + DTR
 inline fn assert_spi_dtr(protocol: Protocol, rate: Rate) !void {
     if (protocol == .SPI and rate == .DTR) {
-        std.log.err("Cant use SPI + DTR", .{});
-        return error.InvalidParams;
+        return error.SpiAndDtr;
     }
 }
 
 /// Assert that we don't try and use OPI with 3byte address mode
 inline fn assert_opi_3bytes(protocol: Protocol, addr_width: AddressWidth) !void {
     if (protocol == .OPI and addr_width == ._3B) {
-        std.log.err("Cant use OPI + 3byte address", .{});
-        return error.InvalidParams;
+        return error.OpiAnd3B;
     }
 }
 
 /// Assert that we don't try and write data longer than a page's size
 inline fn assert_data_len(data: []const u8) !void {
     if (data.len > PAGE_SIZE) {
-        std.log.err("Size bigger than a page", .{});
-        return error.InvalidParams;
+        return error.DataTooLong;
     }
 }
 
 fn hxspi_init() !void {
-    hxspi = .{ .Instance = hal.c.XSPI2, .Init = .{
-        .FifoThresholdByte = 1,
-        .MemorySize = hal.c.HAL_XSPI_SIZE_1GB,
-        .ChipSelectHighTimeCycle = 1,
-        .FreeRunningClock = hal.c.HAL_XSPI_FREERUNCLK_DISABLE,
-        .ClockMode = hal.c.HAL_XSPI_CLOCK_MODE_0,
-        .DelayHoldQuarterCycle = hal.c.HAL_XSPI_DHQC_DISABLE,
-        .ClockPrescaler = 1, // ??
-        .SampleShifting = hal.c.HAL_XSPI_SAMPLE_SHIFT_NONE, // ??
-        .ChipSelectBoundary = hal.c.HAL_XSPI_BONDARYOF_NONE,
-        .MemoryMode = hal.c.HAL_XSPI_SINGLE_MEM,
-        .WrapSize = hal.c.HAL_XSPI_WRAP_NOT_SUPPORTED,
-        .MemoryType = hal.c.HAL_XSPI_MEMTYPE_MACRONIX,
-        // .MemorySelect = hal.c.HAL_XSPI_CSSEL_NCS1,
-    } };
-    try hal.zig.xspi.init(&hxspi);
+    hxspi = .{
+        .Instance = hal.c.XSPI2,
+        .Init = .{
+            .FifoThresholdByte = 1,
+            .MemorySize = hal.c.HAL_XSPI_SIZE_1GB,
+            .ChipSelectHighTimeCycle = 2, // 1 or 2 ??
+            .FreeRunningClock = hal.c.HAL_XSPI_FREERUNCLK_DISABLE,
+            .ClockMode = hal.c.HAL_XSPI_CLOCK_MODE_0,
+            .DelayHoldQuarterCycle = hal.c.HAL_XSPI_DHQC_DISABLE,
+            .SampleShifting = hal.c.HAL_XSPI_SAMPLE_SHIFT_NONE, // ??
+            .ChipSelectBoundary = hal.c.HAL_XSPI_BONDARYOF_NONE,
+            .MemoryMode = hal.c.HAL_XSPI_SINGLE_MEM,
+            .WrapSize = hal.c.HAL_XSPI_WRAP_NOT_SUPPORTED,
+            .MemoryType = hal.c.HAL_XSPI_MEMTYPE_MACRONIX,
+            // .MemorySelect = hal.c.HAL_XSPI_CSSEL_NCS1, // need or skip ??
+        },
+    };
 
-    // var xspi_cfg = std.mem.zeroInit(hal.c.XSPIM_CfgTypeDef, .{
-    //     .nCSOverride = hal.c.HAL_XSPI_CSSEL_OVR_NCS1,
-    //     .IOPort = hal.c.HAL_XSPIM_IOPORT_2,
-    //     // STM code did not set this (ie: initialized to 0), but that
-    //     // causes an assert error because it is supposed to be 1-256
-    //     .Req2AckTime = 1,
-    // });
-    // try hal.zig.xspi.configure(&hxspi, &xspi_cfg);
+    const xspi_clk = hal.c.HAL_RCCEx_GetPeriphCLKFreq(hal.c.RCC_PERIPHCLK_XSPI2);
+    hxspi.Init.ClockPrescaler = xspi_clk / MAX_FREQ;
+    if ((xspi_clk % MAX_FREQ) == 0) {
+        hxspi.Init.ClockPrescaler -= 1;
+    }
+
+    try hal.zig.xspi.init(&hxspi);
 }
 
 fn reset_enable(protocol: Protocol, rate: Rate) !void {
@@ -689,13 +698,16 @@ fn auto_polling_ready(protocol: Protocol, rate: Rate) !void {
     };
     try hal.zig.xspi.send_command(&hxspi, &command);
 
-    var config = std.mem.zeroInit(hal.c.XSPI_AutoPollingTypeDef, .{
-        .MatchValue = 0,
-        .MatchMask = Registers.Status.WIP,
-        .MatchMode = hal.c.HAL_XSPI_MATCH_MODE_AND,
-        .IntervalTime = AUTOPOLLING_INTERVAL_TIME,
-        .AutomaticStop = hal.c.HAL_XSPI_AUTOMATIC_STOP_ENABLE,
-    });
+    var config = std.mem.zeroInit(
+        hal.c.XSPI_AutoPollingTypeDef,
+        .{
+            .MatchValue = 0,
+            .MatchMask = Registers.Status.WIP,
+            .MatchMode = hal.c.HAL_XSPI_MATCH_MODE_AND,
+            .IntervalTime = AUTOPOLLING_INTERVAL_TIME,
+            .AutomaticStop = hal.c.HAL_XSPI_AUTOMATIC_STOP_ENABLE,
+        },
+    );
     try hal.zig.xspi.auto_polling(&hxspi, &config);
 }
 
@@ -735,13 +747,16 @@ fn write_enable(protocol: Protocol, rate: Rate) !void {
     command.DQSMode = dqs_mode(rate);
     try hal.zig.xspi.send_command(&hxspi, &command);
 
-    var config = std.mem.zeroInit(hal.c.XSPI_AutoPollingTypeDef, .{
-        .MatchValue = 2,
-        .MatchMask = 2,
-        .MatchMode = hal.c.HAL_XSPI_MATCH_MODE_AND,
-        .IntervalTime = AUTOPOLLING_INTERVAL_TIME,
-        .AutomaticStop = hal.c.HAL_XSPI_AUTOMATIC_STOP_ENABLE,
-    });
+    var config = std.mem.zeroInit(
+        hal.c.XSPI_AutoPollingTypeDef,
+        .{
+            .MatchValue = 2,
+            .MatchMask = 2,
+            .MatchMode = hal.c.HAL_XSPI_MATCH_MODE_AND,
+            .IntervalTime = AUTOPOLLING_INTERVAL_TIME,
+            .AutomaticStop = hal.c.HAL_XSPI_AUTOMATIC_STOP_ENABLE,
+        },
+    );
     try hal.zig.xspi.auto_polling(&hxspi, &config);
 }
 
@@ -951,23 +966,26 @@ fn page_write_dtr(write_address: u32, data: []const u8) !void {
     try assert_spi_dtr(state.protocol, state.rate);
     try assert_data_len(data);
 
-    var command = std.mem.zeroInit(hal.c.XSPI_RegularCmdTypeDef, .{
-        .OperationType = hal.c.HAL_XSPI_OPTYPE_COMMON_CFG,
-        .InstructionMode = hal.c.HAL_XSPI_INSTRUCTION_8_LINES,
-        .InstructionDTRMode = hal.c.HAL_XSPI_INSTRUCTION_DTR_ENABLE,
-        .InstructionWidth = hal.c.HAL_XSPI_INSTRUCTION_16_BITS,
-        .Instruction = Commands.OPI.Memory.PAGE_PROG,
-        .AddressMode = hal.c.HAL_XSPI_ADDRESS_8_LINES,
-        .AddressDTRMode = hal.c.HAL_XSPI_ADDRESS_DTR_ENABLE,
-        .AddressWidth = hal.c.HAL_XSPI_ADDRESS_32_BITS,
-        .Address = write_address,
-        .AlternateBytesMode = hal.c.HAL_XSPI_ALT_BYTES_NONE,
-        .DataMode = hal.c.HAL_XSPI_DATA_8_LINES,
-        .DataDTRMode = hal.c.HAL_XSPI_DATA_DTR_ENABLE,
-        .DummyCycles = 0,
-        .DataLength = data.len,
-        .DQSMode = hal.c.HAL_XSPI_DQS_DISABLE,
-    });
+    var command = std.mem.zeroInit(
+        hal.c.XSPI_RegularCmdTypeDef,
+        .{
+            .OperationType = hal.c.HAL_XSPI_OPTYPE_COMMON_CFG,
+            .InstructionMode = hal.c.HAL_XSPI_INSTRUCTION_8_LINES,
+            .InstructionDTRMode = hal.c.HAL_XSPI_INSTRUCTION_DTR_ENABLE,
+            .InstructionWidth = hal.c.HAL_XSPI_INSTRUCTION_16_BITS,
+            .Instruction = Commands.OPI.Memory.PAGE_PROG,
+            .AddressMode = hal.c.HAL_XSPI_ADDRESS_8_LINES,
+            .AddressDTRMode = hal.c.HAL_XSPI_ADDRESS_DTR_ENABLE,
+            .AddressWidth = hal.c.HAL_XSPI_ADDRESS_32_BITS,
+            .Address = write_address,
+            .AlternateBytesMode = hal.c.HAL_XSPI_ALT_BYTES_NONE,
+            .DataMode = hal.c.HAL_XSPI_DATA_8_LINES,
+            .DataDTRMode = hal.c.HAL_XSPI_DATA_DTR_ENABLE,
+            .DummyCycles = 0,
+            .DataLength = data.len,
+            .DQSMode = hal.c.HAL_XSPI_DQS_DISABLE,
+        },
+    );
     try hal.zig.xspi.send_command(&hxspi, &command);
 
     try hal.zig.xspi.transmit(&hxspi, data.ptr);
@@ -987,7 +1005,12 @@ fn log_error(comptime src: std.builtin.SourceLocation) void {
     hal.zig.xspi.print_error(&hxspi);
 }
 
-pub fn init() !void {
+// /////////////// //
+// User-facing API //
+// /////////////// //
+
+/// Configure the device before using it
+pub fn init(protocol: Protocol, rate: Rate) !void {
     if (state.init) {
         return;
     }
@@ -997,11 +1020,13 @@ pub fn init() !void {
     try hxspi_init();
     try reset();
     try auto_polling_ready(.SPI, .STR);
+    try configure(protocol, rate);
 
     state.init = true;
     std.log.debug("OSPI flash ready", .{});
 }
 
+/// Get information about the chip
 pub fn flash_info() Info {
     return .{
         .FlashSize = FLASH_SIZE,
@@ -1016,6 +1041,7 @@ pub fn flash_info() Info {
     };
 }
 
+/// Reset the device
 pub fn reset() !void {
     errdefer log_error(@src());
 
@@ -1032,19 +1058,20 @@ pub fn reset() !void {
     hal.c.HAL_Delay(RESET_MAX_TIME);
 }
 
+/// Change the protocol/rate used to talk to chip
 pub fn configure(protocol: Protocol, rate: Rate) !void {
     errdefer log_error(@src());
 
-    if (state.protocol == protocol and state.rate == rate) {
+    // already in this state
+    // special case for the initial configuratiion being the initial state of struct
+    if (!state.init and state.protocol == protocol and state.rate == rate) {
         return;
     }
 
     switch (state.protocol) {
         .SPI => switch (protocol) {
-            .SPI => {
-                // already SPI, it has no STR/DTR, nothing to do here
-            },
-
+            // already SPI, it has no STR/DTR, nothing to do here
+            .SPI => {},
             .OPI => try enter_opi(rate),
         },
 
@@ -1052,10 +1079,8 @@ pub fn configure(protocol: Protocol, rate: Rate) !void {
             try exit_opi();
 
             switch (protocol) {
-                .SPI => {
-                    // SPI has no STR/DTR, just exit OPI
-                },
-
+                // SPI has no STR/DTR, just exit OPI
+                .SPI => {},
                 .OPI => if (state.rate != rate) {
                     try enter_opi(rate);
                 },
@@ -1067,11 +1092,16 @@ pub fn configure(protocol: Protocol, rate: Rate) !void {
     state.rate = rate;
 }
 
+/// Read from the flash
 pub fn read(read_address: u32, data: []u8) !void {
     errdefer log_error(@src());
-    return page_read_str(read_address, data);
+    switch (state.rate) {
+        .STR => return page_read_str(read_address, data),
+        .DTR => unreachable,
+    }
 }
 
+/// Write into the flash
 pub fn write(write_address: u32, data: []const u8) !void {
     // TODO
     //   - (?) Support buffer.len > PAGE_SIZE

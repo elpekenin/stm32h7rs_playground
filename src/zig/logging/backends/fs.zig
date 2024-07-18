@@ -74,10 +74,13 @@ fn fatfs_write(context: Context, bytes: []const u8) FatFSWriteError!usize {
         try global_fs.mount(backend.mount, true);
         defer fatfs.FileSystem.unmount(backend.mount) catch std.debug.panic("Unmount", .{});
 
-        var file = try fatfs.File.open(backend.full_path(context.path), .{
-            .mode = .open_append,
-            .access = .write_only,
-        });
+        var file = try fatfs.File.open(
+            backend.full_path(context.path),
+            .{
+                .mode = .open_append,
+                .access = .write_only,
+            },
+        );
         defer file.close();
 
         _ = try file.write(bytes);

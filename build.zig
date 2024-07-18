@@ -1,5 +1,5 @@
 const std = @import("std");
-const PanicType = @import("src/zig/panic_config.zig").PanicType;
+const PanicType = @import("src/zig/common/panic_config.zig").PanicType;
 
 const Program = enum {
     const Self = @This();
@@ -36,7 +36,7 @@ pub fn build(b: *std.Build) !void {
     // *** Entry point ***
     const start = b.addExecutable(.{
         .name = b.fmt("{s}.elf", .{app_type.name()}), // STM32CubeProgrammer does not like the lack of extension
-        .root_source_file = b.path("src/zig/start.zig"),
+        .root_source_file = b.path("src/zig/common/start.zig"),
         .target = target,
         .optimize = optimize,
         .strip = false,
@@ -45,29 +45,41 @@ pub fn build(b: *std.Build) !void {
     start.setLinkerScript(b.path(b.fmt("ld/{s}.ld", .{app_type.name()})));
 
     // *** Dependencies ***
-    const libc_dep = b.dependency("picolibc", .{
-        .target = target,
-        .optimize = optimize,
-    }).artifact("c");
+    const libc_dep = b.dependency(
+        "foundation",
+        .{
+            .target = target,
+            .optimize = optimize,
+        },
+    ).artifact("foundation");
 
-    const hal_dep = b.dependency("hal", .{
-        .target = target,
-        .optimize = optimize,
-    }).artifact("hal");
+    const hal_dep = b.dependency(
+        "hal",
+        .{
+            .target = target,
+            .optimize = optimize,
+        },
+    ).artifact("hal");
 
     const rtt_dep = b.dependency("rtt", .{}).module("rtt");
 
-    const zfat_dep = b.dependency("zfat", .{
-        .target = target,
-        .optimize = optimize,
-        .@"static-rtc" = @as([]const u8, "2024-06-17"),
-        .@"no-libc" = true,
-    }).module("zfat");
+    const zfat_dep = b.dependency(
+        "zfat",
+        .{
+            .target = target,
+            .optimize = optimize,
+            .@"static-rtc" = @as([]const u8, "2024-06-17"),
+            .@"no-libc" = true,
+        },
+    ).module("zfat");
 
     // *** zig code ***
-    const hal_module = b.addModule("hal", .{
-        .root_source_file = b.path("src/zig/hal/hal.zig"),
-    });
+    const hal_module = b.addModule(
+        "hal",
+        .{
+            .root_source_file = b.path("src/zig/hal/hal.zig"),
+        },
+    );
     hal_module.addCSourceFiles(.{ // User-level configuration of the HAL
         .files = stubs,
         .flags = &.{"-fno-sanitize=undefined"},
@@ -77,8 +89,7 @@ pub fn build(b: *std.Build) !void {
     hal_module.addIncludePath(b.path("src/c")); // for @cImport
     inline for (.{
         // prevent CMSIS from providing a default entrypoint
-        // zig does not properly handle the typedef in a func and C->zig fails
-        // ... and we shouldnt need "copy_table_t" or "zero_table_t"
+        // and instead make it use the one defined on start.zig
         "-D__PROGRAM_START=_start",
 
         // needed for a HAL code to be compiled
@@ -90,15 +101,21 @@ pub fn build(b: *std.Build) !void {
         hal_module.c_macros.append(b.allocator, macro) catch @panic("OOM");
     }
 
-    const app_module = b.addModule("application", .{
-        .root_source_file = b.path(
-            b.fmt("src/zig/{s}/main.zig", .{app_type.name()}),
-        ),
-    });
+    const app_module = b.addModule(
+        "application",
+        .{
+            .root_source_file = b.path(
+                b.fmt("src/zig/{s}/main.zig", .{app_type.name()}),
+            ),
+        },
+    );
 
-    const logging_module = b.addModule("logging", .{
-        .root_source_file = b.path("src/zig/logging/logging.zig"),
-    });
+    const logging_module = b.addModule(
+        "logging",
+        .{
+            .root_source_file = b.path("src/zig/logging/logging.zig"),
+        },
+    );
 
     const options = b.addOptions();
     options.addOption(bool, "has_zfat", true);
@@ -142,8 +159,6 @@ pub fn build(b: *std.Build) !void {
 }
 
 const stubs = &.{
-    "dummy_syscalls.c",
-    "interrupt_table.c",
     "system_stm32rsxx.c",
     "stm32h7rsxx_hal_timebase_tim.c",
 };

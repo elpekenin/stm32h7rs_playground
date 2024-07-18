@@ -32,7 +32,7 @@ pub fn check() bool {
 }
 
 fn flash_test() !i32 {
-    try ext_flash.init();
+    try ext_flash.init(.SPI, .STR);
 
     const write_buf = [_]u8{'F'} ** 128;
     try ext_flash.write(0, &write_buf);
