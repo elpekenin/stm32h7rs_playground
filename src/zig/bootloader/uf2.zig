@@ -7,7 +7,7 @@ const jump = @import("jump.zig");
 
 const ext_flash = @import("mx66uw1g45g.zig");
 
-// Green LED
+/// Green LED
 const INDICATOR = hal.dk.LEDS[0];
 
 const UF2_FLAG = 0xBEBECAFE;

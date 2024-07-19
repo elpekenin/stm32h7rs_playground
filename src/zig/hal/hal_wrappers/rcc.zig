@@ -31,94 +31,94 @@ const AHB5ENR = &RCC.AHB5ENR;
 const APB1ENR1 = &RCC.APB1ENR1;
 const APB4ENR = &RCC.APB4ENR;
 
-pub const GPIOA = Clock{
+pub const GPIOA: Clock = .{
     .register = AHB4ENR,
     .bitmask = hal.c.RCC_AHB4ENR_GPIOAEN,
 };
 
-pub const GPIOB = Clock{
+pub const GPIOB: Clock = .{
     .register = AHB4ENR,
     .bitmask = hal.c.RCC_AHB4ENR_GPIOBEN,
 };
 
-pub const GPIOC = Clock{
+pub const GPIOC: Clock = .{
     .register = AHB4ENR,
     .bitmask = hal.c.RCC_AHB4ENR_GPIOCEN,
 };
 
-pub const GPIOD = Clock{
+pub const GPIOD: Clock = .{
     .register = AHB4ENR,
     .bitmask = hal.c.RCC_AHB4ENR_GPIODEN,
 };
 
-pub const GPIOE = Clock{
+pub const GPIOE: Clock = .{
     .register = AHB4ENR,
     .bitmask = hal.c.RCC_AHB4ENR_GPIOEEN,
 };
 
-pub const GPIOF = Clock{
+pub const GPIOF: Clock = .{
     .register = AHB4ENR,
     .bitmask = hal.c.RCC_AHB4ENR_GPIOFEN,
 };
 
-pub const GPIOG = Clock{
+pub const GPIOG: Clock = .{
     .register = AHB4ENR,
     .bitmask = hal.c.RCC_AHB4ENR_GPIOGEN,
 };
 
-pub const GPIOH = Clock{
+pub const GPIOH: Clock = .{
     .register = AHB4ENR,
     .bitmask = hal.c.RCC_AHB4ENR_GPIOHEN,
 };
 
-pub const GPIOM = Clock{
+pub const GPIOM: Clock = .{
     .register = AHB4ENR,
     .bitmask = hal.c.RCC_AHB4ENR_GPIOMEN,
 };
 
-pub const GPION = Clock{
+pub const GPION: Clock = .{
     .register = AHB4ENR,
     .bitmask = hal.c.RCC_AHB4ENR_GPIONEN,
 };
 
-pub const GPIOO = Clock{
+pub const GPIOO: Clock = .{
     .register = AHB4ENR,
     .bitmask = hal.c.RCC_AHB4ENR_GPIOOEN,
 };
 
-pub const GPIOP = Clock{
+pub const GPIOP: Clock = .{
     .register = AHB4ENR,
     .bitmask = hal.c.RCC_AHB4ENR_GPIOPEN,
 };
 
-pub const SDMMC1 = Clock{
+pub const SDMMC1: Clock = .{
     .register = AHB5ENR,
     .bitmask = hal.c.RCC_AHB5ENR_SDMMC1EN,
 };
 
-pub const XSPIM = Clock{
+pub const XSPIM: Clock = .{
     .register = AHB5ENR,
     .bitmask = hal.c.RCC_AHB5ENR_XSPIMEN,
 };
 
-pub const XSPI1 = Clock{
+pub const XSPI1: Clock = .{
     .register = AHB5ENR,
     .bitmask = hal.c.RCC_AHB5ENR_XSPI1EN,
 };
 
-pub const XSPI2 = Clock{
+pub const XSPI2: Clock = .{
     .register = AHB5ENR,
     .bitmask = hal.c.RCC_AHB5ENR_XSPI2EN,
 };
 
-pub const SBS = Clock{
+pub const SBS: Clock = .{
     .register = APB4ENR,
     .bitmask = hal.c.RCC_APB4ENR_SBSEN,
 };
 
-pub const TIM6 = Clock{
+pub const TIM6: Clock = .{
     .register = APB1ENR1,
-    .bitmask = hal.c.RCC_APB1ENR1_TIM5EN,
+    .bitmask = hal.c.RCC_APB1ENR1_TIM6EN,
 };
 
 fn port_to_clock(port: *hal.c.GPIO_TypeDef) Clock {

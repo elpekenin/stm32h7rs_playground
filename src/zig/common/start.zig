@@ -72,8 +72,8 @@ pub export fn _start() callconv(.C) noreturn {
             }
         }
 
-        std.debug.panic("main's returned an error ({s})", .{@errorName(main_err)});
+        std.debug.panic("main returned an error ({s})", .{@errorName(main_err)});
     };
 
-    std.debug.panic("main should never exit, exitcode: {}", .{ret});
+    std.debug.panic("main's exitcode: {}. hint: it should never exit...", .{ret});
 }

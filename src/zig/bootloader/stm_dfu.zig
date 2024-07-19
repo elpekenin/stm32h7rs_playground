@@ -7,7 +7,7 @@ const jump = @import("jump.zig");
 
 const BUILTIN_ADDR = 0x1FF18000;
 
-// Red LED
+/// Red LED
 const INDICATOR = hal.dk.LEDS[2];
 
 inline fn disable_irq() void {

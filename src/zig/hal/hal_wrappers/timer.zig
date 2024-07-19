@@ -85,13 +85,10 @@ pub fn isr() callconv(.C) void {
     hal.c.HAL_TIM_IRQHandler(&TimHandle);
 }
 
-// void HAL_SuspendTick(void)
-// {
-//   // Disable TIM6 update interrupt
-//   __HAL_TIM_DISABLE_IT(&TimHandle, TIM_IT_UPDATE);
-// }
+export fn HAL_ResumeTick() callconv(.C) void {
+    TimHandle.Instance.*.DIER |= hal.c.TIM_IT_UPDATE;
+}
 
-// void HAL_ResumeTick(void) {
-//   // Enable TIM6 update interrupt
-//   __HAL_TIM_ENABLE_IT(&TimHandle, TIM_IT_UPDATE);
-// }
+export fn HAL_SuspendTick() callconv(.C) void {
+    TimHandle.Instance.*.DIER &= ~hal.c.TIM_IT_UPDATE;
+}
