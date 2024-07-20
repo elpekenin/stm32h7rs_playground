@@ -5,12 +5,10 @@ const hal = @import("hal");
 
 const ISR = *const fn () callconv(.C) void;
 
-const ram_start = 0x24000000;
-const ram_size = 0x00071C00;
-const __stack = ram_start + ram_size;
+extern var __stack:anyopaque;
 
 export const vector_table: VectorTable linksection(".data.init.enter") = .{
-    .stack_pointer = __stack,
+    .stack_pointer = &__stack,
     .Reset = @import("start.zig")._start,
     .SDMMC1 = hal.zig.sd.isr,
     .TIM6 = hal.zig.timer.isr,
@@ -21,7 +19,7 @@ fn default_handler() callconv(.C) void {
 }
 
 const VectorTable = extern struct {
-    stack_pointer: u32,
+    stack_pointer: *anyopaque,
     Reset: ISR,
     NMI: ISR = default_handler,
     HardFault: ISR = default_handler,

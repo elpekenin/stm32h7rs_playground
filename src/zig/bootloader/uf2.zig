@@ -2,6 +2,8 @@
 //! over USB
 
 const std = @import("std");
+const logger = std.log.scoped(.uf2);
+
 const hal = @import("hal");
 const jump = @import("jump.zig");
 
@@ -36,23 +38,23 @@ fn flash_test() !i32 {
 
     const write_buf = [_]u8{'F'} ** 128;
     try ext_flash.write(0, &write_buf);
-    std.log.info("written to flash", .{});
+    logger.info("written to flash", .{});
 
     var read_buf: [write_buf.len]u8 = undefined;
     try ext_flash.read(0, &read_buf);
-    std.log.info("read: {any}", .{read_buf});
+    logger.info("read: {any}", .{read_buf});
 
     return 0;
 }
 
-pub fn app_jump() !i32 {
+pub fn app_jump() !noreturn {
     // fails, for now.
     _ = try flash_test();
 
     jump.to(ext_flash.BASE);
 }
 
-pub fn main() !i32 {
+pub fn main() noreturn {
     clear_flag();
 
     INDICATOR.set(true);

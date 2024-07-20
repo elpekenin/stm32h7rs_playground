@@ -4,6 +4,8 @@
 //! See: https://github.com/STMicroelectronics/stm32-mx66uw1g45g/blob/main/mx66uw1g45g.c
 
 const std = @import("std");
+const logger = std.log.scoped(.mx66);
+
 const hal = @import("hal");
 
 pub const BASE = 0x70000000;
@@ -1001,7 +1003,7 @@ const state = struct {
 };
 
 fn log_error(comptime src: std.builtin.SourceLocation) void {
-    std.log.err("{s}.{s}() failed", .{ src.file, src.fn_name });
+    logger.err("{s}.{s}() failed", .{ src.file, src.fn_name });
     hal.zig.xspi.print_error(&hxspi);
 }
 
@@ -1023,7 +1025,7 @@ pub fn init(protocol: Protocol, rate: Rate) !void {
     try configure(protocol, rate);
 
     state.init = true;
-    std.log.debug("OSPI flash ready", .{});
+    logger.debug("OSPI flash ready", .{});
 }
 
 /// Get information about the chip
@@ -1110,16 +1112,16 @@ pub fn write(write_address: u32, data: []const u8) !void {
     errdefer log_error(@src());
 
     try auto_polling_ready(state.protocol, state.rate);
-    std.log.debug("Polled", .{});
+    logger.debug("Polled", .{});
 
     try write_enable(state.protocol, state.rate);
-    std.log.debug("write enabled", .{});
+    logger.debug("write enabled", .{});
 
     switch (state.rate) {
         .STR => try page_write_str(write_address, data),
         .DTR => try page_write_dtr(write_address, data),
     }
-    std.log.debug("wrote", .{});
+    logger.debug("wrote", .{});
 
     try auto_polling_ready(state.protocol, state.rate);
 }

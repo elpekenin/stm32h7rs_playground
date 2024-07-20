@@ -4,6 +4,8 @@
 //! a module generated on build.zig
 
 const std = @import("std");
+const logger = std.log.scoped(.main);
+
 const hal = @import("hal");
 const app = @import("application");
 
@@ -19,15 +21,15 @@ comptime {
 }
 
 const symbols = struct {
-    extern var __bss_start: u8;
-    extern var __bss_end: u8;
+    extern var __bss_start: anyopaque;
+    extern var __bss_end: anyopaque;
 
     // RAM to be filled
-    extern var __data_start: u8;
-    extern var __data_end: u8;
+    extern var __data_start: anyopaque;
+    extern var __data_end: anyopaque;
 
     // contents in flash, to be copied in RAM
-    extern var __data_source: u8;
+    extern var __data_source: anyopaque;
 };
 
 /// Entrypoint of the program (Reset_Handler in interrupt table).
@@ -52,28 +54,25 @@ pub export fn _start() callconv(.C) noreturn {
 
     hal.zig.init();
 
-    // warning if SD not available
-    if (!hal.zig.sd.is_connected()) {
-        std.log.warn("404 SD not found", .{});
-    }
-
     const ret = app.run() catch |main_err| {
+        logger.err("returned an error ({s})", .{@errorName(main_err)});
+
         if (@errorReturnTrace()) |stack_trace| {
             var frame_index: usize = 0;
             var frames_left: usize = @min(stack_trace.index, stack_trace.instruction_addresses.len);
 
-            std.log.err("Stack trace:", .{});
             while (frames_left != 0) : ({
                 frames_left -= 1;
                 frame_index = (frame_index + 1) % stack_trace.instruction_addresses.len;
             }) {
                 const return_address = stack_trace.instruction_addresses[frame_index];
-                std.log.err("0x{x}", .{return_address});
+                logger.err("\t0x{x}", .{return_address});
             }
         }
 
-        std.debug.panic("main returned an error ({s})", .{@errorName(main_err)});
+        while (true) {}
     };
 
-    std.debug.panic("main's exitcode: {}. hint: it should never exit...", .{ret});
+    logger.err("exitcode: {}", .{ret});
+    while (true) {}
 }

@@ -1,4 +1,7 @@
+//! Override builtin panic handler
+
 const std = @import("std");
+const logger = std.log.scoped(.panic);
 
 const hal = @import("hal");
 const options = @import("options");
@@ -8,7 +11,7 @@ const PanicType = @import("panic_config.zig").PanicType;
 pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
     @setCold(true);
 
-    std.log.err("Panic: {s}", .{msg});
+    logger.err("{s}", .{msg});
 
     // endless rainbow
     const panic_type: PanicType = @enumFromInt(options.panic_type);

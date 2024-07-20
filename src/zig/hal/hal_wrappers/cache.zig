@@ -1,6 +1,8 @@
 //! Control instruction and data caches
 
 const std = @import("std");
+const logger = std.log.scoped(.cache);
+
 const hal = @import("../hal.zig");
 
 inline fn DSB() void {
@@ -14,9 +16,9 @@ inline fn ISB() void {
 const SCB = @as(*hal.c.SCB_Type, @ptrFromInt(hal.c.SCB_BASE));
 
 pub const i_cache = struct {
-    pub fn enable() void {
+    pub fn enable() !void {
         if ((SCB.CCR & hal.c.SCB_CCR_IC_Msk) != 0) {
-            std.log.info("i-cache was already enabled", .{});
+            // already enabled
             return;
         }
 
@@ -51,6 +53,6 @@ pub const i_cache = struct {
         DSB();
         ISB();
 
-        std.log.debug("i-cache disabled", .{});
+        logger.debug("i-cache disabled", .{});
     }
 };

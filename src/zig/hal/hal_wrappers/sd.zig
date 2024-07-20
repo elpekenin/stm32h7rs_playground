@@ -1,6 +1,8 @@
 //! Use the SD/MMC peripheral
 
 const std = @import("std");
+const logger = std.log.scoped(.sd);
+
 const hal = @import("../hal.zig");
 
 const clocks = @import("rcc.zig");
@@ -15,8 +17,8 @@ const state = struct {
 
 /// Print the error code stored in hsd
 fn print_error() void {
-    std.log.err("Error: 0b{b:0>32}", .{hsd.ErrorCode});
-    std.log.err("State: 0b{b:0>32}", .{hsd.Instance.*.STA});
+    logger.err("Error: 0b{b:0>32}", .{hsd.ErrorCode});
+    logger.err("State: 0b{b:0>32}", .{hsd.Instance.*.STA});
 }
 
 /// Check if the card is inserter
@@ -71,7 +73,7 @@ pub fn init() !void {
 
     // Not needed?
     // if (!wait_ready()) {
-    //     std.log.err("Ready state", .{});
+    //     logger.err("Ready state", .{});
     //     return error.NotReady;
     // }
 
@@ -85,7 +87,7 @@ pub fn read(data: [*]u8, first_block: u32, n_blocks: u32) !void {
     }
 
     if (hal.c.HAL_SD_ReadBlocks(&hsd, data, first_block, n_blocks, TIMEOUT) != hal.c.HAL_OK) {
-        std.log.err("SD read", .{});
+        logger.err("SD read", .{});
         return error.HalError;
     }
 
@@ -99,7 +101,7 @@ pub fn write(data: [*]const u8, first_block: u32, n_blocks: u32) !void {
     }
 
     if (hal.c.HAL_SD_WriteBlocks(&hsd, data, first_block, n_blocks, TIMEOUT) != hal.c.HAL_OK) {
-        std.log.err("SD write", .{});
+        logger.err("SD write", .{});
         return error.HalError;
     }
 
@@ -122,6 +124,6 @@ pub fn card_info() !hal.c.HAL_SD_CardInfoTypeDef {
 
 /// Do not use, only public for vector_table.zig to access it
 pub fn isr() callconv(.C) void {
-    std.log.debug("SDMMC1_IRQHandler", .{});
+    logger.debug("SDMMC1_IRQHandler", .{});
     hal.c.HAL_SD_IRQHandler(&hsd);
 }

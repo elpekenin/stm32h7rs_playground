@@ -22,7 +22,7 @@ pub fn check() bool {
     return hal.dk.BUTTON.read();
 }
 
-pub fn bootloader() !i32 {
+pub fn bootloader() noreturn {
     INDICATOR.set(true);
     hal.c.HAL_Delay(500);
     INDICATOR.set(false);
