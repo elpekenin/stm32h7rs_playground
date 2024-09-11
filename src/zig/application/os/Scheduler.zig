@@ -15,10 +15,6 @@ const platform = switch(builtin.target.os.tag) {
     else => @compileError("Unsupported target platform"),
 };
 
-fn noop(_: Thread.State) Thread.Result {
-    std.debug.panic("Called noop function.", .{});
-}
-
 const QUEUE_SIZE = 200;
 const QueueT = std.BoundedArray(Thread, QUEUE_SIZE);
 
@@ -28,84 +24,74 @@ next_id: Thread.Id,
 queue: QueueT,
 
 fn getInsertionIndex(self: *Self, deadline: Thread.Ticks) usize {
-    var i: usize = 0;
+    for (0 .. self.queue.len) |i| {
+        const thread = self.queue.get(i);
 
-    for (self.queue.buffer) |thread| {
-        if (thread.deadline > deadline or thread.id == Thread.INVALID) {
-            break;
+        if (thread.deadline > deadline) {
+            return i;
         }
-
-        i += 1;
     }
 
-    std.debug.assert(i < QUEUE_SIZE);
-    return i;
+    return self.queue.len;
 }
 
 fn add(self: *Self, thread: Thread) void {
-    std.debug.assert(thread.id != Thread.INVALID);
-    self.queue.insert(
-        self.getInsertionIndex(thread.deadline),
-        thread,
-    ) catch std.debug.panic("Scheduler.add()", .{});
+    std.debug.assert(self.queue.len < QUEUE_SIZE);
+
+    const i = self.getInsertionIndex(thread.deadline);
+    self.queue.insert(i, thread) catch unreachable;
 }
 
 fn pop(self: *Self, index: usize) Thread {
-    std.debug.assert(index < QUEUE_SIZE);
     return self.queue.orderedRemove(index);
 }
 
 pub fn init() Self {
-    var self = Self{
-        .next_id = Thread.INVALID,
-        .queue = QueueT.init(QUEUE_SIZE) catch unreachable,
+    return .{
+        .next_id = 0,
+        .queue = QueueT.init(0) catch unreachable,
     };
-
-    for (0 .. QUEUE_SIZE) |i| {
-        self.queue.set(i, .{
-            .deadline = 0,
-            .id = Thread.INVALID,
-            .private = null,
-            .run = noop,
-        });
-    }
-
-    return self;
 }
 
 pub fn spawn(self: *Self, func: Thread.Fn, private: Thread.Private) Thread.Id {
-    self.next_id = std.math.add(Thread.Id, self.next_id, 1) catch {
-        std.debug.panic("Overflowed Thread.Id", .{});
-    };
+    const id = self.next_id;
 
     self.add(.{
-        .id = self.next_id,
+        .id = id,
         .run = func,
         .private = private,
         .deadline = platform.getTicks(),
     });
 
-    return self.next_id;
+    self.next_id = std.math.add(Thread.Id, self.next_id, 1) catch {
+        std.debug.panic("Overflowed Thread.Id", .{});
+    };
+
+    return id;
 }
 
 /// find a thread with the given id and remove it
-/// returns whether the id was found
-pub fn kill(self: *Self, id: Thread.Id) bool {
-    for (&self.queue, 0..) |*thread, i| {
-        if (thread.id == id) {
-            self.pop(i);
-            return true;
+/// returns whether the killed Thread (if found)
+pub fn kill(self: *Self, id: Thread.Id) ?Thread {
+    for (0 .. self.queue.len) |i| {
+        if (self.queue.get(i).id == id) {
+            return self.pop(i);
         }
     }
 
-    return false;
+    return null;
 }
 
 pub fn run(self: *Self) void {
+    if (self.queue.len == 0) {
+        // TODO: panic instead? no threads at all
+        return;
+    }
+
     const head = self.queue.get(0);
 
     // nothing to do (yet)
-    if (head.deadline > platform.getTicks() or head.id == Thread.INVALID) {
+    if (head.deadline > platform.getTicks()) {
         return;
     }
 

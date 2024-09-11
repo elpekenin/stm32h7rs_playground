@@ -7,9 +7,6 @@ const Self = @This();
 /// unique identifier
 pub const Id = u32;
 
-/// magic value
-pub const INVALID: Id = 0;
-
 pub const Ticks = u32;
 
 pub const ExitCode = u8;
