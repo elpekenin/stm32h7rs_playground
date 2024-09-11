@@ -9,16 +9,18 @@ const logger = std.log.scoped(.main);
 const hal = @import("hal");
 const app = @import("application");
 
+const panic_mod = @import("panic.zig");
+
+comptime {
+    _ = @import("vector_table.zig");
+}
+
 // zig std config
 pub const std_options = .{
     .log_level = .debug,
     .logFn = @import("logging").logFn,
 };
-pub const panic = @import("panic.zig").panic;
-
-comptime {
-    _ = @import("vector_table.zig");
-}
+pub const panic = panic_mod.panic;
 
 const symbols = struct {
     extern var __bss_start: anyopaque;
@@ -54,7 +56,7 @@ pub export fn _start() callconv(.C) noreturn {
 
     hal.zig.init();
 
-    const ret = app.run() catch |main_err| {
+    const ret = app.main() catch |main_err| {
         logger.err("returned an error ({s})", .{@errorName(main_err)});
 
         if (@errorReturnTrace()) |stack_trace| {
@@ -70,9 +72,9 @@ pub export fn _start() callconv(.C) noreturn {
             }
         }
 
-        while (true) {}
+        panic_mod.indicator();
     };
 
     logger.err("exitcode: {}", .{ret});
-    while (true) {}
+    panic_mod.indicator();
 }

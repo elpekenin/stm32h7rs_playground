@@ -2,7 +2,7 @@
 
 const EntryPoint = struct {
     sp: u32,
-    run: *const fn () noreturn,
+    main: *const fn () noreturn,
 };
 
 inline fn get_entry_point(address: u32) EntryPoint {
@@ -19,5 +19,5 @@ inline fn set_MSP(address: u32) void {
 pub fn to(address: u32) noreturn {
     const jumping = get_entry_point(address);
     set_MSP(jumping.sp);
-    jumping.run();
+    jumping.main();
 }

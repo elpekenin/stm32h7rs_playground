@@ -10,20 +10,20 @@ pub const timer = @import("hal_wrappers/timer.zig");
 pub const usb = @import("hal_wrappers/usb.zig");
 pub const xspi = @import("hal_wrappers/xspi.zig");
 
-fn init_hal() void {
+fn initHal() void {
     const ret = hal.c.HAL_Init();
     if (ret != hal.c.HAL_OK) {
         std.debug.panic("HAL_Init", .{});
     }
 }
 
-fn init_power() void {
+fn initPower() void {
     if (hal.c.HAL_PWREx_ControlVoltageScaling(hal.c.PWR_REGULATOR_VOLTAGE_SCALE0) != hal.c.HAL_OK) {
         std.debug.panic("HAL_PWREx_ControlVoltageScaling", .{});
     }
 }
 
-fn init_clocks() void {
+fn initClocks() void {
     var rcc_init = std.mem.zeroInit(
         hal.c.RCC_OscInitTypeDef,
         .{
@@ -92,9 +92,9 @@ fn init_clocks() void {
 
 /// Initialize HAL and clocks
 pub fn init() void {
-    init_hal();
-    init_power();
-    init_clocks();
+    initHal();
+    initPower();
+    initClocks();
     hal.c.SystemCoreClockUpdate();
     hal.dk.init();
 }

@@ -17,7 +17,7 @@ const Program = enum {
 
 pub fn build(b: *std.Build) !void {
     // *** Build configuration ***
-    const app_type = b.option(Program, "program", "Program to build (bootloader or app)") orelse @panic("Select target program");
+    const app_type = b.option(Program, "program", "Program to build") orelse @panic("Select target program");
     const panic_type = b.option(PanicType, "panic_type", "Control panic behavior") orelse .ToggleLeds;
     const panic_timer = b.option(u16, "panic_timer", "Control panic behavior") orelse 500;
 
@@ -31,6 +31,7 @@ pub fn build(b: *std.Build) !void {
         .os_tag = .freestanding,
         .abi = .eabihf,
     });
+
     const optimize: std.builtin.OptimizeMode = .ReleaseSmall;
 
     // *** Entry point ***

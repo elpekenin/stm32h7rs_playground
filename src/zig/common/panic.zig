@@ -8,12 +8,10 @@ const options = @import("options");
 
 const PanicType = @import("panic_config.zig").PanicType;
 
-pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
-    @setCold(true);
-
-    logger.err("{s}", .{msg});
-
-    // endless rainbow
+/// Broken down to its own function so that we can show the indicator
+/// when `main` exits (either return or error) instead of making
+/// it `std.debug.panic` and cause a "panic" log message
+pub fn indicator() noreturn {
     const panic_type: PanicType = @enumFromInt(options.panic_type);
 
     switch (panic_type) {
@@ -50,4 +48,10 @@ pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
             }
         },
     }
+}
+
+pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
+    @setCold(true);
+    logger.err("{s}", .{msg});
+    indicator();
 }

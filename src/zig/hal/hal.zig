@@ -18,3 +18,14 @@ pub const zig = @import("hal_wrappers.zig");
 
 /// Pin names
 pub const dk = @import("hal_wrappers/dk_pins.zig");
+
+/// TODO: move to its own module (?)
+pub const assembly = struct {
+    pub inline fn disable_irq() void {
+        asm volatile ("cpsid i" ::: "memory");
+    }
+
+    pub inline fn enable_irq() void {
+        asm volatile ("cpsie i" ::: "memory");
+    }
+};

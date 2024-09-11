@@ -10,14 +10,6 @@ const BUILTIN_ADDR = 0x1FF18000;
 /// Red LED
 const INDICATOR = hal.dk.LEDS[2];
 
-inline fn disable_irq() void {
-    asm volatile ("cpsid i" ::: "memory");
-}
-
-inline fn enable_irq() void {
-    asm volatile ("cpsie i" ::: "memory");
-}
-
 pub fn check() bool {
     return hal.dk.BUTTON.read();
 }
@@ -27,7 +19,7 @@ pub fn bootloader() noreturn {
     hal.c.HAL_Delay(500);
     INDICATOR.set(false);
 
-    disable_irq();
+    hal.assembly.disable_irq();
 
     var SysTick = @as(*hal.c.SysTick_Type, @ptrFromInt(hal.c.SysTick_BASE));
     SysTick.CTRL = 0;
@@ -41,7 +33,7 @@ pub fn bootloader() noreturn {
         NVIC.ICPR[i] = 0xFFFFFFFF;
     }
 
-    enable_irq();
+    hal.assembly.enable_irq();
 
     jump.to(BUILTIN_ADDR);
 }

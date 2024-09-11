@@ -9,7 +9,7 @@
         },
         .hal = .{
             .url = "https://github.com/elpekenin/stm32h7rsxx_hal_driver/archive/refs/heads/zig.tar.gz",
-            .hash = "1220cdf2400e6d37cb9c05aa260c97cf21cb6ccc4fa720562329b79f88ea26c96742",
+            .hash = "12205cbda2771a1677fe4fec540f2e3abe5f3c30548df27b130af5b15bd2d8f7f966",
         },
         .rtt = .{
             .url = "https://github.com/elpekenin/segger-rtt/archive/refs/heads/time_getter.tar.gz",

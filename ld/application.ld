@@ -1,3 +1,5 @@
+/* TODO: sizes based on external memories (once bootloader works :^P) */
+
 /* Pretty much copied from picolibc */
 
 /* Not really a thing on embedded, but logical entrypoint is main */
@@ -9,6 +11,10 @@ __flash_size = 0x00010000;
 __ram      = 0x24000000;
 __ram_size = 0x00071C00;
 
+/*
+ * These values should be provided by the application. We'll include
+ * some phony values here to make things link for testing
+ */
 MEMORY
 {
 	flash (rx!w) : ORIGIN = __flash, LENGTH = __flash_size
