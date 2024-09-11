@@ -20,16 +20,17 @@ fn noop(_: Thread.State) Thread.Result {
 }
 
 const QUEUE_SIZE = 200;
+const QueueT = std.BoundedArray(Thread, QUEUE_SIZE);
 
 next_id: Thread.Id,
 
 /// threads sorted by their next time of execution
-queue: [QUEUE_SIZE]Thread,
+queue: QueueT,
 
 fn getInsertionIndex(self: *Self, deadline: Thread.Ticks) usize {
     var i: usize = 0;
 
-    for (self.queue) |thread| {
+    for (self.queue.buffer) |thread| {
         if (thread.deadline > deadline or thread.id == Thread.INVALID) {
             break;
         }
@@ -43,45 +44,33 @@ fn getInsertionIndex(self: *Self, deadline: Thread.Ticks) usize {
 
 fn add(self: *Self, thread: Thread) void {
     std.debug.assert(thread.id != Thread.INVALID);
-
-    const index = self.getInsertionIndex(thread.deadline);
-
-    // if inserting anywhere but last position, we have to move existing data
-    if (index != QUEUE_SIZE - 1) {
-        std.mem.copyBackwards(Thread, self.queue[index .. QUEUE_SIZE - 2], self.queue[index + 1 .. QUEUE_SIZE - 1]);
-    }
-
-    self.queue[index] = thread;
+    self.queue.insert(
+        self.getInsertionIndex(thread.deadline),
+        thread,
+    ) catch std.debug.panic("Scheduler.add()", .{});
 }
 
 fn pop(self: *Self, index: usize) Thread {
     std.debug.assert(index < QUEUE_SIZE);
-
-    const thread = self.queue[index];
-    std.debug.assert(thread.id != Thread.INVALID);
-
-    // if removing anywhere but last position, we have to move existing data
-    if (index != QUEUE_SIZE - 1) {
-        std.mem.copyForwards(Thread, self.queue[index .. QUEUE_SIZE - 2], self.queue[index + 1 .. QUEUE_SIZE - 1]);
-    }
-
-    self.queue[QUEUE_SIZE - 1].id = Thread.INVALID;
-
-    return thread;
+    return self.queue.orderedRemove(index);
 }
 
 pub fn init() Self {
-    return Self{
+    var self = Self{
         .next_id = Thread.INVALID,
-        .queue = .{
-            Thread{
-                .id = Thread.INVALID,
-                .private = null,
-                .deadline = 0,
-                .run = noop,
-            },
-        } ** QUEUE_SIZE,
+        .queue = QueueT.init(QUEUE_SIZE) catch unreachable,
     };
+
+    for (0 .. QUEUE_SIZE) |i| {
+        self.queue.set(i, .{
+            .deadline = 0,
+            .id = Thread.INVALID,
+            .private = null,
+            .run = noop,
+        });
+    }
+
+    return self;
 }
 
 pub fn spawn(self: *Self, func: Thread.Fn, private: Thread.Private) Thread.Id {
@@ -113,7 +102,7 @@ pub fn kill(self: *Self, id: Thread.Id) bool {
 }
 
 pub fn run(self: *Self) void {
-    const head = self.queue[0];
+    const head = self.queue.get(0);
 
     // nothing to do (yet)
     if (head.deadline > platform.getTicks() or head.id == Thread.INVALID) {
