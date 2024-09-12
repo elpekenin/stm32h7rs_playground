@@ -7,10 +7,13 @@ const hal = @import("hal");
 const platform = @import("platform.zig");
 
 /// minimal time unit in the system (1ms so far)
-pub const Ticks = u32;
+pub const Tick = platform.Tick;
 
 pub const State = struct {
-    executed: Ticks,
+    /// may be used by very time-sensitive functions
+    /// if i've got called 50ms *after* my desired deadline ...
+    /// let's schedule next one to be 50ms sooner
+    executed: Tick,
     private: Awaitable.Private,
 };
 
@@ -18,7 +21,7 @@ pub const Result = union(enum) {
     const Exit = u8;
 
     /// still working, valeu is how long to wait before calling ``.run()`` again
-    Wait: Ticks,
+    Wait: Tick,
 
     /// value is the status (0 == success)
     Finished: Exit,
@@ -43,7 +46,7 @@ const Awaitable = struct {
     private: Private,
 
     /// when this thread's logic shall be run next time
-    deadline: Ticks,
+    deadline: Tick,
 
     /// thread's logic
     run: Fn,
@@ -58,7 +61,7 @@ const EventLoop = struct {
     /// threads sorted by their next time of execution
     queue: std.BoundedArray(Awaitable, QUEUE_SIZE),
 
-    fn getInsertionIndex(self: *Self, deadline: Ticks) usize {
+    fn getInsertionIndex(self: *Self, deadline: Tick) usize {
         for (0..self.queue.len) |i| {
             const thread = self.queue.get(i);
 
@@ -158,7 +161,7 @@ const EventLoop = struct {
     }
 };
 
-pub fn sleep(ticks: Ticks) Result {
+pub fn sleep(ticks: Tick) Result {
     return .{ .Wait = ticks };
 }
 

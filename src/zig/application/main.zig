@@ -6,7 +6,7 @@ const asyncio = @import("asyncio.zig");
 
 const LedThreadState = struct {
     pin: hal.zig.DigitalOut,
-    delay: asyncio.Ticks,
+    delay: asyncio.Tick,
 };
 
 fn toggleFn(state: asyncio.State) asyncio.Result {

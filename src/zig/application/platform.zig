@@ -2,7 +2,7 @@
 
 const hal = @import("hal");
 
-const asyncio = @import("asyncio.zig");
+pub const Tick = u32;
 
 pub fn lock() void {
     hal.assembly.disable_irq();
@@ -12,6 +12,6 @@ pub fn unlock() void {
     hal.assembly.enable_irq();
 }
 
-pub fn getTicks() asyncio.Ticks {
+pub fn getTicks() Tick {
     return hal.c.HAL_GetTick();
 }
