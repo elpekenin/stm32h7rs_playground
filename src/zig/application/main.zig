@@ -2,22 +2,19 @@ const std = @import("std");
 
 const hal = @import("hal");
 
-const Scheduler = @import("os/Scheduler.zig");
-const Thread = @import("os/Thread.zig");
-
-var scheduler = Scheduler.init();
+const asyncio = @import("asyncio.zig");
 
 const LedThreadState = struct {
     pin: hal.zig.DigitalOut,
-    delay: Thread.Ticks,
+    delay: asyncio.Ticks,
 };
 
-fn toggleFn(state: Thread.State) Thread.Result {
+fn toggleFn(state: asyncio.State) asyncio.Result {
     const s: *LedThreadState = @alignCast(@ptrCast(state.private));
 
     s.pin.toggle();
 
-    return Thread.sleep(s.delay);
+    return asyncio.sleep(s.delay);
 }
 
 pub fn main() noreturn {
@@ -28,13 +25,13 @@ pub fn main() noreturn {
 
     var state_2 = LedThreadState{
         .pin = hal.dk.LEDS[1],
-        .delay = 500,
+        .delay = 400,
     };
     
-    _ = scheduler.spawn(toggleFn, &state_1);
-    _ = scheduler.spawn(toggleFn, &state_2);
+    _ = asyncio.spawn(toggleFn, &state_1);
+    _ = asyncio.spawn(toggleFn, &state_2);
 
     while (true) {
-        scheduler.run();
+        asyncio.run();
     }
 }
