@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: zig_fmt
+        name: Format zig code
+        language: python
+        types: [file]
+        files: '\.zig$'
+        entry: ./zig_fmt

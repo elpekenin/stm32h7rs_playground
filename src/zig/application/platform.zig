@@ -3,6 +3,7 @@
 const hal = @import("hal");
 
 pub const Tick = u32;
+pub const TICKS_PER_MS = 1;
 
 pub fn lock() void {
     hal.assembly.disable_irq();

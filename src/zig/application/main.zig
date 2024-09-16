@@ -2,36 +2,54 @@ const std = @import("std");
 
 const hal = @import("hal");
 
-const asyncio = @import("asyncio.zig");
+const asyncio = @import("playground.zig");
 
-const LedThreadState = struct {
-    pin: hal.zig.DigitalOut,
-    delay: asyncio.Tick,
+const Foo = struct {
+    const Ret = asyncio.Generator(void, void, u32);
+
+    const Args = struct {
+        pin: hal.zig.DigitalOut,
+        delay: asyncio.Time,
+        sleep: ?*asyncio.Sleep = null,
+    };
+
+    fn bar(args: *Args) Ret {
+        args.pin.toggle();
+
+        if (args.sleep == null) {
+            var sleep = asyncio.sleep(args.delay);
+            args.sleep = &sleep;
+        }
+
+        const sleep = args.sleep.?;
+        if (sleep.state != .Completed) {
+            // bleh...
+            _ = sleep.next();
+            return Ret.yield({});
+        }
+
+        args.sleep = null;
+
+        return Ret.yield({});
+    }
 };
 
-fn toggleFn(state: asyncio.State) asyncio.Result {
-    const s: *LedThreadState = @alignCast(@ptrCast(state.private));
-
-    s.pin.toggle();
-
-    return asyncio.sleep(s.delay);
-}
-
 pub fn main() noreturn {
-    var state_1 = LedThreadState{
+    var state_1 = Foo.Args{
         .pin = hal.dk.LEDS[0],
-        .delay = 200,
+        .delay = .{ .ms = 200 },
     };
 
-    var state_2 = LedThreadState{
+    var state_2 = Foo.Args{
         .pin = hal.dk.LEDS[1],
-        .delay = 400,
+        .delay = .{ .ms = 400 },
     };
-    
-    _ = asyncio.spawn(toggleFn, &state_1);
-    _ = asyncio.spawn(toggleFn, &state_2);
+
+    var coro_1 = asyncio.Coroutine.from(Foo.bar, &state_1);
+    var coro_2 = asyncio.Coroutine.from(Foo.bar, &state_2);
 
     while (true) {
-        asyncio.run();
+        _ = coro_1.next();
+        _ = coro_2.next();
     }
 }

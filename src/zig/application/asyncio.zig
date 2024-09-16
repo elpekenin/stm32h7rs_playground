@@ -7,121 +7,115 @@ const hal = @import("hal");
 const platform = @import("platform.zig");
 
 /// minimal time unit in the system (1ms so far)
-pub const Tick = platform.Tick;
+const Tick = platform.Tick;
 
-pub const State = struct {
-    /// may be used by very time-sensitive functions
-    /// if i've got called 50ms *after* my desired deadline ...
-    /// let's schedule next one to be 50ms sooner
-    executed: Tick,
-    private: Awaitable.Private,
-};
+/// wrapper around a BoundedArray, to keep elements sorted
+fn Queue(
+    T: type,
+    size: usize,
+    args: struct {
+        /// compare item to be inserted with an item already in queue
+        /// retuning true means: insert in existing-item's position
+        /// if no function is passed, elements are always added to the end
+        sort: ?*const fn (T, T) bool = null,
+    },
+) type {
+    return struct {
+        const Self = @This();
 
-pub const Result = union(enum) {
-    const Exit = u8;
+        inner: std.BoundedArray(T, size),
 
-    /// still working, valeu is how long to wait before calling ``.run()`` again
-    Wait: Tick,
+        fn init() Self {
+            return .{ .inner = .{} };
+        }
 
-    /// value is the status (0 == success)
-    Finished: Exit,
+        fn isEmpty(self: Self) bool {
+            return self.inner.len == 0;
+        }
 
-    /// something went wrong
-    Error: anyerror,
-};
+        fn findIndex(self: Self, item: T) usize {
+            if (args.sort == null) {
+                return self.inner.len;
+            }
+
+            for (0..self.inner.len) |i| {
+                if (args.sort.?(item, self.inner.get(i))) {
+                    return i;
+                }
+            }
+
+            return self.inner.len;
+        }
+
+        /// insert a new element
+        fn add(self: *Self, item: T) void {
+            std.debug.assert(self.inner.len < size);
+            const i = self.findIndex(item);
+            self.inner.insert(i, item) catch unreachable;
+        }
+
+        fn get(self: Self, i: usize) T {
+            return self.inner.get(i);
+        }
+
+        fn pop(self: *Self) T {
+            return self.inner.orderedRemove(0);
+        }
+    };
+}
 
 /// each element in the pool
-const Awaitable = struct {
-    /// unique identifier
-    const Id = u32;
+const Coroutine = struct {
+    const _Result = union(enum) {
+        /// still working, value is how long to wait before calling ``.run()`` again
+        Wait: Tick,
 
-    const Private = ?*anyopaque;
+        /// value is the status (0 == success)
+        Finished: u8,
 
-    const Fn = *const fn (State) Result;
+        /// something went wrong
+        Error: anyerror,
+    };
 
-    /// thread's ID
-    id: Id,
+    const _Userdata = ?*anyopaque;
 
-    /// thread-specific storage
-    private: Private,
+    const _Fn = *const fn (_Userdata) _Result;
+
+    /// specific storage
+    userdata: _Userdata = null,
 
     /// when this thread's logic shall be run next time
     deadline: Tick,
 
     /// thread's logic
-    run: Fn,
+    run: _Fn,
 };
 
-const EventLoop = struct {
+const Executor = struct {
     const Self = @This();
-    const QUEUE_SIZE = 200;
 
-    next_id: Awaitable.Id,
-
-    /// threads sorted by their next time of execution
-    queue: std.BoundedArray(Awaitable, QUEUE_SIZE),
-
-    fn getInsertionIndex(self: *Self, deadline: Tick) usize {
-        for (0..self.queue.len) |i| {
-            const thread = self.queue.get(i);
-
-            if (thread.deadline > deadline) {
-                return i;
-            }
-        }
-
-        return self.queue.len;
+    fn sort(new: Coroutine, existing: Coroutine) bool {
+        return new.deadline < existing.deadline;
     }
 
-    fn add(self: *Self, thread: Awaitable) void {
-        std.debug.assert(self.queue.len < QUEUE_SIZE);
+    const QueueT = Queue(Coroutine, 200, .{ .sort = sort });
 
-        const i = self.getInsertionIndex(thread.deadline);
-        self.queue.insert(i, thread) catch unreachable;
-    }
-
-    fn pop(self: *Self, index: usize) Awaitable {
-        return self.queue.orderedRemove(index);
-    }
+    queue: QueueT,
 
     fn init() Self {
-        return .{
-            .next_id = 0,
-            .queue = .{},
-        };
+        return .{ .queue = QueueT.init() };
     }
 
-    fn spawn(self: *Self, func: Awaitable.Fn, private: Awaitable.Private) Awaitable.Id {
-        const id = self.next_id;
-
-        self.add(.{
-            .id = id,
+    fn spawn(self: *Self, func: Fn, userdata: Userdata) void {
+        self.queue.add(.{
             .run = func,
-            .private = private,
+            .userdata = userdata,
             .deadline = platform.getTicks(),
         });
-
-        self.next_id = std.math.add(Awaitable.Id, self.next_id, 1) catch {
-            std.debug.panic("Overflowed Thread.Id", .{});
-        };
-
-        return id;
-    }
-
-    /// find task with the given id and remove it (if found)
-    /// returns the removed element (null if not found)
-    fn kill(self: *Self, id: Awaitable.Id) ?Awaitable {
-        for (0..self.queue.len) |i| {
-            if (self.queue.get(i).id == id) {
-                return self.pop(i);
-            }
-        }
-
-        return null;
     }
 
     fn run(self: *Self) void {
-        if (self.queue.len == 0) {
+        if (self.queue.isEmpty()) {
             // TODO: panic instead? no threads at all
             return;
         }
@@ -133,11 +127,7 @@ const EventLoop = struct {
             return;
         }
 
-        const ret = head.run(.{
-            .executed = platform.getTicks(),
-            .private = head.private,
-        });
-
+        const ret = head.run(head.userdata);
         switch (ret) {
             .Wait => |ticks| {
                 // this has to be atomic, we dont want an interrupt to chime in
@@ -145,30 +135,38 @@ const EventLoop = struct {
                 platform.lock();
                 defer platform.unlock();
 
-                var next = self.pop(0);
-                next.deadline = platform.getTicks() + ticks;
-                self.add(next);
+                var new = self.queue.pop();
+                new.deadline = platform.getTicks() + ticks;
+                self.queue.add(new);
             },
             .Finished => |status| {
-                std.log.info("Thread ({}): exit {}", .{ head.id, status });
-                _ = self.pop(0);
+                std.log.info("Awaitable ended with exitcode: {}", .{status});
+                _ = self.queue.pop();
             },
             .Error => |e| {
-                std.log.err("Thread ({}): error {}", .{ head.id, e });
-                _ = self.pop(0);
+                std.log.err("Awaitable ended with error: {}", .{e});
+                _ = self.queue.pop();
             },
         }
     }
 };
 
-pub fn sleep(ticks: Tick) Result {
-    return .{ .Wait = ticks };
+// Public API
+pub const Fn = Coroutine._Fn;
+pub const Userdata = Coroutine._Userdata;
+pub const Result = Coroutine._Result;
+
+/// sleep for ``ms`` milliseconds
+pub fn sleep(ms: usize) Result {
+    return .{ .Wait = ms * platform.TICKS_PER_MS };
 }
 
+/// cancel this task, with an status of ``code``
 pub fn exit(code: Result.Exit) Result {
     return .{ .Finished = code };
 }
 
+/// cancel this task, due to the error ``e``
 pub fn err(e: anyerror) Result {
     return .{ .Error = e };
 }
@@ -177,16 +175,12 @@ pub fn err(e: anyerror) Result {
 /// might support creating/getting event loop in the future
 /// for now, this is an implementation detail
 /// user is intented to use ``asyncio.*`` API
-var loop = EventLoop.init();
+var executor = Executor.init();
 
-pub fn spawn(func: Awaitable.Fn, private: Awaitable.Private) Awaitable.Id {
-    return loop.spawn(func, private);
-}
-
-pub fn kill(id: Awaitable.Id) ?Awaitable {
-    return loop.kill(id);
+pub fn spawn(func: Fn, userdata: Userdata) void {
+    return executor.spawn(func, userdata);
 }
 
 pub fn run() void {
-    return loop.run();
+    return executor.run();
 }
