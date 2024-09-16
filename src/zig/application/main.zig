@@ -4,7 +4,7 @@ const hal = @import("hal");
 
 const asyncio = @import("playground.zig");
 
-const Foo = struct {
+const Blinky = struct {
     const Ret = asyncio.Generator(void, void, u32);
 
     const Args = struct {
@@ -35,18 +35,18 @@ const Foo = struct {
 };
 
 pub fn main() noreturn {
-    var state_1 = Foo.Args{
+    var state_1 = Blinky.Args{
         .pin = hal.dk.LEDS[0],
         .delay = .{ .ms = 200 },
     };
 
-    var state_2 = Foo.Args{
+    var state_2 = Blinky.Args{
         .pin = hal.dk.LEDS[1],
         .delay = .{ .ms = 400 },
     };
 
-    var coro_1 = asyncio.Coroutine.from(Foo.bar, &state_1);
-    var coro_2 = asyncio.Coroutine.from(Foo.bar, &state_2);
+    var coro_1 = asyncio.Coroutine.from(Blinky.bar, &state_1);
+    var coro_2 = asyncio.Coroutine.from(Blinky.bar, &state_2);
 
     while (true) {
         _ = coro_1.next();
