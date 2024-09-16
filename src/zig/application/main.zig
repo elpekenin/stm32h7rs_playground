@@ -14,8 +14,6 @@ const Blinky = struct {
     };
 
     fn bar(args: *Args) Ret {
-        args.pin.toggle();
-
         if (args.sleep == null) {
             var sleep = asyncio.sleep(args.delay);
             args.sleep = &sleep;
@@ -29,7 +27,7 @@ const Blinky = struct {
         }
 
         args.sleep = null;
-
+        args.pin.toggle();
         return Ret.yield({});
     }
 };
