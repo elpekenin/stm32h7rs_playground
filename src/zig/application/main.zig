@@ -2,7 +2,7 @@ const std = @import("std");
 
 const hal = @import("hal");
 
-const asyncio = @import("playground.zig");
+const asyncio = @import("asyncio.zig");
 
 pub const log_scope_levels = &.{
     std.log.ScopeLevel{
@@ -17,24 +17,18 @@ const Blinky = struct {
     const Args = struct {
         pin: hal.zig.DigitalOut,
         delay: asyncio.Time,
-        sleep: ?*asyncio.Sleep = null,
+        sleep: asyncio.Sleep = .{ .args = 0, .state = .Completed },
     };
 
     fn bar(args: *Args) Ret {
-        if (args.sleep == null) {
-            var sleep = asyncio.sleep(args.delay);
-            args.sleep = &sleep;
-        }
-
-        const sleep = args.sleep.?;
-        if (sleep.state != .Completed) {
-            // bleh...
-            _ = sleep.next();
+        if (args.sleep.state == .Completed) {
+            args.pin.toggle();
+            args.sleep = asyncio.sleep(args.delay);
             return Ret.yield({});
         }
 
-        args.sleep = null;
-        args.pin.toggle();
+        // can we make this prettier?
+        _ = args.sleep.next();
         return Ret.yield({});
     }
 };

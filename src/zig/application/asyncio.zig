@@ -1,186 +1,125 @@
-//! Named asyncio a la Python, because `async` is a keyword in zig.
-
 const std = @import("std");
-
-const hal = @import("hal");
+const log = std.log.scoped(.asyncio);
 
 const platform = @import("platform.zig");
 
-/// minimal time unit in the system (1ms so far)
-const Tick = platform.Tick;
+pub const State = enum {
+    Created,
+    Running,
+    Suspended,
+    Completed,
+};
 
-/// wrapper around a BoundedArray, to keep elements sorted
-fn Queue(
-    T: type,
-    size: usize,
-    args: struct {
-        /// compare item to be inserted with an item already in queue
-        /// retuning true means: insert in existing-item's position
-        /// if no function is passed, elements are always added to the end
-        sort: ?*const fn (T, T) bool = null,
-    },
-) type {
-    return struct {
+/// order based on Python's ``typing.Generator``
+pub fn Generator(Y: type, S: type, R: type) type {
+    return union(enum) {
         const Self = @This();
 
-        inner: std.BoundedArray(T, size),
+        Yield: Y,
+        Send: S,
+        Return: R,
 
-        fn init() Self {
-            return .{ .inner = .{} };
+        pub fn yield(val: Y) Self {
+            return Self{ .Yield = val };
         }
 
-        fn isEmpty(self: Self) bool {
-            return self.inner.len == 0;
+        pub fn send(val: S) Self {
+            return Self{ .Send = val };
         }
 
-        fn findIndex(self: Self, item: T) usize {
-            if (args.sort == null) {
-                return self.inner.len;
-            }
-
-            for (0..self.inner.len) |i| {
-                if (args.sort.?(item, self.inner.get(i))) {
-                    return i;
-                }
-            }
-
-            return self.inner.len;
-        }
-
-        /// insert a new element
-        fn add(self: *Self, item: T) void {
-            std.debug.assert(self.inner.len < size);
-            const i = self.findIndex(item);
-            self.inner.insert(i, item) catch unreachable;
-        }
-
-        fn get(self: Self, i: usize) T {
-            return self.inner.get(i);
-        }
-
-        fn pop(self: *Self) T {
-            return self.inner.orderedRemove(0);
+        pub fn ret(val: R) Self {
+            return Self{ .Return = val };
         }
     };
 }
 
-/// each element in the pool
-const Coroutine = struct {
-    const _Result = union(enum) {
-        /// still working, value is how long to wait before calling ``.run()`` again
-        Wait: Tick,
+pub const Coroutine = struct {
+    fn CoroT(
+        comptime func: anytype,
+        comptime ArgsT: anytype,
+    ) type {
+        const F = @TypeOf(func);
+        const FuncInfo = @typeInfo(F);
+        if (FuncInfo != .Fn) {
+            // for better diagnostic of user errors (hopefully)
+            @compileError("Must pass a function");
+        }
 
-        /// value is the status (0 == success)
-        Finished: u8,
+        const Ret = FuncInfo.Fn.return_type.?;
+        const RetInfo = @typeInfo(Ret);
+        if (RetInfo != .Union or !@hasField(Ret, "Yield") or !@hasField(Ret, "Send") or !@hasField(Ret, "Return")) {
+            @compileError("Function's return must be a Generator() type.");
+        }
 
-        /// something went wrong
-        Error: anyerror,
-    };
+        return struct {
+            const Self = @This();
 
-    const _Userdata = ?*anyopaque;
+            args: ArgsT,
+            state: State,
 
-    const _Fn = *const fn (_Userdata) _Result;
+            pub fn next(self: *Self) Ret {
+                self.state = .Running;
 
-    /// specific storage
-    userdata: _Userdata = null,
+                const ret = func(self.args);
 
-    /// when this thread's logic shall be run next time
-    deadline: Tick,
+                // TODO(elpekenin): better handling
+                switch (ret) {
+                    .Return => self.state = .Completed,
+                    else => self.state = .Suspended,
+                }
 
-    /// thread's logic
-    run: _Fn,
+                log.debug("{} => {}", .{ self, ret });
+                return ret;
+            }
+        };
+    }
+
+    pub fn from(
+        comptime func: anytype,
+        args: anytype,
+    ) CoroT(
+        func,
+        @TypeOf(args),
+    ) {
+        const T = CoroT(func, @TypeOf(args));
+        return T{ .args = args, .state = .Created };
+    }
 };
 
-const Executor = struct {
+pub const Time = union(enum) {
     const Self = @This();
 
-    fn sort(new: Coroutine, existing: Coroutine) bool {
-        return new.deadline < existing.deadline;
-    }
+    ticks: usize,
+    ms: usize,
+    s: usize,
 
-    const QueueT = Queue(Coroutine, 200, .{ .sort = sort });
-
-    queue: QueueT,
-
-    fn init() Self {
-        return .{ .queue = QueueT.init() };
-    }
-
-    fn spawn(self: *Self, func: Fn, userdata: Userdata) void {
-        self.queue.add(.{
-            .run = func,
-            .userdata = userdata,
-            .deadline = platform.getTicks(),
-        });
-    }
-
-    fn run(self: *Self) void {
-        if (self.queue.isEmpty()) {
-            // TODO: panic instead? no threads at all
-            return;
-        }
-
-        const head = self.queue.get(0);
-
-        // nothing to do (yet)
-        if (head.deadline > platform.getTicks()) {
-            return;
-        }
-
-        const ret = head.run(head.userdata);
-        switch (ret) {
-            .Wait => |ticks| {
-                // this has to be atomic, we dont want an interrupt to chime in
-                // between `.pop` and `.add` and mess up the queue's state
-                platform.lock();
-                defer platform.unlock();
-
-                var new = self.queue.pop();
-                new.deadline = platform.getTicks() + ticks;
-                self.queue.add(new);
-            },
-            .Finished => |status| {
-                std.log.info("Awaitable ended with exitcode: {}", .{status});
-                _ = self.queue.pop();
-            },
-            .Error => |e| {
-                std.log.err("Awaitable ended with error: {}", .{e});
-                _ = self.queue.pop();
-            },
-        }
+    fn toTicks(self: *const Self) platform.Tick {
+        return switch (self.*) {
+            .ticks => |time| time,
+            .ms => |time| time * platform.TICKS_PER_MS,
+            .s => |time| time * platform.TICKS_PER_MS * 1000,
+        };
     }
 };
 
-// Public API
-pub const Fn = Coroutine._Fn;
-pub const Userdata = Coroutine._Userdata;
-pub const Result = Coroutine._Result;
+const _Sleep = struct {
+    const Ret = Generator(void, void, void);
+    const T = Coroutine.CoroT(run, platform.Tick);
 
-/// sleep for ``ms`` milliseconds
-pub fn sleep(ms: usize) Result {
-    return .{ .Wait = ms * platform.TICKS_PER_MS };
-}
+    fn run(deadline: platform.Tick) Ret {
+        const now = platform.getTicks();
 
-/// cancel this task, with an status of ``code``
-pub fn exit(code: Result.Exit) Result {
-    return .{ .Finished = code };
-}
+        if (now < deadline) {
+            return Ret.yield({});
+        }
 
-/// cancel this task, due to the error ``e``
-pub fn err(e: anyerror) Result {
-    return .{ .Error = e };
-}
+        return Ret.ret({});
+    }
+};
 
-/// single event loop instance for now
-/// might support creating/getting event loop in the future
-/// for now, this is an implementation detail
-/// user is intented to use ``asyncio.*`` API
-var executor = Executor.init();
+pub const Sleep = _Sleep.T;
 
-pub fn spawn(func: Fn, userdata: Userdata) void {
-    return executor.spawn(func, userdata);
-}
-
-pub fn run() void {
-    return executor.run();
+pub fn sleep(time: Time) _Sleep.T {
+    const deadline = platform.getTicks() + time.toTicks();
+    return Coroutine.from(_Sleep.run, deadline);
 }
