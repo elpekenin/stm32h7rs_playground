@@ -1,4 +1,5 @@
 const std = @import("std");
+const log = std.log.scoped(.asyncio);
 
 const platform = @import("platform.zig");
 
@@ -57,6 +58,8 @@ pub const Coroutine = struct {
             state: State,
 
             pub fn next(self: *Self) Ret {
+                self.state = .Running;
+
                 const ret = func(self.args);
 
                 // TODO(elpekenin): better handling
@@ -65,6 +68,7 @@ pub const Coroutine = struct {
                     else => self.state = .Suspended,
                 }
 
+                log.debug("{} => {}", .{ self, ret });
                 return ret;
             }
         };
@@ -89,8 +93,8 @@ pub const Time = union(enum) {
     ms: usize,
     s: usize,
 
-    fn toTicks(self: Self) platform.Tick {
-        return switch (self) {
+    fn toTicks(self: *const Self) platform.Tick {
+        return switch (self.*) {
             .ticks => |time| time,
             .ms => |time| time * platform.TICKS_PER_MS,
             .s => |time| time * platform.TICKS_PER_MS * 1000,

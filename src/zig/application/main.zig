@@ -4,6 +4,13 @@ const hal = @import("hal");
 
 const asyncio = @import("playground.zig");
 
+pub const log_scope_levels = &.{
+    std.log.ScopeLevel{
+        .scope = .asyncio,
+        .level = .info,
+    },
+};
+
 const Blinky = struct {
     const Ret = asyncio.Generator(void, void, u32);
 
@@ -33,12 +40,12 @@ const Blinky = struct {
 };
 
 pub fn main() noreturn {
-    var state_1 = Blinky.Args{
+    var state_1: Blinky.Args = .{
         .pin = hal.dk.LEDS[0],
         .delay = .{ .ms = 200 },
     };
 
-    var state_2 = Blinky.Args{
+    var state_2: Blinky.Args = .{
         .pin = hal.dk.LEDS[1],
         .delay = .{ .ms = 400 },
     };

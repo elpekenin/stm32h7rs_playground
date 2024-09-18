@@ -1029,8 +1029,8 @@ pub fn init(protocol: Protocol, rate: Rate) !void {
 }
 
 /// Get information about the chip
-pub fn flash_info() Info {
-    return .{
+pub fn flashInfo() Info {
+    return Info{
         .FlashSize = FLASH_SIZE,
         .EraseSectorSize = BLOCK_64K,
         .EraseSectorsNumber = FLASH_SIZE / BLOCK_64K,
