@@ -1,9 +1,5 @@
 repos:
-  - repo: local
+  - repo: https://github.com/elpekenin/mirrors-ziglang
+    rev: v0.13.0
     hooks:
       - id: zig_fmt
-        name: Format zig code
-        language: python
-        types: [file]
-        files: '\.zig$'
-        entry: ./zig_fmt
