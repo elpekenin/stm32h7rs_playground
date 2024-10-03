@@ -16,13 +16,13 @@ comptime {
 }
 
 // zig std config
-pub const std_options = .{
+pub const std_options = std.Options{
     .log_level = .debug,
     .logFn = @import("logging").logFn,
     .log_scope_levels = if (@hasDecl(app, "log_scope_levels"))
         app.log_scope_levels
     else
-        .{},
+        &.{},
 };
 pub const panic = panic_mod.panic;
 

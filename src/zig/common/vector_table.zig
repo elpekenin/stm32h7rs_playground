@@ -9,7 +9,7 @@ const hal = @import("hal");
 
 const ISR = *const fn () callconv(.C) void;
 
-extern var __stack:anyopaque;
+extern var __stack: anyopaque;
 
 export const vector_table: VectorTable linksection(".data.init.enter") = .{
     .stack_pointer = &__stack,
