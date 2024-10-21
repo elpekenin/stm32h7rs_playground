@@ -13,8 +13,7 @@
             .hash = "1220ac855930db0699253dc81d3153c11b0d077e3ebe7a97b7986bea71db166eb76b",
         },
         .hal = .{
-            .url = "git+https://github.com/elpekenin/stm32h7rsxx_hal_driver#d2340eb9e4e0791084b49cb0ef04e399bdea4004",
-            .hash = "1220fd6cbdaeaecec3a06b16664bf24a61f1c8219c1c44e394669bf1e52825b41508",
+            .path = "deps/stm32h7rsxx_hal_driver",
         },
         .rtt = .{
             .url = "git+https://github.com/elpekenin/segger-rtt#4029d24ccadd4c0b7c5ba863940915a5e4bbd2fe",

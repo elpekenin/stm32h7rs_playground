@@ -102,7 +102,7 @@ pub fn build(b: *std.Build) !void {
             .target = target,
             .optimize = optimize,
         },
-    ).artifact("hal");
+    ).artifact("lib");
 
     const rtt_dep = b.dependency("rtt", .{}).module("rtt");
 

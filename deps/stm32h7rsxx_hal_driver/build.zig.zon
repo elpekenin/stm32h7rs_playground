@@ -1,0 +1,22 @@
+.{
+    .name = "stm32h7rsxx_hal_driver",
+    .version = "0.0.0",
+
+    .dependencies = .{
+        .upstream = .{
+            .url = "git+https://github.com/STMicroelectronics/stm32h7rsxx_hal_driver#ecc746788b9843dd4295f0acb58b3d15c3477abb",
+            .hash = "1220dc019b5066d09a0aa7d812f7ab94de584348b596de8fc0c5417b9e0f95e90589",
+        },
+        .cmsis_device_h7rs = .{
+            .path = "../cmsis_device_h7rs",
+        },
+        .CMSIS_5 = .{
+            .path = "../CMSIS_5",
+        },
+    },
+
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+    },
+}
