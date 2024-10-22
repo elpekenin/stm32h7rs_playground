@@ -8,14 +8,18 @@
             .hash = "1220dc019b5066d09a0aa7d812f7ab94de584348b596de8fc0c5417b9e0f95e90589",
         },
         .cmsis_device_h7rs = .{
-            .path = "../cmsis_device_h7rs",
+            .url = "git+https://github.com/STMicroelectronics/cmsis_device_h7rs#832649d1fd09bd901e9f68e979522e5c209ebf20",
+            .hash = "1220be1aba75a00472d98f5b1fcd65876391f6b85c7fa2da9c4b45dfa47e40623f0d",
         },
         .CMSIS_5 = .{
-            .path = "../CMSIS_5",
+            .url = "git+https://github.com/ARM-software/CMSIS_5#55b19837f5703e418ca37894d5745b1dc05e4c91",
+            .hash = "12201f87471ae93176a280f7ecceed0a6a0673e1de718c735b44805ba72bf4b97ee1",
         },
     },
 
     .paths = .{
+        "include",
+        "src",
         "build.zig",
         "build.zig.zon",
     },

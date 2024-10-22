@@ -1,8 +1,8 @@
 /* NOTE: Adapted from cmsis_device_h7rs/Source/Templates/system_stm32h7rsxx.c
  *
- * SystemCoreClock variable was needed, but it also added dependency on 
- * startup files written in assembly, and some symbols which arent defined
- * nor needed, as picolibc is taking care of the bootstraping.
+ * SystemCoreClock variable was needed, but it also added dependency on
+ * startup files written in assembly, and some symbols which aren't defined
+ * nor needed, as picolibc is taking care of the bootstrapping.
  *
  */
 
@@ -40,7 +40,7 @@ void SystemCoreClockUpdate(void)
 
     /* Get SYSCLK source -------------------------------------------------------*/
     switch (RCC->CFGR & RCC_CFGR_SWS) {
-    case 0x00:  /* HSI used as system clock source (default after reset) */
+    case 0x00:  /* HIS used as system clock source (default after reset) */
         sysclk = (HSI_VALUE >> ((RCC->CR & RCC_CR_HSIDIV) >> RCC_CR_HSIDIV_Pos));
         break;
 
@@ -74,7 +74,7 @@ void SystemCoreClockUpdate(void)
                 pllvco = ((float_t)CSI_VALUE / (float_t)pllm) * ((float_t)(uint32_t)(RCC->PLL1DIVR1 & RCC_PLL1DIVR1_DIVN) + (pllfracn/(float_t)0x2000) +(float_t)1 );
                 break;
 
-            case 0x00:  /* HSI used as PLL1 clock source */
+            case 0x00:  /* HIS used as PLL1 clock source */
             default:
                 hsivalue = (HSI_VALUE >> ((RCC->CR & RCC_CR_HSIDIV) >> RCC_CR_HSIDIV_Pos));
                 pllvco = ( (float_t)hsivalue / (float_t)pllm) * ((float_t)(uint32_t)(RCC->PLL1DIVR1 & RCC_PLL1DIVR1_DIVN) + (pllfracn/(float_t)0x2000) +(float_t)1 );
@@ -87,7 +87,7 @@ void SystemCoreClockUpdate(void)
         }
         break;
 
-    default:  /* Unexpected, default to HSI used as system clock source (default after reset) */
+    default:  /* Unexpected, default to HIS used as system clock source (default after reset) */
         sysclk = (HSI_VALUE >> ((RCC->CR & RCC_CR_HSIDIV) >> RCC_CR_HSIDIV_Pos));
         break;
     }

@@ -1,5 +1,5 @@
 //! Logic to define when and how to jump into STM's
-//! builtin bootloader in the silicon, programatically.
+//! builtin bootloader in the silicon, programmatically.
 
 const hal = @import("hal");
 

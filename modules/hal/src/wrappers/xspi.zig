@@ -1,4 +1,4 @@
-//! Functions reused accross XSPI devices (flash and RAM)
+//! Functions reused across XSPI devices (flash and RAM)
 
 const std = @import("std");
 const logger = std.log.scoped(.xspi);

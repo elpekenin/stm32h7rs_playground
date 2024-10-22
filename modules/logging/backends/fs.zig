@@ -51,7 +51,7 @@ const Backend = struct {
         @memcpy(buff[self.mount.len..], file_path);
         buff[self.mount.len + file_path.len] = 0;
 
-        // zig doesnt understand that we added the sentinel ourselves
+        // zig doesn't understand that we added the sentinel ourselves
         // "force" it into liking the function by casting
         return @ptrCast(&buff);
     }

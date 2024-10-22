@@ -212,7 +212,7 @@ SECTIONS
 	 * it for the initial TLS storage.
 	 * Create special section here just to make room.
 	 */
-        /* For ld.bfd: 
+        /* For ld.bfd:
         .tbss_space (NOLOAD) : {
 		. = ADDR(.tbss);
 		. = . + SIZEOF(.tbss);
@@ -252,7 +252,7 @@ SECTIONS
 
 	/* Throw away C++ exception handling information */
 
-	
+
 
 	/DISCARD/ : {
 		*(.note .note.*)
@@ -261,7 +261,7 @@ SECTIONS
 		*(.ARM.exidx*)
 	}
 
-	
+
 
 	/* Stabs debugging sections.  */
 	.stab          0 : { *(.stab) }

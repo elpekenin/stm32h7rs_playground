@@ -296,7 +296,7 @@ const Registers = struct {
         /// Write in progress
         const WIP = 0x01;
         /// Write enable latch
-        const WEL = 0x02;
+        const WELL = 0x02;
         /// Block protected against program and erase operations
         const PB = 0x3C;
     };
@@ -447,7 +447,7 @@ const AddressWidth = enum {
 };
 
 // //////////////////////////////////////////////// //
-// Helpers for protocol-/transfer- dependant config //
+// Helpers for protocol-/transfer- dependent config //
 // //////////////////////////////////////////////// //
 
 // Some helpers, for configuration depending on protocol and transfer rate
@@ -573,7 +573,7 @@ inline fn address_width(addr_width: AddressWidth) u32 {
 // Helpers to validate wrong input //
 // /////////////////////////////// //
 
-/// Assert that the flash has been initilized before acting
+/// Assert that the flash has been initialized before acting
 fn assert_init() !void {
     if (!state.init) {
         return error.NotInit;

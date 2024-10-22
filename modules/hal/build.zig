@@ -1,44 +1,136 @@
 const std = @import("std");
 
+const HALCONF = "stm32h7rsxx_hal_conf.h";
+
+// TODO(elpekenin): support to enable/disable callbacks and some other options
+const Features = struct {
+    const Self = @This();
+
+    adc: bool = false,
+    cec: bool = false,
+    cordic: bool = false,
+    cortex: bool = false,
+    crc: bool = false,
+    cryp: bool = false,
+    dcmipp: bool = false,
+    dma: bool = false,
+    dma2d: bool = false,
+    dts: bool = false,
+    eth: bool = false,
+    exti: bool = false,
+    fdcan: bool = false,
+    flash: bool = false,
+    gfxmmu: bool = false,
+    gfxtim: bool = false,
+    gpio: bool = false,
+    gpu2d: bool = false,
+    hash: bool = false,
+    hcd: bool = false,
+    i2c: bool = false,
+    i2s: bool = false,
+    i3c: bool = false,
+    icache: bool = false,
+    irda: bool = false,
+    iwdg: bool = false,
+    jpeg: bool = false,
+    lptim: bool = false,
+    ltdc: bool = false,
+    mce: bool = false,
+    mdf: bool = false,
+    mmc: bool = false,
+    nand: bool = false,
+    nor: bool = false,
+    pcd: bool = false,
+    pka: bool = false,
+    pssi: bool = false,
+    pwr: bool = false,
+    ramecc: bool = false,
+    rcc: bool = false,
+    rng: bool = false,
+    rtc: bool = false,
+    sai: bool = false,
+    sd: bool = false,
+    sdram: bool = false,
+    smartcard: bool = false,
+    smbus: bool = false,
+    spdifrx: bool = false,
+    spi: bool = false,
+    sram: bool = false,
+    tim: bool = false,
+    uart: bool = false,
+    usart: bool = false,
+    wwdg: bool = false,
+    xspi: bool = false,
+
+    fn fromBuildOptions(b: *std.Build) Self {
+        var self = Self{};
+
+        inline for (@typeInfo(Self).Struct.fields) |field| {
+            const name = field.name;
+
+            const maybe_val = b.option(
+                field.type,
+                name,
+                "Whether to enable " ++ name,
+            );
+
+            if (maybe_val) |val| {
+                @field(self, name) = val;
+            }
+        }
+
+        return self;
+    }
+
+    fn toHeader(self: Self, b: *std.Build) *std.Build.Step.ConfigHeader {
+        return b.addConfigHeader(
+            .{
+                .style = .{
+                    .cmake = b.path(HALCONF ++ ".in"),
+                },
+            },
+            self,
+        );
+    }
+};
+
 pub fn build(b: *std.Build) !void {
-    // options:
-    const target = b.standardTargetOptions(.{});
-    const optimize = b.standardOptimizeOption(.{});
+    const features = Features.fromBuildOptions(b);
 
-    const dep = b.dependency("upstream", .{});
+    const upstream = b.dependency("upstream", .{});
+    const cmsis_5 = b.dependency("CMSIS_5", .{});
+    const cmsis_device_h7rs = b.dependency("cmsis_device_h7rs", .{});
 
-    const lib = b.addStaticLibrary(.{
-        .name = "lib",
-        .target = target,
-        .optimize = optimize,
+    const hal = b.addModule(
+        "hal",
+        .{
+            .root_source_file = b.path("src/hal.zig"),
+        },
+    );
+
+    hal.addCMacro("STM32H7S7xx", "");
+    hal.addCMacro("USE_HAL_DRIVER", "");
+    hal.addCMacro("__PROGRAM_START", "_start");
+
+    hal.addIncludePath(b.path("include"));
+    hal.addIncludePath(upstream.path("Inc"));
+    hal.addIncludePath(cmsis_5.path("CMSIS/Core/Include"));
+    hal.addIncludePath(cmsis_device_h7rs.path("Include"));
+
+    hal.addConfigHeader(features.toHeader(b));
+
+    hal.addCSourceFile(.{
+        .flags = flags,
+        .file = b.path("src/system_stm32rsxx.c"),
     });
-
-    lib.addCSourceFiles(.{
+    hal.addCSourceFiles(.{
+        .flags = flags,
         .files = src,
-        .flags = &.{"-fno-sanitize=undefined"},
-        .root = dep.path("Src"),
+        .root = upstream.path("Src"),
     });
-
-    lib.addIncludePath(dep.path("Inc"));
-
-    lib.installHeadersDirectory(dep.path("Inc"), "", .{});
-
-    const cmsis_5 = b.dependency("CMSIS_5", .{
-        .target = target,
-        .optimize = optimize,
-    }).artifact("lib");
-    lib.installLibraryHeaders(cmsis_5);
-    lib.linkLibrary(cmsis_5);
-
-    const cmsis_device_h7rs = b.dependency("cmsis_device_h7rs", .{
-        .target = target,
-        .optimize = optimize,
-    }).artifact("lib");
-    lib.installLibraryHeaders(cmsis_device_h7rs);
-    lib.linkLibrary(cmsis_device_h7rs);
-
-    b.installArtifact(lib);
 }
+
+const flags = &.{"-fno-sanitize=undefined"};
 
 const src = &.{
     "stm32h7rsxx_hal_mmc.c",

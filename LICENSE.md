@@ -9,6 +9,6 @@ Refer to the various projects for their respective licensing. Non comprehensive 
   - Segger RTT
   - ElmChan FatFS
 
-For my code, feel free to use it in any way, but keep in mind that i dont take any responsability of whatever issues it might cause.
+For my code, feel free to use it in any way, but keep in mind that i dont take any responsibility of whatever issues it might cause.
 
 If you do use my code; mentioning my project on your own code, star on GitHub or any other form or "recognition" would be highly appreciated but it is not required in the slightest.

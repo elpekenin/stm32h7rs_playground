@@ -1,4 +1,18 @@
+ci:
+  skip:
+    - zig_fmt
+
 repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.2.4
+    hooks:
+      - id: codespell
+        args: [-w]  # work in place
   - repo: https://github.com/elpekenin/mirrors-ziglang
     rev: v0.13.0
     hooks:

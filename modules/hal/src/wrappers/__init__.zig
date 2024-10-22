@@ -1,14 +1,14 @@
 //! "Tiny" zig wrappers on top of STM HAL
 
 const std = @import("std");
-const hal = @import("hal.zig");
+const hal = @import("../hal.zig");
 
-pub const cache = @import("hal_wrappers/cache.zig");
-pub const rcc = @import("hal_wrappers/rcc.zig");
-pub const sd = @import("hal_wrappers/sd.zig");
-pub const timer = @import("hal_wrappers/timer.zig");
-pub const usb = @import("hal_wrappers/usb.zig");
-pub const xspi = @import("hal_wrappers/xspi.zig");
+pub const cache = @import("cache.zig");
+pub const rcc = @import("rcc.zig");
+pub const sd = @import("sd.zig");
+pub const timer = @import("timer.zig");
+pub const usb = @import("usb.zig");
+pub const xspi = @import("xspi.zig");
 
 fn initHal() void {
     const ret = hal.c.HAL_Init();
@@ -101,9 +101,9 @@ pub fn init() void {
 
 // Please zig, do not garbage-collect these, we need to export C funcs, thx!!
 comptime {
-    _ = @import("hal_wrappers/msp/base.zig");
-    _ = @import("hal_wrappers/msp/sd.zig");
-    _ = @import("hal_wrappers/msp/xspi.zig");
+    _ = @import("msp/base.zig");
+    _ = @import("msp/sd.zig");
+    _ = @import("msp/xspi.zig");
 }
 
 pub const Active = enum {

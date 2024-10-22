@@ -4,26 +4,31 @@
 
     .dependencies = .{
         .picolibc = .{
-            // .url = "git+https://github.com/elpekenin/picolibc#a3355d96788a9a173c6f382f45b90196cbb41012",
-            // .hash = "1220c6db73fb244f0c7a275927aa3b17a550efab43e37daa9c3b2d983d6a8f0f0cf8",
-            .path = "../picolibc",
+            // broken right now
+            .url = "git+https://github.com/allyourcodebase/picolibc-zig#7a128e1d7a3781b3eae7cf3d7c59c66a2bee36e7",
+            .hash = "1220e83a23185cb5a9749e107a3ee4d725f50dc176f48460a89ecd545d249e8f1e87",
         },
         .foundation = .{
             .url = "git+https://github.com/ZigEmbeddedGroup/foundation-libc#6a32c97a297bb250c67918946991165a5fc09844",
             .hash = "1220ac855930db0699253dc81d3153c11b0d077e3ebe7a97b7986bea71db166eb76b",
         },
         .hal = .{
-            .path = "deps/stm32h7rsxx_hal_driver",
+            .path = "modules/hal",
         },
         .rtt = .{
             .url = "git+https://github.com/elpekenin/segger-rtt#4029d24ccadd4c0b7c5ba863940915a5e4bbd2fe",
             .hash = "12206812bf16e697049b257fbccba955113a076f470b6e39e064e9f43e3febc249c7",
         },
         .zfat = .{
-            .url = "git+https://github.com/ZigEmbeddedGroup/zfat#6c9fcecd0326c8f3bf3353afbee6b3f5987d49ca",
-            .hash = "122064858e32ce4448b7c02813379658a74ebf85f026f9936fa627b1a40c3bb9cc39",
+            .url = "git+https://github.com/ZigEmbeddedGroup/zfat#9644549c78d90f98b3921c12d760b0eaaaf219da",
+            .hash = "1220cca763cc3867e8b9fa2d1b0ff62236341698e37dd527f3815455429fc624e7e6",
         },
     },
 
-    .paths = .{ "build.zig", "build.zig.zon", "ld", "src" },
+    .paths = .{
+        "ld",
+        "modules",
+        "build.zig",
+        "build.zig.zon",
+    },
 }
