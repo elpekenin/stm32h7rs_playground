@@ -2,10 +2,11 @@
 
 const std = @import("std");
 const hal = @import("hal");
+const c = hal.c;
 const rtt = @import("rtt");
 
 pub fn time_getter() rtt.Time {
-    return rtt.Time{ .seconds = hal.c.HAL_GetTick(), .microseconds = 0 };
+    return rtt.Time{ .seconds = c.HAL_GetTick(), .microseconds = 0 };
 }
 
 fn init() void {

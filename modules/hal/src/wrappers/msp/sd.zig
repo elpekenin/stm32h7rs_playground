@@ -1,19 +1,20 @@
 const std = @import("std");
 const hal = @import("../../hal.zig");
+const c = hal.c;
 
-export fn HAL_SD_MspInit(hsd: *hal.c.SD_HandleTypeDef) callconv(.C) void {
-    if (hsd.Instance != hal.c.SDMMC1) {
+export fn HAL_SD_MspInit(hsd: *c.SD_HandleTypeDef) callconv(.C) void {
+    if (hsd.Instance != c.SDMMC1) {
         std.debug.panic("hsd != SDMMC1", .{});
     }
 
     var PeriphClkInit = std.mem.zeroInit(
-        hal.c.RCC_PeriphCLKInitTypeDef,
+        c.RCC_PeriphCLKInitTypeDef,
         .{
-            .PeriphClockSelection = hal.c.RCC_PERIPHCLK_SDMMC12,
-            .Sdmmc12ClockSelection = hal.c.RCC_SDMMC12CLKSOURCE_PLL2S,
+            .PeriphClockSelection = c.RCC_PERIPHCLK_SDMMC12,
+            .Sdmmc12ClockSelection = c.RCC_SDMMC12CLKSOURCE_PLL2S,
         },
     );
-    if (hal.c.HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != hal.c.HAL_OK) {
+    if (c.HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != c.HAL_OK) {
         std.debug.panic("HAL_RCCEx_PeriphCLKConfig", .{});
     }
 
@@ -22,43 +23,43 @@ export fn HAL_SD_MspInit(hsd: *hal.c.SD_HandleTypeDef) callconv(.C) void {
     hal.zig.rcc.GPIOD.enable();
 
     var gpio_init = std.mem.zeroInit(
-        hal.c.GPIO_InitTypeDef,
+        c.GPIO_InitTypeDef,
         .{
             .Pin = hal.dk.SD.CMD.pin,
-            .Mode = hal.c.GPIO_MODE_AF_PP,
-            .Pull = hal.c.GPIO_NOPULL,
-            .Speed = hal.c.GPIO_SPEED_FREQ_HIGH,
-            .Alternate = hal.c.GPIO_AF11_SDMMC1,
+            .Mode = c.GPIO_MODE_AF_PP,
+            .Pull = c.GPIO_NOPULL,
+            .Speed = c.GPIO_SPEED_FREQ_HIGH,
+            .Alternate = c.GPIO_AF11_SDMMC1,
         },
     );
-    hal.c.HAL_GPIO_Init(hal.dk.SD.CMD.port, &gpio_init);
+    c.HAL_GPIO_Init(hal.dk.SD.CMD.port, &gpio_init);
 
     gpio_init = .{
         .Pin = hal.dk.SD.D2.pin,
-        .Mode = hal.c.GPIO_MODE_AF_PP,
-        .Pull = hal.c.GPIO_NOPULL,
-        .Speed = hal.c.GPIO_SPEED_FREQ_HIGH,
-        .Alternate = hal.c.GPIO_AF12_SDMMC1,
+        .Mode = c.GPIO_MODE_AF_PP,
+        .Pull = c.GPIO_NOPULL,
+        .Speed = c.GPIO_SPEED_FREQ_HIGH,
+        .Alternate = c.GPIO_AF12_SDMMC1,
     };
-    hal.c.HAL_GPIO_Init(hal.dk.SD.D2.port, &gpio_init);
+    c.HAL_GPIO_Init(hal.dk.SD.D2.port, &gpio_init);
 
     gpio_init = .{
         .Pin = hal.dk.SD.D0.pin | hal.dk.SD.D1.pin | hal.dk.SD.D3.pin | hal.dk.SD.CK.pin,
-        .Mode = hal.c.GPIO_MODE_AF_PP,
-        .Pull = hal.c.GPIO_NOPULL,
-        .Speed = hal.c.GPIO_SPEED_FREQ_HIGH,
-        .Alternate = hal.c.GPIO_AF11_SDMMC1,
+        .Mode = c.GPIO_MODE_AF_PP,
+        .Pull = c.GPIO_NOPULL,
+        .Speed = c.GPIO_SPEED_FREQ_HIGH,
+        .Alternate = c.GPIO_AF11_SDMMC1,
     };
-    hal.c.HAL_GPIO_Init(hal.c.GPIOC, &gpio_init);
+    c.HAL_GPIO_Init(c.GPIOC, &gpio_init);
 }
 
-export fn HAL_SD_MspDeInit(hsd: *hal.c.SD_HandleTypeDef) callconv(.C) void {
-    if (hsd.Instance != hal.c.SDMMC1) {
+export fn HAL_SD_MspDeInit(hsd: *c.SD_HandleTypeDef) callconv(.C) void {
+    if (hsd.Instance != c.SDMMC1) {
         std.debug.panic("hsd != SDMMC1", .{});
     }
 
     hal.zig.rcc.SDMMC1.disable();
 
-    hal.c.HAL_GPIO_DeInit(hal.dk.SD.CMD.port, hal.dk.SD.CMD.pin);
-    hal.c.HAL_GPIO_DeInit(hal.c.GPIOC, hal.dk.SD.D0.pin | hal.dk.SD.D1.pin | hal.dk.SD.D2.pin | hal.dk.SD.D3.pin | hal.dk.SD.CK.pin);
+    c.HAL_GPIO_DeInit(hal.dk.SD.CMD.port, hal.dk.SD.CMD.pin);
+    c.HAL_GPIO_DeInit(c.GPIOC, hal.dk.SD.D0.pin | hal.dk.SD.D1.pin | hal.dk.SD.D2.pin | hal.dk.SD.D3.pin | hal.dk.SD.CK.pin);
 }

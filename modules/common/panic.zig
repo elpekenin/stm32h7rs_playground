@@ -31,7 +31,7 @@ pub fn indicator() noreturn {
             while (true) {
                 inline for (hal.dk.LEDS) |led| {
                     led.toggle();
-                    hal.c.HAL_Delay(options.panic_timer);
+                    hal.zig.timer.sleep(options.panic_timer);
                 }
             }
         },
@@ -44,7 +44,7 @@ pub fn indicator() noreturn {
                 inline for (hal.dk.LEDS) |led| {
                     led.toggle();
                 }
-                hal.c.HAL_Delay(options.panic_timer);
+                hal.zig.timer.sleep(options.panic_timer);
             }
         },
     }

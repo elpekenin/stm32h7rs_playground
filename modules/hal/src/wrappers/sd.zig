@@ -4,12 +4,13 @@ const std = @import("std");
 const logger = std.log.scoped(.sd);
 
 const hal = @import("../hal.zig");
+const c = hal.c;
 
 const clocks = @import("rcc.zig");
 
 const TIMEOUT = 500;
 
-var hsd = std.mem.zeroes(hal.c.SD_HandleTypeDef);
+var hsd = std.mem.zeroes(c.SD_HandleTypeDef);
 
 const state = struct {
     var init = false;
@@ -33,7 +34,7 @@ pub fn is_initialized() bool {
 
 /// Check if the card is ready to receive a message.
 pub fn is_ready() bool {
-    return hal.c.HAL_SD_GetCardState(&hsd) == hal.c.HAL_SD_CARD_TRANSFER;
+    return c.HAL_SD_GetCardState(&hsd) == c.HAL_SD_CARD_TRANSFER;
 }
 
 /// Give the card some time to get ready, return whether it is.
@@ -55,16 +56,16 @@ pub fn init() !void {
 
     errdefer print_error();
 
-    hsd = .{ .Instance = hal.c.SDMMC1, .Init = .{
-        .ClockEdge = hal.c.SDMMC_CLOCK_EDGE_FALLING,
-        .ClockPowerSave = hal.c.SDMMC_CLOCK_POWER_SAVE_DISABLE,
-        .BusWide = hal.c.SDMMC_BUS_WIDE_4B,
-        .HardwareFlowControl = hal.c.SDMMC_HARDWARE_FLOW_CONTROL_ENABLE,
+    hsd = .{ .Instance = c.SDMMC1, .Init = .{
+        .ClockEdge = c.SDMMC_CLOCK_EDGE_FALLING,
+        .ClockPowerSave = c.SDMMC_CLOCK_POWER_SAVE_DISABLE,
+        .BusWide = c.SDMMC_BUS_WIDE_4B,
+        .HardwareFlowControl = c.SDMMC_HARDWARE_FLOW_CONTROL_ENABLE,
         .ClockDiv = 2,
     } };
 
-    const ret = hal.c.HAL_SD_Init(&hsd);
-    if (ret != hal.c.HAL_OK) {
+    const ret = c.HAL_SD_Init(&hsd);
+    if (ret != c.HAL_OK) {
         return error.HalError;
     }
 
@@ -86,12 +87,12 @@ pub fn read(data: [*]u8, first_block: u32, n_blocks: u32) !void {
         return error.NotReady;
     }
 
-    if (hal.c.HAL_SD_ReadBlocks(&hsd, data, first_block, n_blocks, TIMEOUT) != hal.c.HAL_OK) {
+    if (c.HAL_SD_ReadBlocks(&hsd, data, first_block, n_blocks, TIMEOUT) != c.HAL_OK) {
         logger.err("SD read", .{});
         return error.HalError;
     }
 
-    while (hal.c.HAL_SD_GetCardState(&hsd) != hal.c.HAL_SD_CARD_TRANSFER) {}
+    while (c.HAL_SD_GetCardState(&hsd) != c.HAL_SD_CARD_TRANSFER) {}
 }
 
 /// Write data onto card.
@@ -100,22 +101,22 @@ pub fn write(data: [*]const u8, first_block: u32, n_blocks: u32) !void {
         return error.NotReady;
     }
 
-    if (hal.c.HAL_SD_WriteBlocks(&hsd, data, first_block, n_blocks, TIMEOUT) != hal.c.HAL_OK) {
+    if (c.HAL_SD_WriteBlocks(&hsd, data, first_block, n_blocks, TIMEOUT) != c.HAL_OK) {
         logger.err("SD write", .{});
         return error.HalError;
     }
 
-    while (hal.c.HAL_SD_GetCardState(&hsd) != hal.c.HAL_SD_CARD_TRANSFER) {}
+    while (c.HAL_SD_GetCardState(&hsd) != c.HAL_SD_CARD_TRANSFER) {}
 }
 
 /// Get card's information.
-pub fn card_info() !hal.c.HAL_SD_CardInfoTypeDef {
+pub fn card_info() !c.HAL_SD_CardInfoTypeDef {
     if (!is_initialized()) {
         return error.NotReady;
     }
 
-    var info = std.mem.zeroes(hal.c.HAL_SD_CardInfoTypeDef);
-    if (hal.c.HAL_SD_GetCardInfo(&hsd, &info) != hal.c.HAL_OK) {
+    var info = std.mem.zeroes(c.HAL_SD_CardInfoTypeDef);
+    if (c.HAL_SD_GetCardInfo(&hsd, &info) != c.HAL_OK) {
         return error.HalError;
     }
 
@@ -125,5 +126,5 @@ pub fn card_info() !hal.c.HAL_SD_CardInfoTypeDef {
 /// Do not use, only public for vector_table.zig to access it
 pub fn isr() callconv(.C) void {
     logger.debug("SDMMC1_IRQHandler", .{});
-    hal.c.HAL_SD_IRQHandler(&hsd);
+    c.HAL_SD_IRQHandler(&hsd);
 }

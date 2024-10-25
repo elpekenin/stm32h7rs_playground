@@ -7,7 +7,7 @@ const std = @import("std");
 const logger = std.log.scoped(.main);
 
 const hal = @import("hal");
-const app = @import("application");
+const program = @import("program");
 
 const panic_mod = @import("panic.zig");
 
@@ -19,8 +19,8 @@ comptime {
 pub const std_options = std.Options{
     .log_level = .debug,
     .logFn = @import("logging").logFn,
-    .log_scope_levels = if (@hasDecl(app, "log_scope_levels"))
-        app.log_scope_levels
+    .log_scope_levels = if (@hasDecl(program, "log_scope_levels"))
+        program.log_scope_levels
     else
         &.{},
 };
@@ -60,7 +60,7 @@ pub export fn _start() callconv(.C) noreturn {
 
     hal.zig.init();
 
-    const ret = app.main() catch |main_err| {
+    const ret = program.main() catch |main_err| {
         logger.err("returned an error ({s})", .{@errorName(main_err)});
 
         if (@errorReturnTrace()) |stack_trace| {

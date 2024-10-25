@@ -4,6 +4,8 @@ const std = @import("std");
 const logger = std.log.scoped(.cache);
 
 const hal = @import("../hal.zig");
+const c = hal.c;
+const SCB = hal.zig.peripherals.SCB;
 
 inline fn DSB() void {
     asm volatile ("dsb 0xF");
@@ -13,11 +15,9 @@ inline fn ISB() void {
     asm volatile ("isb 0xF");
 }
 
-const SCB = @as(*hal.c.SCB_Type, @ptrFromInt(hal.c.SCB_BASE));
-
 pub const i_cache = struct {
     pub fn enable() !void {
-        if ((SCB.CCR & hal.c.SCB_CCR_IC_Msk) != 0) {
+        if ((SCB.CCR & c.SCB_CCR_IC_Msk) != 0) {
             // already enabled
             return;
         }
@@ -32,7 +32,7 @@ pub const i_cache = struct {
         ISB();
 
         // enable i-cache
-        SCB.CCR |= hal.c.SCB_CCR_IC_Msk;
+        SCB.CCR |= c.SCB_CCR_IC_Msk;
 
         DSB();
         ISB();
@@ -45,7 +45,7 @@ pub const i_cache = struct {
         ISB();
 
         // disable i-cache
-        SCB.CCR &= ~hal.c.SCB_CCR_IC_Msk;
+        SCB.CCR &= ~c.SCB_CCR_IC_Msk;
 
         // invalidate i-cache
         SCB.ICIALLU = 0;

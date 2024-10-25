@@ -25,7 +25,7 @@ inline fn clear_flag() void {
 
 pub fn chance() void {
     set_flag();
-    hal.c.HAL_Delay(500);
+    hal.zig.timer.sleep(500);
     clear_flag();
 }
 
@@ -58,7 +58,7 @@ pub fn main() noreturn {
     clear_flag();
 
     INDICATOR.set(true);
-    hal.c.HAL_Delay(500);
+    hal.zig.timer.sleep(500);
     INDICATOR.set(false);
 
     while (true) {

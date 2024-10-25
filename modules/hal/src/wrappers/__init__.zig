@@ -2,39 +2,57 @@
 
 const std = @import("std");
 const hal = @import("../hal.zig");
+const c = hal.c;
 
 pub const cache = @import("cache.zig");
+pub const peripherals = @import("peripherals.zig");
 pub const rcc = @import("rcc.zig");
 pub const sd = @import("sd.zig");
 pub const timer = @import("timer.zig");
 pub const usb = @import("usb.zig");
 pub const xspi = @import("xspi.zig");
 
+const RCC = peripherals.RCC;
+const SCB = peripherals.SCB;
+
+fn to_f32(val: anytype) f32 {
+    return @as(f32, @floatFromInt(val));
+}
+
+fn to_u5(val: anytype) u5 {
+    return @as(u5, @intCast(val));
+}
+
+fn enableFPU() void {
+    // CP10 & CP11 Full Access
+    SCB.CPACR |= (3 << 10 * 2) | (3 << 11 * 2);
+}
+
 fn initHal() void {
-    const ret = hal.c.HAL_Init();
-    if (ret != hal.c.HAL_OK) {
+    const ret = c.HAL_Init();
+    if (ret != c.HAL_OK) {
         std.debug.panic("HAL_Init", .{});
     }
 }
 
 fn initPower() void {
-    if (hal.c.HAL_PWREx_ControlVoltageScaling(hal.c.PWR_REGULATOR_VOLTAGE_SCALE0) != hal.c.HAL_OK) {
+    if (c.HAL_PWREx_ControlVoltageScaling(c.PWR_REGULATOR_VOLTAGE_SCALE0) != c.HAL_OK) {
         std.debug.panic("HAL_PWREx_ControlVoltageScaling", .{});
     }
 }
 
 fn initClocks() void {
     var rcc_init = std.mem.zeroInit(
-        hal.c.RCC_OscInitTypeDef,
+        c.RCC_OscInitTypeDef,
         .{
-            .OscillatorType = hal.c.RCC_OSCILLATORTYPE_HSI48 | hal.c.RCC_OSCILLATORTYPE_HSI,
-            .HSIState = hal.c.RCC_HSI_ON,
-            .HSIDiv = hal.c.RCC_HSI_DIV1,
-            .HSICalibrationValue = hal.c.RCC_HSICALIBRATION_DEFAULT,
-            .HSI48State = hal.c.RCC_HSI48_ON,
+            .OscillatorType = c.RCC_OSCILLATORTYPE_HSI48 | c.RCC_OSCILLATORTYPE_HSI,
+            .HSIState = c.RCC_HSI_ON,
+            .HSIDiv = c.RCC_HSI_DIV1,
+            .HSICalibrationValue = c.RCC_HSICALIBRATION_DEFAULT,
+            .HSI48State = c.RCC_HSI48_ON,
             .PLL1 = .{
-                .PLLState = hal.c.RCC_PLL_ON,
-                .PLLSource = hal.c.RCC_PLLSOURCE_HSI,
+                .PLLState = c.RCC_PLL_ON,
+                .PLLSource = c.RCC_PLLSOURCE_HSI,
                 .PLLM = 32,
                 .PLLN = 300,
                 .PLLP = 1,
@@ -45,8 +63,8 @@ fn initClocks() void {
                 .PLLFractional = 0,
             },
             .PLL2 = .{
-                .PLLState = hal.c.RCC_PLL_ON,
-                .PLLSource = hal.c.RCC_PLLSOURCE_HSI,
+                .PLLState = c.RCC_PLL_ON,
+                .PLLSource = c.RCC_PLLSOURCE_HSI,
                 .PLLM = 4,
                 .PLLN = 25,
                 .PLLP = 2,
@@ -57,8 +75,8 @@ fn initClocks() void {
                 .PLLFractional = 0,
             },
             .PLL3 = .{
-                .PLLState = hal.c.RCC_PLL_ON,
-                .PLLSource = hal.c.RCC_PLLSOURCE_HSI,
+                .PLLState = c.RCC_PLL_ON,
+                .PLLSource = c.RCC_PLLSOURCE_HSI,
                 .PLLM = 4,
                 .PLLN = 25,
                 .PLLP = 2,
@@ -70,32 +88,97 @@ fn initClocks() void {
             },
         },
     );
-    try hal.zig.rcc.config(&rcc_init);
+    try rcc.config(&rcc_init);
 
     var rcc_clk = std.mem.zeroInit(
-        hal.c.RCC_ClkInitTypeDef,
+        c.RCC_ClkInitTypeDef,
         .{
-            .ClockType = hal.c.RCC_CLOCKTYPE_HCLK | hal.c.RCC_CLOCKTYPE_SYSCLK | hal.c.RCC_CLOCKTYPE_PCLK1 | hal.c.RCC_CLOCKTYPE_PCLK2 | hal.c.RCC_CLOCKTYPE_PCLK4 | hal.c.RCC_CLOCKTYPE_PCLK5,
-            .SYSCLKSource = hal.c.RCC_SYSCLKSOURCE_PLLCLK,
-            .SYSCLKDivider = hal.c.RCC_SYSCLK_DIV1,
-            .AHBCLKDivider = hal.c.RCC_HCLK_DIV2,
-            .APB1CLKDivider = hal.c.RCC_APB1_DIV2,
-            .APB2CLKDivider = hal.c.RCC_APB2_DIV2,
-            .APB4CLKDivider = hal.c.RCC_APB4_DIV2,
-            .APB5CLKDivider = hal.c.RCC_APB5_DIV2,
+            .ClockType = c.RCC_CLOCKTYPE_HCLK | c.RCC_CLOCKTYPE_SYSCLK | c.RCC_CLOCKTYPE_PCLK1 | c.RCC_CLOCKTYPE_PCLK2 | c.RCC_CLOCKTYPE_PCLK4 | c.RCC_CLOCKTYPE_PCLK5,
+            .SYSCLKSource = c.RCC_SYSCLKSOURCE_PLLCLK,
+            .SYSCLKDivider = c.RCC_SYSCLK_DIV1,
+            .AHBCLKDivider = c.RCC_HCLK_DIV2,
+            .APB1CLKDivider = c.RCC_APB1_DIV2,
+            .APB2CLKDivider = c.RCC_APB2_DIV2,
+            .APB4CLKDivider = c.RCC_APB4_DIV2,
+            .APB5CLKDivider = c.RCC_APB5_DIV2,
         },
     );
-    if (hal.c.HAL_RCC_ClockConfig(&rcc_clk, hal.c.FLASH_LATENCY_6) != hal.c.HAL_OK) {
+    if (c.HAL_RCC_ClockConfig(&rcc_clk, c.FLASH_LATENCY_6) != c.HAL_OK) {
         std.debug.panic("HAL_RCC_ClockConfig", .{});
     }
 }
 
+export var SystemCoreClock: u32 = c.HSI_VALUE;
+
+fn SystemCoreClockUpdate() void {
+    var sysclk: u32 = undefined;
+
+    // Get SYSCLK source
+    switch (RCC.CFGR & c.RCC_CFGR_SWS) {
+        // HIS used as system clock source (default after reset)
+        0x00 => sysclk = c.HSI_VALUE >> (to_u5(RCC.CR & c.RCC_CR_HSIDIV) >> c.RCC_CR_HSIDIV_Pos),
+
+        // CSI used as system clock source
+        0x08 => sysclk = c.CSI_VALUE,
+
+        // HSE used as system clock source
+        0x10 => sysclk = c.HSE_VALUE,
+
+        // PLL1 used as system clock  source
+        // PLL1_VCO = (HSE_VALUE or HSI_VALUE or CSI_VALUE/ PLLM) * PLLN
+        // SYSCLK = PLL1_VCO / PLL1R
+        0x18 => {
+            const pllsource: u32 = RCC.PLLCKSELR & c.RCC_PLLCKSELR_PLLSRC;
+            const pllm = (RCC.PLLCKSELR & c.RCC_PLLCKSELR_DIVM1) >> c.RCC_PLLCKSELR_DIVM1_Pos;
+
+            const pllfracn: f32 = if ((RCC.PLLCFGR & c.RCC_PLLCFGR_PLL1FRACEN) != 0)
+                to_f32(RCC.PLL1FRACR & c.RCC_PLL1FRACR_FRACN >> c.RCC_PLL1FRACR_FRACN_Pos)
+            else
+                0;
+
+            if (pllm != 0) {
+                const factor: f32 = (to_f32(RCC.PLL1DIVR1 & c.RCC_PLL1DIVR1_DIVN) + (pllfracn / 0x2000) + 1) / to_f32(pllm);
+
+                const hsivalue: u32 = c.HSI_VALUE >> (to_u5(RCC.CR & c.RCC_CR_HSIDIV) >> c.RCC_CR_HSIDIV_Pos);
+
+                const pllvco: f32 = switch (pllsource) {
+                    // HSE used as PLL1 clock source
+                    0x02 => c.HSE_VALUE * factor,
+
+                    // CSI used as PLL1 clock source
+                    0x01 => c.CSI_VALUE * factor,
+
+                    // HIS used as PLL1 clock source */
+                    else => to_f32(hsivalue) * factor,
+                };
+
+                const pllp: u32 = ((RCC.PLL1DIVR1 & c.RCC_PLL1DIVR1_DIVP) >> c.RCC_PLL1DIVR1_DIVP_Pos) + 1;
+                sysclk = @intFromFloat(pllvco / to_f32(pllp));
+            } else {
+                sysclk = 0;
+            }
+        },
+
+        // Unexpected, default to HIS used as system clock source (default after reset)
+        else => sysclk = c.HSI_VALUE >> (to_u5(RCC.CR & c.RCC_CR_HSIDIV) >> c.RCC_CR_HSIDIV_Pos),
+    }
+
+    // system clock frequency : CM7 CPU frequency
+    const core_presc: u32 = RCC.CDCFGR & c.RCC_CDCFGR_CPRE;
+
+    SystemCoreClock = if (core_presc >= 8)
+        sysclk >> to_u5(core_presc - c.RCC_CDCFGR_CPRE_3 + 1)
+    else
+        sysclk;
+}
+
 /// Initialize HAL and clocks
 pub fn init() void {
+    enableFPU();
     initHal();
     initPower();
     initClocks();
-    hal.c.SystemCoreClockUpdate();
+    SystemCoreClockUpdate();
     hal.dk.init();
 }
 
@@ -115,14 +198,14 @@ pub const Active = enum {
 pub const Pin = struct {
     const Self = @This();
 
-    port: *hal.c.GPIO_TypeDef,
+    port: *c.GPIO_TypeDef,
     pin: u16,
 
     pub fn init(pin: Self, mode: c_uint, pull: c_uint, speed: c_uint) void {
         rcc.enable_gpio(pin.port);
 
         var gpio_init = std.mem.zeroInit(
-            hal.c.GPIO_InitTypeDef,
+            c.GPIO_InitTypeDef,
             .{
                 .Pin = pin.pin,
                 .Mode = mode,
@@ -130,7 +213,7 @@ pub const Pin = struct {
                 .Speed = speed,
             },
         );
-        hal.c.HAL_GPIO_Init(pin.port, &gpio_init);
+        c.HAL_GPIO_Init(pin.port, &gpio_init);
     }
 };
 
@@ -138,27 +221,27 @@ pub const Pin = struct {
 pub const DigitalIn = struct {
     const Self = @This();
 
-    base: hal.zig.Pin,
-    active: hal.zig.Active,
+    base: Pin,
+    active: Active,
 
     /// Configure the pin
     pub fn init(self: Self) void {
         const hal_pull = switch (self.active) {
-            .Low => hal.c.GPIO_PULLUP,
-            .High => hal.c.GPIO_PULLDOWN,
+            .Low => c.GPIO_PULLUP,
+            .High => c.GPIO_PULLDOWN,
         };
 
-        self.base.init(hal.c.GPIO_MODE_INPUT, hal_pull, hal.c.GPIO_SPEED_FREQ_LOW);
+        self.base.init(c.GPIO_MODE_INPUT, hal_pull, c.GPIO_SPEED_FREQ_LOW);
     }
 
     /// Read input, takin into account the pull, to return "is button pressed"
     pub fn read(self: Self) bool {
         const check = switch (self.active) {
-            .Low => hal.c.GPIO_PIN_RESET,
-            .High => hal.c.GPIO_PIN_SET,
+            .Low => c.GPIO_PIN_RESET,
+            .High => c.GPIO_PIN_SET,
         };
 
-        return hal.c.HAL_GPIO_ReadPin(self.base.port, self.base.pin) == check;
+        return c.HAL_GPIO_ReadPin(self.base.port, self.base.pin) == check;
     }
 };
 
@@ -166,13 +249,13 @@ pub const DigitalIn = struct {
 pub const DigitalOut = struct {
     const Self = @This();
 
-    base: hal.zig.Pin,
-    active: hal.zig.Active,
+    base: Pin,
+    active: Active,
 
     /// Configure the pin and set it at "off" state
     pub fn init(self: Self) void {
         // TODO?: Something based on `self.active`
-        self.base.init(hal.c.GPIO_MODE_OUTPUT_PP, hal.c.GPIO_PULLUP, hal.c.GPIO_SPEED_FREQ_VERY_HIGH);
+        self.base.init(c.GPIO_MODE_OUTPUT_PP, c.GPIO_PULLUP, c.GPIO_SPEED_FREQ_VERY_HIGH);
     }
 
     /// Set the **logical** output level (according to active-ness)
@@ -182,13 +265,13 @@ pub const DigitalOut = struct {
             .High => value,
         };
 
-        const hal_out: c_uint = if (output) hal.c.GPIO_PIN_SET else hal.c.GPIO_PIN_RESET;
+        const hal_out: c_uint = if (output) c.GPIO_PIN_SET else c.GPIO_PIN_RESET;
 
-        hal.c.HAL_GPIO_WritePin(self.base.port, self.base.pin, hal_out);
+        c.HAL_GPIO_WritePin(self.base.port, self.base.pin, hal_out);
     }
 
     /// Toggle the output voltage
     pub fn toggle(self: Self) void {
-        hal.c.HAL_GPIO_TogglePin(self.base.port, self.base.pin);
+        c.HAL_GPIO_TogglePin(self.base.port, self.base.pin);
     }
 };

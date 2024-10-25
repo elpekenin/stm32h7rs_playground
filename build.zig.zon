@@ -4,7 +4,6 @@
 
     .dependencies = .{
         .picolibc = .{
-            // broken right now
             .url = "git+https://github.com/allyourcodebase/picolibc-zig#7a128e1d7a3781b3eae7cf3d7c59c66a2bee36e7",
             .hash = "1220e83a23185cb5a9749e107a3ee4d725f50dc176f48460a89ecd545d249e8f1e87",
         },
