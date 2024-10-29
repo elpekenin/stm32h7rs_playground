@@ -141,12 +141,12 @@ fn port_to_clock(port: *c.GPIO_TypeDef) Clock {
     };
 }
 
-/// Convenience to access GPIO sructs by the pointer to the port
+/// Convenience to access GPIO structs by the pointer to the port
 pub fn enable_gpio(port: *c.GPIO_TypeDef) void {
     port_to_clock(port).enable();
 }
 
-/// Convenience to access GPIO sructs by the pointer to the port
+/// Convenience to access GPIO structs by the pointer to the port
 pub fn disable_gpio(port: *c.GPIO_TypeDef) void {
     port_to_clock(port).disable();
 }
