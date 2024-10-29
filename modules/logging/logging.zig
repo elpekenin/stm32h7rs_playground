@@ -24,6 +24,6 @@ pub fn logFn(
 }
 
 /// Name that STM HAL expects to find
-export fn assert_failed(file: [*:0]const u8, line: u32) callconv(.C) void {
+export fn assert_failed(file: [*:0]const u8, line: u32) void {
     std.log.err("assert failed {s}:{}", .{ file, line });
 }

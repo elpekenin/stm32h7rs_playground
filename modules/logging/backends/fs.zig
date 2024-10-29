@@ -4,7 +4,7 @@
 //        than to write 4x 50byte ones
 
 const std = @import("std");
-const options = @import("options");
+const config = @import("build_config");
 const hal = @import("hal");
 const rtt = @import("rtt.zig");
 const fatfs = @import("fatfs");
@@ -17,8 +17,8 @@ const Context = struct {
 
     fn get_full_path(comptime level: std.log.Level) [:0]const u8 {
         return switch (level) {
-            .debug, .info => options.app_name ++ ".out",
-            .warn, .err => options.app_name ++ ".err",
+            .debug, .info => config.program.name ++ ".out",
+            .warn, .err => config.program.name ++ ".err",
         };
     }
 
@@ -44,7 +44,7 @@ const Backend = struct {
     mount: [:0]const u8,
     disk: *fatfs.Disk,
 
-    pub fn full_path(self: Self, file_path: []const u8) [:0]const u8 {
+    pub fn full_path(self: *const Self, file_path: []const u8) [:0]const u8 {
         @memset(&buff, 0);
 
         @memcpy(buff[0..], self.mount);

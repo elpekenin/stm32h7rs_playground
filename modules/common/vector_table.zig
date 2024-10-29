@@ -9,20 +9,11 @@ const hal = @import("hal");
 
 const ISR = *const fn () callconv(.C) void;
 
-extern var __stack: anyopaque;
-
-export const vector_table: VectorTable linksection(".data.init.enter") = .{
-    .stack_pointer = &__stack,
-    .Reset = @import("start.zig")._start,
-    .SDMMC1 = hal.zig.sd.isr,
-    .TIM6 = hal.zig.timer.isr,
-};
-
 fn defaultHandler() callconv(.C) void {
     while (true) {}
 }
 
-const VectorTable = extern struct {
+pub const VectorTable = extern struct {
     stack_pointer: *anyopaque,
     Reset: ISR,
     NMI: ISR = defaultHandler,

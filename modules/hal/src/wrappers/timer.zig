@@ -14,7 +14,7 @@ const TickT = u32;
 
 var TimHandle = std.mem.zeroes(c.TIM_HandleTypeDef);
 
-export fn HAL_InitTick(TickPriority: u32) callconv(.C) c.HAL_StatusTypeDef {
+export fn HAL_InitTick(TickPriority: u32) c.HAL_StatusTypeDef {
     var Status: c.HAL_StatusTypeDef = undefined;
 
     // Enable TIM6 clock
@@ -78,7 +78,7 @@ export fn HAL_InitTick(TickPriority: u32) callconv(.C) c.HAL_StatusTypeDef {
 }
 
 /// Called when IRQ happens, by means of HAL_TIM_IRQHandler
-export fn HAL_TIM_PeriodElapsedCallback(htim: *c.TIM_HandleTypeDef) callconv(.C) void {
+export fn HAL_TIM_PeriodElapsedCallback(htim: *c.TIM_HandleTypeDef) void {
     _ = htim;
     c.HAL_IncTick();
 }
@@ -88,11 +88,11 @@ pub fn isr() callconv(.C) void {
     c.HAL_TIM_IRQHandler(&TimHandle);
 }
 
-export fn HAL_ResumeTick() callconv(.C) void {
+export fn HAL_ResumeTick() void {
     TimHandle.Instance.*.DIER |= c.TIM_IT_UPDATE;
 }
 
-export fn HAL_SuspendTick() callconv(.C) void {
+export fn HAL_SuspendTick() void {
     TimHandle.Instance.*.DIER &= ~c.TIM_IT_UPDATE;
 }
 

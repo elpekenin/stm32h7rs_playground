@@ -111,57 +111,53 @@ fn initClocks() void {
 export var SystemCoreClock: u32 = c.HSI_VALUE;
 
 fn SystemCoreClockUpdate() void {
-    var sysclk: u32 = undefined;
-
     // Get SYSCLK source
-    switch (RCC.CFGR & c.RCC_CFGR_SWS) {
+    const sysclk: u32 = switch (RCC.CFGR & c.RCC_CFGR_SWS) {
         // HIS used as system clock source (default after reset)
-        0x00 => sysclk = c.HSI_VALUE >> (to_u5(RCC.CR & c.RCC_CR_HSIDIV) >> c.RCC_CR_HSIDIV_Pos),
+        0x00 => c.HSI_VALUE >> to_u5((RCC.CR & c.RCC_CR_HSIDIV) >> c.RCC_CR_HSIDIV_Pos),
 
         // CSI used as system clock source
-        0x08 => sysclk = c.CSI_VALUE,
+        0x08 => c.CSI_VALUE,
 
         // HSE used as system clock source
-        0x10 => sysclk = c.HSE_VALUE,
+        0x10 => c.HSE_VALUE,
 
         // PLL1 used as system clock  source
         // PLL1_VCO = (HSE_VALUE or HSI_VALUE or CSI_VALUE/ PLLM) * PLLN
         // SYSCLK = PLL1_VCO / PLL1R
-        0x18 => {
-            const pllsource: u32 = RCC.PLLCKSELR & c.RCC_PLLCKSELR_PLLSRC;
+        0x18 => pll1_source_blk: {
             const pllm = (RCC.PLLCKSELR & c.RCC_PLLCKSELR_DIVM1) >> c.RCC_PLLCKSELR_DIVM1_Pos;
+            if (pllm == 0) {
+                break :pll1_source_blk 0;
+            }
 
             const pllfracn: f32 = if ((RCC.PLLCFGR & c.RCC_PLLCFGR_PLL1FRACEN) != 0)
                 to_f32(RCC.PLL1FRACR & c.RCC_PLL1FRACR_FRACN >> c.RCC_PLL1FRACR_FRACN_Pos)
             else
                 0;
 
-            if (pllm != 0) {
-                const factor: f32 = (to_f32(RCC.PLL1DIVR1 & c.RCC_PLL1DIVR1_DIVN) + (pllfracn / 0x2000) + 1) / to_f32(pllm);
+            const factor: f32 = (to_f32(RCC.PLL1DIVR1 & c.RCC_PLL1DIVR1_DIVN) + (pllfracn / 0x2000) + 1) / to_f32(pllm);
+            const hsivalue: u32 = c.HSI_VALUE >> to_u5((RCC.CR & c.RCC_CR_HSIDIV) >> c.RCC_CR_HSIDIV_Pos);
 
-                const hsivalue: u32 = c.HSI_VALUE >> (to_u5(RCC.CR & c.RCC_CR_HSIDIV) >> c.RCC_CR_HSIDIV_Pos);
+            const pllvco: f32 = switch (RCC.PLLCKSELR & c.RCC_PLLCKSELR_PLLSRC) {
+                // HSE used as PLL1 clock source
+                0x02 => c.HSE_VALUE * factor,
 
-                const pllvco: f32 = switch (pllsource) {
-                    // HSE used as PLL1 clock source
-                    0x02 => c.HSE_VALUE * factor,
+                // CSI used as PLL1 clock source
+                0x01 => c.CSI_VALUE * factor,
 
-                    // CSI used as PLL1 clock source
-                    0x01 => c.CSI_VALUE * factor,
+                // HIS used as PLL1 clock source */
+                else => to_f32(hsivalue) * factor,
+            };
 
-                    // HIS used as PLL1 clock source */
-                    else => to_f32(hsivalue) * factor,
-                };
+            const pllp: u32 = ((RCC.PLL1DIVR1 & c.RCC_PLL1DIVR1_DIVP) >> c.RCC_PLL1DIVR1_DIVP_Pos) + 1;
 
-                const pllp: u32 = ((RCC.PLL1DIVR1 & c.RCC_PLL1DIVR1_DIVP) >> c.RCC_PLL1DIVR1_DIVP_Pos) + 1;
-                sysclk = @intFromFloat(pllvco / to_f32(pllp));
-            } else {
-                sysclk = 0;
-            }
+            break :pll1_source_blk @intFromFloat(pllvco / to_f32(pllp));
         },
 
         // Unexpected, default to HIS used as system clock source (default after reset)
-        else => sysclk = c.HSI_VALUE >> (to_u5(RCC.CR & c.RCC_CR_HSIDIV) >> c.RCC_CR_HSIDIV_Pos),
-    }
+        else => c.HSI_VALUE >> to_u5((RCC.CR & c.RCC_CR_HSIDIV) >> c.RCC_CR_HSIDIV_Pos),
+    };
 
     // system clock frequency : CM7 CPU frequency
     const core_presc: u32 = RCC.CDCFGR & c.RCC_CDCFGR_CPRE;

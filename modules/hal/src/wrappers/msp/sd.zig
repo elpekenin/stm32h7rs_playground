@@ -2,7 +2,7 @@ const std = @import("std");
 const hal = @import("../../hal.zig");
 const c = hal.c;
 
-export fn HAL_SD_MspInit(hsd: *c.SD_HandleTypeDef) callconv(.C) void {
+export fn HAL_SD_MspInit(hsd: *c.SD_HandleTypeDef) void {
     if (hsd.Instance != c.SDMMC1) {
         std.debug.panic("hsd != SDMMC1", .{});
     }
@@ -53,7 +53,7 @@ export fn HAL_SD_MspInit(hsd: *c.SD_HandleTypeDef) callconv(.C) void {
     c.HAL_GPIO_Init(c.GPIOC, &gpio_init);
 }
 
-export fn HAL_SD_MspDeInit(hsd: *c.SD_HandleTypeDef) callconv(.C) void {
+export fn HAL_SD_MspDeInit(hsd: *c.SD_HandleTypeDef) void {
     if (hsd.Instance != c.SDMMC1) {
         std.debug.panic("hsd != SDMMC1", .{});
     }

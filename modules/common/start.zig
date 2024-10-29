@@ -11,9 +11,7 @@ const program = @import("program");
 
 const panic_mod = @import("panic.zig");
 
-comptime {
-    _ = @import("vector_table.zig");
-}
+const VectorTable = @import("vector_table.zig").VectorTable;
 
 // zig std config
 pub const std_options = std.Options{
@@ -27,6 +25,8 @@ pub const std_options = std.Options{
 pub const panic = panic_mod.panic;
 
 const symbols = struct {
+    extern var __stack: anyopaque;
+
     extern var __bss_start: anyopaque;
     extern var __bss_end: anyopaque;
 
@@ -38,10 +38,16 @@ const symbols = struct {
     extern var __data_source: anyopaque;
 };
 
+fn deadlock() noreturn {
+    while (true) {
+        @breakpoint();
+    }
+}
+
 /// Entrypoint of the program (Reset_Handler in interrupt table).
 ///
 /// It sets up the data sections in RAM, to then execute the program.
-pub export fn _start() callconv(.C) noreturn {
+pub export fn _start() noreturn {
     // fill BSS with zero
     const bss_start: [*]u8 = @ptrCast(&symbols.__bss_start);
     const bss_end: [*]u8 = @ptrCast(&symbols.__bss_end);
@@ -76,9 +82,16 @@ pub export fn _start() callconv(.C) noreturn {
             }
         }
 
-        panic_mod.indicator();
+        deadlock();
     };
 
     logger.err("exitcode: {}", .{ret});
-    panic_mod.indicator();
+    deadlock();
 }
+
+export const vector_table: VectorTable linksection(".data.init.enter") = .{
+    .stack_pointer = &symbols.__stack,
+    .Reset = @import("start.zig")._start,
+    .SDMMC1 = hal.zig.sd.isr,
+    .TIM6 = hal.zig.timer.isr,
+};

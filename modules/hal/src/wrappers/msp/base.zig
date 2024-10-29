@@ -2,7 +2,7 @@ const std = @import("std");
 const hal = @import("../../hal.zig");
 const c = hal.c;
 
-export fn HAL_MspInit() callconv(.C) void {
+export fn HAL_MspInit() void {
     if (c.HAL_PWREx_ConfigSupply(c.PWR_DIRECT_SMPS_SUPPLY) != c.HAL_OK) {
         std.debug.panic("HAL_PWREx_ConfigSupply", .{});
     }

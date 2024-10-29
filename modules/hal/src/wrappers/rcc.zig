@@ -16,12 +16,12 @@ const Clock = struct {
     register: *volatile u32,
     bitmask: u32,
 
-    pub fn enable(self: Self) void {
+    pub fn enable(self: *const Self) void {
         self.register.* |= self.bitmask;
         tmpreg.* = self.register.*;
     }
 
-    pub fn disable(self: Self) void {
+    pub fn disable(self: *const Self) void {
         self.register.* &= ~self.bitmask;
         tmpreg.* = self.register.*;
     }

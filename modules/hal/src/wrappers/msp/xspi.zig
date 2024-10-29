@@ -8,7 +8,7 @@ const state = struct {
     var counter: u32 = 0;
 };
 
-export fn HAL_XSPI_MspInit(hxspi: *c.XSPI_HandleTypeDef) callconv(.C) void {
+export fn HAL_XSPI_MspInit(hxspi: *c.XSPI_HandleTypeDef) void {
     var periph_clk_init = std.mem.zeroes(c.RCC_PeriphCLKInitTypeDef);
     periph_clk_init = switch (hxspi.Instance) {
         c.XSPI1 => .{
@@ -78,7 +78,7 @@ export fn HAL_XSPI_MspInit(hxspi: *c.XSPI_HandleTypeDef) callconv(.C) void {
     }
 }
 
-export fn HAL_XSPI_MspDeInit(hxspi: *c.XSPI_HandleTypeDef) callconv(.C) void {
+export fn HAL_XSPI_MspDeInit(hxspi: *c.XSPI_HandleTypeDef) void {
     state.counter -= 1;
     if (state.counter == 0) {
         hal.zig.rcc.XSPIM.disable();

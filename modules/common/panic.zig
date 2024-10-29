@@ -4,54 +4,58 @@ const std = @import("std");
 const logger = std.log.scoped(.panic);
 
 const hal = @import("hal");
-const options = @import("options");
+const config = @import("build_config");
 
-const PanicType = @import("panic_config.zig").PanicType;
+const Panic = @TypeOf(config.panic);
 
-/// Broken down to its own function so that we can show the indicator
-/// when `main` exits (either return or error) instead of making
-/// it `std.debug.panic` and cause a "panic" log message
-pub fn indicator() noreturn {
-    const panic_type: PanicType = @enumFromInt(options.panic_type);
+fn deadlock() noreturn {
+    while (true) {
+        @breakpoint();
+    }
+}
 
-    switch (panic_type) {
-        .Nothing => while (true) {},
-        .LedsOn => {
-            inline for (hal.dk.LEDS) |led| {
-                led.set(true);
-            }
+fn leds_on() noreturn {
+    inline for (hal.dk.LEDS) |led| {
+        led.set(true);
+    }
 
-            while (true) {}
-        },
-        .CycleLeds => {
-            inline for (hal.dk.LEDS) |led| {
-                led.set(true);
-            }
+    deadlock();
+}
 
-            while (true) {
-                inline for (hal.dk.LEDS) |led| {
-                    led.toggle();
-                    hal.zig.timer.sleep(options.panic_timer);
-                }
-            }
-        },
-        .ToggleLeds => {
-            inline for (hal.dk.LEDS) |led| {
-                led.set(true);
-            }
+fn cycle_leds() noreturn {
+    inline for (hal.dk.LEDS) |led| {
+        led.set(true);
+    }
 
-            while (true) {
-                inline for (hal.dk.LEDS) |led| {
-                    led.toggle();
-                }
-                hal.zig.timer.sleep(options.panic_timer);
-            }
-        },
+    while (true) {
+        inline for (hal.dk.LEDS) |led| {
+            led.toggle();
+            hal.zig.timer.sleep(config.panic.time);
+        }
+    }
+}
+
+fn toggle_leds() noreturn {
+    inline for (hal.dk.LEDS) |led| {
+        led.set(true);
+    }
+
+    while (true) {
+        inline for (hal.dk.LEDS) |led| {
+            led.toggle();
+        }
+        hal.zig.timer.sleep(config.panic.time);
     }
 }
 
 pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
     @setCold(true);
     logger.err("{s}", .{msg});
-    indicator();
+
+    switch (config.panic.type) {
+        .Nothing => deadlock(),
+        .LedsOn => leds_on(),
+        .CycleLeds => cycle_leds(),
+        .ToggleLeds => toggle_leds(),
+    }
 }
