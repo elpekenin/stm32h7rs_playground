@@ -37,7 +37,7 @@ pub const i_cache = struct {
         DSB();
         ISB();
 
-        std.log.debug("i-cache enabled", .{});
+        logger.debug("i-cache enabled", .{});
     }
 
     pub fn disable() void {

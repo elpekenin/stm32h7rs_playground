@@ -385,6 +385,11 @@ pub const OSC32 = struct {
 };
 
 pub const OSPI = struct {
+    pub const CS = Pin{
+        .pin = c.GPIO_PIN_1,
+        .port = c.GPION,
+    };
+
     pub const DQS = Pin{
         .pin = c.GPIO_PIN_0,
         .port = c.GPION,
@@ -434,6 +439,25 @@ pub const OSPI = struct {
         .pin = c.GPIO_PIN_11,
         .port = c.GPION,
     };
+
+    fn init() void {
+        var config: Pin.Config = .{
+            .mode = c.GPIO_MODE_AF_PP,
+            .pull = c.GPIO_PULLUP,
+            .speed = c.GPIO_SPEED_FREQ_VERY_HIGH,
+            .alternate = c.GPIO_AF9_XSPIM_P2,
+        };
+
+        CS.init(config);
+        DQS.init(config);
+
+        config.pull = c.GPIO_NOPULL;
+        CLK.init(config);
+
+        inline for (.{ IO0, IO1, IO2, IO3, IO4, IO5, IO6, IO7 }) |pin| {
+            pin.init(config);
+        }
+    }
 };
 
 pub const RMII = struct {
@@ -647,14 +671,13 @@ pub const LEDS = .{
 };
 
 pub fn init() void {
-    inline for (.{
-        SD.DET,
-        BUTTON,
-    }) |pin| {
+    inline for (.{ SD.DET, BUTTON }) |pin| {
         pin.init();
     }
 
     inline for (LEDS) |pin| {
         pin.init();
     }
+
+    OSPI.init();
 }

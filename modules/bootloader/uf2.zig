@@ -36,13 +36,13 @@ pub fn check() bool {
 fn flash_test() !i32 {
     try ext_flash.init(.SPI, .STR);
 
-    const write_buf = [_]u8{'F'} ** 128;
-    try ext_flash.write(0, &write_buf);
-    logger.info("written to flash", .{});
+    const SIZE = 10;
 
-    var read_buf: [write_buf.len]u8 = undefined;
+    const write_buf = [_]u8{0xAA} ** SIZE;
+    try ext_flash.write(0, &write_buf);
+
+    var read_buf = [_]u8{0} ** SIZE;
     try ext_flash.read(0, &read_buf);
-    logger.info("read: {any}", .{read_buf});
 
     return 0;
 }

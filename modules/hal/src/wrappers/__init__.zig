@@ -194,19 +194,27 @@ pub const Active = enum {
 pub const Pin = struct {
     const Self = @This();
 
+    pub const Config = struct {
+        mode: c_uint = 0,
+        pull: c_uint = 0,
+        speed: c_uint = 0,
+        alternate: c_uint = 0,
+    };
+
     port: *c.GPIO_TypeDef,
     pin: u16,
 
-    pub fn init(pin: Self, mode: c_uint, pull: c_uint, speed: c_uint) void {
+    pub fn init(pin: Self, config: Config) void {
         rcc.enable_gpio(pin.port);
 
         var gpio_init = std.mem.zeroInit(
             c.GPIO_InitTypeDef,
             .{
                 .Pin = pin.pin,
-                .Mode = mode,
-                .Pull = pull,
-                .Speed = speed,
+                .Mode = config.mode,
+                .Pull = config.pull,
+                .Speed = config.speed,
+                .Alternate = config.alternate,
             },
         );
         c.HAL_GPIO_Init(pin.port, &gpio_init);
@@ -227,7 +235,11 @@ pub const DigitalIn = struct {
             .High => c.GPIO_PULLDOWN,
         };
 
-        self.base.init(c.GPIO_MODE_INPUT, hal_pull, c.GPIO_SPEED_FREQ_LOW);
+        self.base.init(.{
+            .mode = c.GPIO_MODE_INPUT,
+            .pull = hal_pull,
+            .speed = c.GPIO_SPEED_FREQ_LOW,
+        });
     }
 
     /// Read input, takin into account the pull, to return "is button pressed"
@@ -251,7 +263,11 @@ pub const DigitalOut = struct {
     /// Configure the pin and set it at "off" state
     pub fn init(self: Self) void {
         // TODO?: Something based on `self.active`
-        self.base.init(c.GPIO_MODE_OUTPUT_PP, c.GPIO_PULLUP, c.GPIO_SPEED_FREQ_VERY_HIGH);
+        self.base.init(.{
+            .mode = c.GPIO_MODE_OUTPUT_PP,
+            .pull = c.GPIO_PULLUP,
+            .speed = c.GPIO_SPEED_FREQ_VERY_HIGH,
+        });
     }
 
     /// Set the **logical** output level (according to active-ness)

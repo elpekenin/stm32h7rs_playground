@@ -4,11 +4,11 @@
 
     .dependencies = .{
         .upstream = .{
-            .url = "git+https://github.com/STMicroelectronics/stm32h7rsxx_hal_driver#ecc746788b9843dd4295f0acb58b3d15c3477abb",
-            .hash = "1220dc019b5066d09a0aa7d812f7ab94de584348b596de8fc0c5417b9e0f95e90589",
+            .url = "git+https://github.com/STMicroelectronics/stm32h7rsxx_hal_driver#a4178a44ef7f60313420abf18e3a70ce35958abd",
+            .hash = "1220b2700df11e0fa2aeb4538408c878d4e3cbe64159925b576c7b188538a3d4b4ed",
         },
         .cmsis_device_h7rs = .{
-            .url = "git+https://github.com/STMicroelectronics/cmsis_device_h7rs#832649d1fd09bd901e9f68e979522e5c209ebf20",
+            .url = "git+https://github.com/STMicroelectronics/cmsis-device-h7rs#832649d1fd09bd901e9f68e979522e5c209ebf20",
             .hash = "1220be1aba75a00472d98f5b1fcd65876391f6b85c7fa2da9c4b45dfa47e40623f0d",
         },
         .CMSIS_5 = .{
