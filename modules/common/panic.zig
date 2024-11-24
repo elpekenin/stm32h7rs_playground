@@ -14,18 +14,15 @@ fn deadlock() noreturn {
     }
 }
 
-fn leds_on() noreturn {
+fn on() void {
     inline for (hal.dk.LEDS) |led| {
         led.set(true);
     }
-
-    deadlock();
 }
 
-fn cycle_leds() noreturn {
-    inline for (hal.dk.LEDS) |led| {
-        led.set(true);
-    }
+fn cycle() noreturn {
+    // sync LEDs
+    on();
 
     while (true) {
         inline for (hal.dk.LEDS) |led| {
@@ -35,10 +32,9 @@ fn cycle_leds() noreturn {
     }
 }
 
-fn toggle_leds() noreturn {
-    inline for (hal.dk.LEDS) |led| {
-        led.set(true);
-    }
+fn toggle() noreturn {
+    // sync LEDs
+    on();
 
     while (true) {
         inline for (hal.dk.LEDS) |led| {
@@ -50,12 +46,15 @@ fn toggle_leds() noreturn {
 
 pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
     @setCold(true);
-    logger.err("{s}", .{msg});
 
+    logger.err("{s}", .{msg});
     switch (config.panic.type) {
         .Nothing => deadlock(),
-        .LedsOn => leds_on(),
-        .CycleLeds => cycle_leds(),
-        .ToggleLeds => toggle_leds(),
+        .LedsOn => {
+            on();
+            deadlock();
+        },
+        .CycleLeds => cycle(),
+        .ToggleLeds => toggle(),
     }
 }

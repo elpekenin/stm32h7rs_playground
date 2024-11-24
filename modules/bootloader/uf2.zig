@@ -7,7 +7,7 @@ const logger = std.log.scoped(.uf2);
 const hal = @import("hal");
 const jump = @import("jump.zig");
 
-const ext_flash = @import("mx66uw1g45g.zig");
+const mx66 = @import("mx66uw1g45g.zig");
 
 /// Green LED
 const INDICATOR = hal.dk.LEDS[0];
@@ -34,15 +34,15 @@ pub fn check() bool {
 }
 
 fn flash_test() !i32 {
-    try ext_flash.init(.SPI, .STR);
+    var flash = try mx66.new(.SPI, .STR);
 
     const SIZE = 10;
 
     const write_buf = [_]u8{0xAA} ** SIZE;
-    try ext_flash.write(0, &write_buf);
+    try flash.write(0, &write_buf);
 
-    var read_buf = [_]u8{0} ** SIZE;
-    try ext_flash.read(0, &read_buf);
+    var read_buf = [_]u8{0xFF} ** SIZE;
+    try flash.read(0, &read_buf);
 
     return 0;
 }
@@ -51,7 +51,7 @@ pub fn app_jump() !noreturn {
     // fails, for now.
     _ = try flash_test();
 
-    jump.to(ext_flash.BASE);
+    jump.to(mx66.BASE);
 }
 
 pub fn main() noreturn {

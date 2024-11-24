@@ -17,13 +17,13 @@ type: Type,
 time: Time,
 
 pub fn fromArgs(b: *std.Build) Self {
-    const type_ = b.option(
-        Self.Type,
+    const type_: Type = b.option(
+        Type,
         "panic_type",
         "Control panic behavior",
-    ) orelse .ToggleLeds;
+    ) orelse .CycleLeds;
 
-    const time = b.option(
+    const time: Time = b.option(
         Time,
         "panic_timer",
         "Control panic behavior",

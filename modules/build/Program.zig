@@ -21,11 +21,11 @@ type: Type,
 name: []const u8,
 
 pub fn fromArgs(b: *std.Build) Self {
-    const type_ = b.option(
-        Self.Type,
+    const type_: Type = b.option(
+        Type,
         "program",
         "Target program",
-    ) orelse @panic("Select target program");
+    ) orelse .bootloader;
 
     return Self{
         .type = type_,

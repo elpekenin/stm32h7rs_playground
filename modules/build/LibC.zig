@@ -24,11 +24,11 @@ fn from(impl: Impl) Self {
 }
 
 pub fn fromArgs(b: *std.Build) Self {
-    const impl = b.option(
+    const impl: Impl = b.option(
         Impl,
         "libc",
         "LibC implementation to use",
-    ) orelse @panic("Select a libc implementation");
+    ) orelse .foundation;
 
     return Self.from(impl);
 }
