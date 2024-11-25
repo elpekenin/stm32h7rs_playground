@@ -3,6 +3,9 @@
 //!   - Timing for above's loops
 
 const std = @import("std");
+const Build = std.Build;
+const Options = Build.Step.Options;
+
 const Self = @This();
 
 pub const Type = enum {
@@ -20,17 +23,21 @@ pub fn fromArgs(b: *std.Build) Self {
     const type_: Type = b.option(
         Type,
         "panic_type",
-        "Control panic behavior",
+        "control panic behavior",
     ) orelse .CycleLeds;
 
     const time: Time = b.option(
         Time,
         "panic_timer",
-        "Control panic behavior",
+        "control panic behavior",
     ) orelse 500;
 
     return Self{
         .type = type_,
         .time = time,
     };
+}
+
+pub fn dumpOptions(self: *const Self, options: *Options) void {
+    options.addOption(Self, "panic", self.*);
 }

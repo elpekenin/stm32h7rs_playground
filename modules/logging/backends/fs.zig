@@ -38,7 +38,7 @@ fn write(_: void, bytes: []const u8) FatFSWriteError!usize {
     }
 
     var file = try fatfs.File.open(
-        state.mount ++ config.program.name ++ ".log",
+        state.mount ++ config.program ++ ".log",
         .{
             .mode = .open_append,
             .access = .write_only,

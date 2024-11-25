@@ -8,8 +8,8 @@
             .hash = "1220e83a23185cb5a9749e107a3ee4d725f50dc176f48460a89ecd545d249e8f1e87",
         },
         .foundation = .{
-            .url = "git+https://github.com/ZigEmbeddedGroup/foundation-libc#6a32c97a297bb250c67918946991165a5fc09844",
-            .hash = "1220ac855930db0699253dc81d3153c11b0d077e3ebe7a97b7986bea71db166eb76b",
+            .url = "git+https://github.com/ZigEmbeddedGroup/foundation-libc#5281055623dff89af7b05572f5aebae0f606e6a1",
+            .hash = "1220048600075db8d58faa59d9671e7e4056d134d1f53b0efd9774d01321ef3e343e",
         },
         .hal = .{
             .path = "modules/hal",

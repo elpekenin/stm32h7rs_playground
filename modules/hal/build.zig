@@ -1,6 +1,9 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) !void {
+    const optimize = b.standardOptimizeOption(.{});
+    const target = b.standardTargetOptions(.{});
+
     const upstream = b.dependency("upstream", .{});
     const cmsis_5 = b.dependency("CMSIS_5", .{});
     const cmsis_device_h7rs = b.dependency("cmsis_device_h7rs", .{});
@@ -8,7 +11,9 @@ pub fn build(b: *std.Build) !void {
     const hal = b.addModule(
         "hal",
         .{
+            .optimize = optimize,
             .root_source_file = b.path("src/hal.zig"),
+            .target = target,
         },
     );
 

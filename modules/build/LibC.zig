@@ -1,8 +1,12 @@
 //! Which implementation of C's standard library is being used
+
 const std = @import("std");
+const Build = std.Build;
+const Options = Build.Step.Options;
+
 const Self = @This();
 
-const Impl = enum {
+const Implementation = enum {
     picolibc,
     foundation,
 };
@@ -10,7 +14,7 @@ const Impl = enum {
 dependency: []const u8,
 artifact: []const u8,
 
-fn from(impl: Impl) Self {
+fn from(impl: Implementation) Self {
     return switch (impl) {
         .picolibc => Self{
             .dependency = "picolibc",
@@ -24,11 +28,16 @@ fn from(impl: Impl) Self {
 }
 
 pub fn fromArgs(b: *std.Build) Self {
-    const impl: Impl = b.option(
-        Impl,
+    const implementation: Implementation = b.option(
+        Implementation,
         "libc",
-        "LibC implementation to use",
+        "libc implementation to use",
     ) orelse .foundation;
 
-    return Self.from(impl);
+    return Self.from(implementation);
+}
+
+pub fn dumpOptions(self: *const Self, options: *Options) void {
+    _ = self;
+    _ = options;
 }

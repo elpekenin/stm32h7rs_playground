@@ -5,8 +5,7 @@
 //! and publicly re-export `std_options`
 
 const std = @import("std");
-pub const fs = @import("backends/fs.zig");
-pub const rtt = @import("backends/rtt.zig");
+const build_config = @import("build_config");
 
 pub fn logFn(
     comptime level: std.log.Level,
@@ -19,8 +18,23 @@ pub fn logFn(
         return;
     }
 
-    rtt.log(level, scope, format, args);
-    fs.log(level, scope, format, args);
+    if (build_config.logging.rtt) {
+        @import("backends/rtt.zig").log(
+            level,
+            scope,
+            format,
+            args,
+        );
+    }
+
+    if (build_config.logging.filesystem) {
+        @import("backends/fs.zig").log(
+            level,
+            scope,
+            format,
+            args,
+        );
+    }
 }
 
 /// Name that STM HAL expects to find

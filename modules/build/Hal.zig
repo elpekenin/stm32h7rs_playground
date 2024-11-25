@@ -3,6 +3,10 @@
 //!   - Enable/disable callbacks
 
 const std = @import("std");
+const Build = std.Build;
+const ConfigHeader = Build.Step.ConfigHeader;
+const Options = Build.Step.Options;
+
 const Self = @This();
 
 // TODO: support some other options
@@ -103,13 +107,13 @@ USE_HAL_WWDG_REGISTER_CALLBACKS: bool = false,
 USE_HAL_XSPI_REGISTER_CALLBACKS: bool = false,
 
 pub fn fromArgs(b: *std.Build) Self {
-    var self = Self{};
+    var self: Self = .{}; // initialize with default values
 
     inline for (@typeInfo(Self).Struct.fields) |field| {
         const name = field.name;
 
-        const maybe_val = b.option(field.type, name, "Control `#define` with the same name");
-
+        // if arg passed in, overwrite default
+        const maybe_val = b.option(field.type, name, "control `#define` with the same name");
         if (maybe_val) |val| {
             @field(self, name) = val;
         }
@@ -118,11 +122,17 @@ pub fn fromArgs(b: *std.Build) Self {
     return self;
 }
 
-pub fn configHeader(self: Self, b: *std.Build) *std.Build.Step.ConfigHeader {
+pub fn dumpOptions(self: *const Self, options: *Options) void {
+    options.addOption(Self, "hal", self.*);
+}
+
+pub fn configHeader(self: Self, b: *Build) *ConfigHeader {
     return b.addConfigHeader(
         .{
             .style = .{
-                .cmake = b.path("stm32h7rsxx_hal_conf.h.in"),
+                .cmake = b.path(
+                    "stm32h7rsxx_hal_conf.h.in",
+                ),
             },
         },
         self,
