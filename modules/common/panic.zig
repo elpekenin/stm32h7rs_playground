@@ -6,8 +6,6 @@ const logger = std.log.scoped(.panic);
 const hal = @import("hal");
 const config = @import("build_config");
 
-const Panic = @TypeOf(config.panic);
-
 fn deadlock() noreturn {
     while (true) {
         @breakpoint();
@@ -15,7 +13,7 @@ fn deadlock() noreturn {
 }
 
 fn on() void {
-    inline for (hal.dk.LEDS) |led| {
+    inline for (hal.bsp.LEDS) |led| {
         led.set(true);
     }
 }
@@ -25,7 +23,7 @@ fn cycle() noreturn {
     on();
 
     while (true) {
-        inline for (hal.dk.LEDS) |led| {
+        inline for (hal.bsp.LEDS) |led| {
             led.toggle();
             hal.zig.timer.sleep(config.panic.time);
         }
@@ -37,7 +35,7 @@ fn toggle() noreturn {
     on();
 
     while (true) {
-        inline for (hal.dk.LEDS) |led| {
+        inline for (hal.bsp.LEDS) |led| {
             led.toggle();
         }
         hal.zig.timer.sleep(config.panic.time);

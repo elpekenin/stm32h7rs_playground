@@ -11,15 +11,15 @@ pub const c = @cImport({
 pub const zig = @import("wrappers/__init__.zig");
 
 /// Pin names
-pub const dk = @import("wrappers/dk_pins.zig");
+pub const bsp = @import("wrappers/bsp.zig");
 
 /// TODO: move to its own module (?)
 pub const assembly = struct {
-    pub inline fn disable_irq() void {
+    pub fn disableIrq() void {
         asm volatile ("cpsid i" ::: "memory");
     }
 
-    pub inline fn enable_irq() void {
+    pub fn enableIrq() void {
         asm volatile ("cpsie i" ::: "memory");
     }
 };

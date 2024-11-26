@@ -19,8 +19,8 @@ pub const Disk = struct {
 
     pub fn getStatus(_: *fatfs.Disk) fatfs.Disk.Status {
         return fatfs.Disk.Status{
-            .initialized = hal.zig.sd.is_initialized(),
-            .disk_present = hal.zig.sd.is_connected(),
+            .initialized = hal.zig.sd.initialized(),
+            .disk_present = hal.zig.sd.connected(),
             .write_protected = false,
         };
     }
@@ -29,8 +29,8 @@ pub const Disk = struct {
         hal.zig.sd.init() catch {};
 
         return fatfs.Disk.Status{
-            .initialized = hal.zig.sd.is_initialized(),
-            .disk_present = hal.zig.sd.is_connected(),
+            .initialized = hal.zig.sd.initialized(),
+            .disk_present = hal.zig.sd.connected(),
             .write_protected = false,
         };
     }
@@ -48,7 +48,7 @@ pub const Disk = struct {
             return error.DiskNotReady;
         }
 
-        const info = hal.zig.sd.card_info() catch return error.DiskNotReady;
+        const info = hal.zig.sd.info() catch return error.DiskNotReady;
 
         switch (cmd) {
             .sync => return,

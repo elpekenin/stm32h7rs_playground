@@ -15,11 +15,11 @@ pub const xspi = @import("xspi.zig");
 const RCC = peripherals.RCC;
 const SCB = peripherals.SCB;
 
-fn to_f32(val: anytype) f32 {
+fn asF32(val: anytype) f32 {
     return @as(f32, @floatFromInt(val));
 }
 
-fn to_u5(val: anytype) u5 {
+fn asU5(val: anytype) u5 {
     return @as(u5, @intCast(val));
 }
 
@@ -114,7 +114,7 @@ fn SystemCoreClockUpdate() void {
     // Get SYSCLK source
     const sysclk: u32 = switch (RCC.CFGR & c.RCC_CFGR_SWS) {
         // HIS used as system clock source (default after reset)
-        0x00 => c.HSI_VALUE >> to_u5((RCC.CR & c.RCC_CR_HSIDIV) >> c.RCC_CR_HSIDIV_Pos),
+        0x00 => c.HSI_VALUE >> asU5((RCC.CR & c.RCC_CR_HSIDIV) >> c.RCC_CR_HSIDIV_Pos),
 
         // CSI used as system clock source
         0x08 => c.CSI_VALUE,
@@ -132,12 +132,12 @@ fn SystemCoreClockUpdate() void {
             }
 
             const pllfracn: f32 = if ((RCC.PLLCFGR & c.RCC_PLLCFGR_PLL1FRACEN) != 0)
-                to_f32(RCC.PLL1FRACR & c.RCC_PLL1FRACR_FRACN >> c.RCC_PLL1FRACR_FRACN_Pos)
+                asF32(RCC.PLL1FRACR & c.RCC_PLL1FRACR_FRACN >> c.RCC_PLL1FRACR_FRACN_Pos)
             else
                 0;
 
-            const factor: f32 = (to_f32(RCC.PLL1DIVR1 & c.RCC_PLL1DIVR1_DIVN) + (pllfracn / 0x2000) + 1) / to_f32(pllm);
-            const hsivalue: u32 = c.HSI_VALUE >> to_u5((RCC.CR & c.RCC_CR_HSIDIV) >> c.RCC_CR_HSIDIV_Pos);
+            const factor: f32 = (asF32(RCC.PLL1DIVR1 & c.RCC_PLL1DIVR1_DIVN) + (pllfracn / 0x2000) + 1) / asF32(pllm);
+            const hsivalue: u32 = c.HSI_VALUE >> asU5((RCC.CR & c.RCC_CR_HSIDIV) >> c.RCC_CR_HSIDIV_Pos);
 
             const pllvco: f32 = switch (RCC.PLLCKSELR & c.RCC_PLLCKSELR_PLLSRC) {
                 // HSE used as PLL1 clock source
@@ -147,23 +147,23 @@ fn SystemCoreClockUpdate() void {
                 0x01 => c.CSI_VALUE * factor,
 
                 // HIS used as PLL1 clock source */
-                else => to_f32(hsivalue) * factor,
+                else => asF32(hsivalue) * factor,
             };
 
             const pllp: u32 = ((RCC.PLL1DIVR1 & c.RCC_PLL1DIVR1_DIVP) >> c.RCC_PLL1DIVR1_DIVP_Pos) + 1;
 
-            break :pll1_source_blk @intFromFloat(pllvco / to_f32(pllp));
+            break :pll1_source_blk @intFromFloat(pllvco / asF32(pllp));
         },
 
         // Unexpected, default to HIS used as system clock source (default after reset)
-        else => c.HSI_VALUE >> to_u5((RCC.CR & c.RCC_CR_HSIDIV) >> c.RCC_CR_HSIDIV_Pos),
+        else => c.HSI_VALUE >> asU5((RCC.CR & c.RCC_CR_HSIDIV) >> c.RCC_CR_HSIDIV_Pos),
     };
 
     // system clock frequency : CM7 CPU frequency
     const core_presc: u32 = RCC.CDCFGR & c.RCC_CDCFGR_CPRE;
 
     SystemCoreClock = if (core_presc >= 8)
-        sysclk >> to_u5(core_presc - c.RCC_CDCFGR_CPRE_3 + 1)
+        sysclk >> asU5(core_presc - c.RCC_CDCFGR_CPRE_3 + 1)
     else
         sysclk;
 }
@@ -175,7 +175,7 @@ pub fn init() void {
     initPower();
     initClocks();
     SystemCoreClockUpdate();
-    hal.dk.init();
+    hal.bsp.init();
 }
 
 // Please zig, do not garbage-collect these, we need to export C funcs, thx!!
@@ -205,7 +205,7 @@ pub const Pin = struct {
     pin: u16,
 
     pub fn init(pin: Self, config: Config) void {
-        rcc.enable_gpio(pin.port);
+        rcc.enableGpio(pin.port);
 
         var gpio_init = std.mem.zeroInit(
             c.GPIO_InitTypeDef,
@@ -242,7 +242,7 @@ pub const DigitalIn = struct {
         });
     }
 
-    /// Read input, takin into account the pull, to return "is button pressed"
+    /// Read input, taking into account the pull, to return "is button pressed"
     pub fn read(self: Self) bool {
         const check = switch (self.active) {
             .Low => c.GPIO_PIN_RESET,

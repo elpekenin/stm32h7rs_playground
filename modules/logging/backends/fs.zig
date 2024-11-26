@@ -52,7 +52,7 @@ fn write(_: void, bytes: []const u8) FatFSWriteError!usize {
 const FatFSWriter = std.io.GenericWriter(void, FatFSWriteError, write);
 
 // Mimic rtt's time prefix
-fn get_prefix(
+fn getPrefix(
     comptime level: std.log.Level,
     comptime scope: @TypeOf(.EnumLiteral),
 ) []const u8 {
@@ -73,7 +73,7 @@ pub fn log(
         return;
     }
 
-    const prefix = comptime get_prefix(level, scope);
+    const prefix = comptime getPrefix(level, scope);
     const writer = FatFSWriter{ .context = {} };
 
     // TODO: Decouple logging backends

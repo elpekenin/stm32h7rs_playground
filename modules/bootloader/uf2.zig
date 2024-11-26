@@ -10,31 +10,34 @@ const jump = @import("jump.zig");
 const mx66 = @import("mx66uw1g45g.zig");
 
 /// Green LED
-const INDICATOR = hal.dk.LEDS[0];
+const INDICATOR = hal.bsp.LEDS[0];
 
-const UF2_FLAG = 0xBEBECAFE;
-var uf2_var: u32 linksection(".preserve.0") = undefined;
+const Flag = struct {
+    const MAGIC = 0xBEBECAFE;
 
-inline fn set_flag() void {
-    uf2_var = UF2_FLAG;
-}
+    var value: u32 linksection(".preserve.0") = undefined;
 
-inline fn clear_flag() void {
-    uf2_var = 0;
-}
+    fn set() void {
+        value = MAGIC;
+    }
 
-pub fn chance() void {
-    set_flag();
-    hal.zig.timer.sleep(500);
-    clear_flag();
-}
+    fn clear() void {
+        value = 0;
+    }
 
-pub fn check() bool {
-    return uf2_var == UF2_FLAG;
-}
+    fn chance() void {
+        set();
+        hal.zig.timer.sleep(500);
+        clear();
+    }
 
-fn flash_test() !i32 {
-    var flash = try mx66.new(.SPI, .STR);
+    fn check() bool {
+        return value == MAGIC;
+    }
+};
+
+fn flashTest() !i32 {
+    var flash = try mx66.new(.OPI, .DTR);
 
     const SIZE = 10;
 
@@ -47,15 +50,18 @@ fn flash_test() !i32 {
     return 0;
 }
 
-pub fn app_jump() !noreturn {
+pub const checkJump = Flag.check;
+pub const doubleResetChance = Flag.chance;
+
+pub fn jumpToUserCode() !noreturn {
     // fails, for now.
-    _ = try flash_test();
+    _ = try flashTest();
 
     jump.to(mx66.BASE);
 }
 
 pub fn main() noreturn {
-    clear_flag();
+    Flag.clear();
 
     INDICATOR.set(true);
     hal.zig.timer.sleep(500);
@@ -70,5 +76,5 @@ pub fn main() noreturn {
     // ... and start address
     // if correct, write it to flash
 
-    app_jump();
+    jumpToUserCode();
 }

@@ -47,7 +47,7 @@ export fn HAL_XSPI_MspInit(hxspi: *c.XSPI_HandleTypeDef) void {
     switch (hxspi.Instance) {
         c.XSPI1 => {
             gpio_init = .{
-                .Pin = hal.dk.HXSPI.DQS1.pin | hal.dk.HXSPI.DQS0.pin | hal.dk.HXSPI.CLK.pin,
+                .Pin = hal.bsp.HXSPI.DQS1.pin | hal.bsp.HXSPI.DQS0.pin | hal.bsp.HXSPI.CLK.pin,
                 .Mode = c.GPIO_MODE_AF_PP,
                 .Pull = c.GPIO_NOPULL,
                 .Speed = c.GPIO_SPEED_FREQ_VERY_HIGH,
@@ -56,7 +56,7 @@ export fn HAL_XSPI_MspInit(hxspi: *c.XSPI_HandleTypeDef) void {
             c.HAL_GPIO_Init(c.GPIOO, &gpio_init);
 
             gpio_init = .{
-                .Pin = hal.dk.HXSPI.IO10.pin | hal.dk.HXSPI.IO12.pin | hal.dk.HXSPI.IO14.pin | hal.dk.HXSPI.IO2.pin | hal.dk.HXSPI.IO5.pin | hal.dk.HXSPI.IO1.pin | hal.dk.HXSPI.IO11.pin | hal.dk.HXSPI.IO15.pin | hal.dk.HXSPI.IO3.pin | hal.dk.HXSPI.IO0.pin | hal.dk.HXSPI.IO7.pin | hal.dk.HXSPI.IO8.pin | hal.dk.HXSPI.IO13.pin | hal.dk.HXSPI.IO4.pin | hal.dk.HXSPI.IO6.pin | hal.dk.HXSPI.IO9.pin,
+                .Pin = hal.bsp.HXSPI.IO10.pin | hal.bsp.HXSPI.IO12.pin | hal.bsp.HXSPI.IO14.pin | hal.bsp.HXSPI.IO2.pin | hal.bsp.HXSPI.IO5.pin | hal.bsp.HXSPI.IO1.pin | hal.bsp.HXSPI.IO11.pin | hal.bsp.HXSPI.IO15.pin | hal.bsp.HXSPI.IO3.pin | hal.bsp.HXSPI.IO0.pin | hal.bsp.HXSPI.IO7.pin | hal.bsp.HXSPI.IO8.pin | hal.bsp.HXSPI.IO13.pin | hal.bsp.HXSPI.IO4.pin | hal.bsp.HXSPI.IO6.pin | hal.bsp.HXSPI.IO9.pin,
                 .Mode = c.GPIO_MODE_AF_PP,
                 .Pull = c.GPIO_NOPULL,
                 .Speed = c.GPIO_SPEED_FREQ_VERY_HIGH,
@@ -66,7 +66,7 @@ export fn HAL_XSPI_MspInit(hxspi: *c.XSPI_HandleTypeDef) void {
         },
         c.XSPI2 => {
             gpio_init = .{
-                .Pin = hal.dk.OSPI.IO1.pin | hal.dk.OSPI.DQS.pin | hal.dk.OSPI.IO7.pin | hal.dk.OSPI.IO6.pin | hal.dk.OSPI.IO5.pin | hal.dk.OSPI.IO0.pin | hal.dk.OSPI.CLK.pin | hal.dk.OSPI.IO4.pin | hal.dk.OSPI.IO2.pin | hal.dk.OSPI.IO3.pin,
+                .Pin = hal.bsp.OSPI.IO1.pin | hal.bsp.OSPI.DQS.pin | hal.bsp.OSPI.IO7.pin | hal.bsp.OSPI.IO6.pin | hal.bsp.OSPI.IO5.pin | hal.bsp.OSPI.IO0.pin | hal.bsp.OSPI.CLK.pin | hal.bsp.OSPI.IO4.pin | hal.bsp.OSPI.IO2.pin | hal.bsp.OSPI.IO3.pin,
                 .Mode = c.GPIO_MODE_AF_PP,
                 .Pull = c.GPIO_NOPULL,
                 .Speed = c.GPIO_SPEED_FREQ_VERY_HIGH,
@@ -88,13 +88,13 @@ export fn HAL_XSPI_MspDeInit(hxspi: *c.XSPI_HandleTypeDef) void {
         c.XSPI1 => {
             hal.zig.rcc.XSPI1.disable();
 
-            c.HAL_GPIO_DeInit(c.GPIOO, hal.dk.HXSPI.DQS1.pin | hal.dk.HXSPI.DQS0.pin | hal.dk.HXSPI.CLK.pin);
-            c.HAL_GPIO_DeInit(c.GPIOP, hal.dk.HXSPI.IO10.pin | hal.dk.HXSPI.IO12.pin | hal.dk.HXSPI.IO14.pin | hal.dk.HXSPI.IO2.pin | hal.dk.HXSPI.IO5.pin | hal.dk.HXSPI.IO1.pin | hal.dk.HXSPI.IO11.pin | hal.dk.HXSPI.IO15.pin | hal.dk.HXSPI.IO3.pin | hal.dk.HXSPI.IO0.pin | hal.dk.HXSPI.IO7.pin | hal.dk.HXSPI.IO8.pin | hal.dk.HXSPI.IO13.pin | hal.dk.HXSPI.IO4.pin | hal.dk.HXSPI.IO6.pin | hal.dk.HXSPI.IO9.pin);
+            c.HAL_GPIO_DeInit(c.GPIOO, hal.bsp.HXSPI.DQS1.pin | hal.bsp.HXSPI.DQS0.pin | hal.bsp.HXSPI.CLK.pin);
+            c.HAL_GPIO_DeInit(c.GPIOP, hal.bsp.HXSPI.IO10.pin | hal.bsp.HXSPI.IO12.pin | hal.bsp.HXSPI.IO14.pin | hal.bsp.HXSPI.IO2.pin | hal.bsp.HXSPI.IO5.pin | hal.bsp.HXSPI.IO1.pin | hal.bsp.HXSPI.IO11.pin | hal.bsp.HXSPI.IO15.pin | hal.bsp.HXSPI.IO3.pin | hal.bsp.HXSPI.IO0.pin | hal.bsp.HXSPI.IO7.pin | hal.bsp.HXSPI.IO8.pin | hal.bsp.HXSPI.IO13.pin | hal.bsp.HXSPI.IO4.pin | hal.bsp.HXSPI.IO6.pin | hal.bsp.HXSPI.IO9.pin);
         },
         c.XSPI2 => {
             hal.zig.rcc.XSPI2.disable();
 
-            c.HAL_GPIO_DeInit(c.GPION, hal.dk.OSPI.IO1.pin | hal.dk.OSPI.DQS.pin | hal.dk.OSPI.IO7.pin | hal.dk.OSPI.IO6.pin | hal.dk.OSPI.IO5.pin | hal.dk.OSPI.IO0.pin | hal.dk.OSPI.CLK.pin | hal.dk.OSPI.IO4.pin | hal.dk.OSPI.IO2.pin | hal.dk.OSPI.IO3.pin);
+            c.HAL_GPIO_DeInit(c.GPION, hal.bsp.OSPI.IO1.pin | hal.bsp.OSPI.DQS.pin | hal.bsp.OSPI.IO7.pin | hal.bsp.OSPI.IO6.pin | hal.bsp.OSPI.IO5.pin | hal.bsp.OSPI.IO0.pin | hal.bsp.OSPI.CLK.pin | hal.bsp.OSPI.IO4.pin | hal.bsp.OSPI.IO2.pin | hal.bsp.OSPI.IO3.pin);
         },
         else => std.debug.panic("Unknown XSPI", .{}),
     }

@@ -123,7 +123,8 @@ pub fn fromArgs(b: *std.Build) Self {
 }
 
 pub fn dumpOptions(self: *const Self, options: *Options) void {
-    options.addOption(Self, "hal", self.*);
+    _ = self;
+    _ = options;
 }
 
 pub fn configHeader(self: Self, b: *Build) *ConfigHeader {

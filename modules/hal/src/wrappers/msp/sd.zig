@@ -25,26 +25,26 @@ export fn HAL_SD_MspInit(hsd: *c.SD_HandleTypeDef) void {
     var gpio_init = std.mem.zeroInit(
         c.GPIO_InitTypeDef,
         .{
-            .Pin = hal.dk.SD.CMD.pin,
+            .Pin = hal.bsp.SD.CMD.pin,
             .Mode = c.GPIO_MODE_AF_PP,
             .Pull = c.GPIO_NOPULL,
             .Speed = c.GPIO_SPEED_FREQ_HIGH,
             .Alternate = c.GPIO_AF11_SDMMC1,
         },
     );
-    c.HAL_GPIO_Init(hal.dk.SD.CMD.port, &gpio_init);
+    c.HAL_GPIO_Init(hal.bsp.SD.CMD.port, &gpio_init);
 
     gpio_init = .{
-        .Pin = hal.dk.SD.D2.pin,
+        .Pin = hal.bsp.SD.D2.pin,
         .Mode = c.GPIO_MODE_AF_PP,
         .Pull = c.GPIO_NOPULL,
         .Speed = c.GPIO_SPEED_FREQ_HIGH,
         .Alternate = c.GPIO_AF12_SDMMC1,
     };
-    c.HAL_GPIO_Init(hal.dk.SD.D2.port, &gpio_init);
+    c.HAL_GPIO_Init(hal.bsp.SD.D2.port, &gpio_init);
 
     gpio_init = .{
-        .Pin = hal.dk.SD.D0.pin | hal.dk.SD.D1.pin | hal.dk.SD.D3.pin | hal.dk.SD.CK.pin,
+        .Pin = hal.bsp.SD.D0.pin | hal.bsp.SD.D1.pin | hal.bsp.SD.D3.pin | hal.bsp.SD.CK.pin,
         .Mode = c.GPIO_MODE_AF_PP,
         .Pull = c.GPIO_NOPULL,
         .Speed = c.GPIO_SPEED_FREQ_HIGH,
@@ -60,6 +60,6 @@ export fn HAL_SD_MspDeInit(hsd: *c.SD_HandleTypeDef) void {
 
     hal.zig.rcc.SDMMC1.disable();
 
-    c.HAL_GPIO_DeInit(hal.dk.SD.CMD.port, hal.dk.SD.CMD.pin);
-    c.HAL_GPIO_DeInit(c.GPIOC, hal.dk.SD.D0.pin | hal.dk.SD.D1.pin | hal.dk.SD.D2.pin | hal.dk.SD.D3.pin | hal.dk.SD.CK.pin);
+    c.HAL_GPIO_DeInit(hal.bsp.SD.CMD.port, hal.bsp.SD.CMD.pin);
+    c.HAL_GPIO_DeInit(c.GPIOC, hal.bsp.SD.D0.pin | hal.bsp.SD.D1.pin | hal.bsp.SD.D2.pin | hal.bsp.SD.D3.pin | hal.bsp.SD.CK.pin);
 }

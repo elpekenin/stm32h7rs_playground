@@ -13,34 +13,34 @@ const TIMEOUT = 500;
 var hsd = std.mem.zeroes(c.SD_HandleTypeDef);
 
 const state = struct {
-    var init = false;
+    var initialized = false;
 };
 
 /// Print the error code stored in hsd
-fn print_error() void {
+fn printError() void {
     logger.err("Error: 0b{b:0>32}", .{hsd.ErrorCode});
     logger.err("State: 0b{b:0>32}", .{hsd.Instance.*.STA});
 }
 
 /// Check if the card is inserter
-pub fn is_connected() bool {
-    return hal.dk.SD.DET.read();
+pub fn connected() bool {
+    return hal.bsp.SD.DET.read();
 }
 
 /// Check if this instance has been initialized.
-pub fn is_initialized() bool {
-    return state.init;
+pub fn initialized() bool {
+    return state.initialized;
 }
 
 /// Check if the card is ready to receive a message.
-pub fn is_ready() bool {
+pub fn ready() bool {
     return c.HAL_SD_GetCardState(&hsd) == c.HAL_SD_CARD_TRANSFER;
 }
 
 /// Give the card some time to get ready, return whether it is.
-fn wait_ready() bool {
+fn wait() bool {
     for (0..TIMEOUT) |_| {
-        if (is_ready()) {
+        if (ready()) {
             return true;
         }
     }
@@ -50,11 +50,11 @@ fn wait_ready() bool {
 
 /// Initialize the hardware.
 pub fn init() !void {
-    if (is_initialized()) {
+    if (initialized()) {
         return;
     }
 
-    errdefer print_error();
+    errdefer printError();
 
     hsd = .{ .Instance = c.SDMMC1, .Init = .{
         .ClockEdge = c.SDMMC_CLOCK_EDGE_FALLING,
@@ -78,12 +78,12 @@ pub fn init() !void {
     //     return error.NotReady;
     // }
 
-    state.init = true;
+    state.initialized = true;
 }
 
 /// Read data from card.
 pub fn read(data: [*]u8, first_block: u32, n_blocks: u32) !void {
-    if (!is_initialized()) {
+    if (!initialized()) {
         return error.NotReady;
     }
 
@@ -97,7 +97,7 @@ pub fn read(data: [*]u8, first_block: u32, n_blocks: u32) !void {
 
 /// Write data onto card.
 pub fn write(data: [*]const u8, first_block: u32, n_blocks: u32) !void {
-    if (!is_initialized()) {
+    if (!initialized()) {
         return error.NotReady;
     }
 
@@ -110,17 +110,17 @@ pub fn write(data: [*]const u8, first_block: u32, n_blocks: u32) !void {
 }
 
 /// Get card's information.
-pub fn card_info() !c.HAL_SD_CardInfoTypeDef {
-    if (!is_initialized()) {
+pub fn info() !c.HAL_SD_CardInfoTypeDef {
+    if (!initialized()) {
         return error.NotReady;
     }
 
-    var info = std.mem.zeroes(c.HAL_SD_CardInfoTypeDef);
-    if (c.HAL_SD_GetCardInfo(&hsd, &info) != c.HAL_OK) {
+    var card_info = std.mem.zeroes(c.HAL_SD_CardInfoTypeDef);
+    if (c.HAL_SD_GetCardInfo(&hsd, &card_info) != c.HAL_OK) {
         return error.HalError;
     }
 
-    return info;
+    return card_info;
 }
 
 /// Do not use, only public for vector_table.zig to access it

@@ -122,7 +122,7 @@ pub const TIM6: Clock = .{
     .bitmask = c.RCC_APB1ENR1_TIM6EN,
 };
 
-fn port_to_clock(port: *c.GPIO_TypeDef) Clock {
+fn portToClock(port: *c.GPIO_TypeDef) Clock {
     return switch (port) {
         c.GPIOA => GPIOA,
         c.GPIOB => GPIOB,
@@ -142,13 +142,13 @@ fn port_to_clock(port: *c.GPIO_TypeDef) Clock {
 }
 
 /// Convenience to access GPIO structs by the pointer to the port
-pub fn enable_gpio(port: *c.GPIO_TypeDef) void {
-    port_to_clock(port).enable();
+pub fn enableGpio(port: *c.GPIO_TypeDef) void {
+    portToClock(port).enable();
 }
 
 /// Convenience to access GPIO structs by the pointer to the port
-pub fn disable_gpio(port: *c.GPIO_TypeDef) void {
-    port_to_clock(port).disable();
+pub fn disableGpio(port: *c.GPIO_TypeDef) void {
+    portToClock(port).disable();
 }
 
 /// Configure RCC

@@ -11,18 +11,18 @@ const jump = @import("jump.zig");
 const BUILTIN_ADDR = 0x1FF18000;
 
 /// Red LED
-const INDICATOR = hal.dk.LEDS[2];
+const INDICATOR = hal.bsp.LEDS[2];
 
-pub fn check() bool {
-    return hal.dk.BUTTON.read();
+pub fn checkJump() bool {
+    return hal.bsp.BUTTON.read();
 }
 
-pub fn bootloader() noreturn {
+pub fn jumpToBootloader() noreturn {
     INDICATOR.set(true);
     hal.zig.timer.sleep(500);
     INDICATOR.set(false);
 
-    hal.assembly.disable_irq();
+    hal.assembly.disableIrq();
 
     SysTick.CTRL = 0;
 
@@ -34,7 +34,7 @@ pub fn bootloader() noreturn {
         NVIC.ICPR[i] = 0xFFFFFFFF;
     }
 
-    hal.assembly.enable_irq();
+    hal.assembly.enableIrq();
 
     jump.to(BUILTIN_ADDR);
 }

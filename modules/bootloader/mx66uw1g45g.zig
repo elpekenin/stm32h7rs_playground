@@ -59,7 +59,7 @@ const MAX_FREQ = switch (DummyCyclesConfig.READ_OCTAL) {
 };
 
 /// Dummy cycles needed for different operations
-const dummy_cycles_array = [_]u8{ Registers.CR2.REG3.DC_6_CYCLES, Registers.CR2.REG3.DC_8_CYCLES, Registers.CR2.REG3.DC_10_CYCLES, Registers.CR2.REG3.DC_12_CYCLES, Registers.CR2.REG3.DC_14_CYCLES, Registers.CR2.REG3.DC_16_CYCLES, Registers.CR2.REG3.DC_18_CYCLES, Registers.CR2.REG3.DC_20_CYCLES };
+const dummy_cycles = [_]u8{ Registers.CR2.REG3.DC_6_CYCLES, Registers.CR2.REG3.DC_8_CYCLES, Registers.CR2.REG3.DC_10_CYCLES, Registers.CR2.REG3.DC_12_CYCLES, Registers.CR2.REG3.DC_14_CYCLES, Registers.CR2.REG3.DC_16_CYCLES, Registers.CR2.REG3.DC_18_CYCLES, Registers.CR2.REG3.DC_20_CYCLES };
 
 /// MX66UW1G45G Commands
 const Commands = struct {
@@ -454,60 +454,48 @@ const State = struct {
 hxspi: c.XSPI_HandleTypeDef,
 state: State,
 
-///    .SPI => 0,
-///
-///    .OPI =>
-///
-///        .STR => DummyCyclesConfig.REG_OCTAL,
-///
-///        .DTR => DummyCyclesConfig.REG_OCTAL_DTR,
-fn dummy_cycles(protocol: Protocol, rate: Rate) u32 {
-    return switch (protocol) {
-        .SPI => 0,
-        .OPI => switch (rate) {
-            .STR => DummyCyclesConfig.REG_OCTAL,
-            .DTR => DummyCyclesConfig.REG_OCTAL_DTR,
-        },
-    };
-}
-
-/// Assert that we don't try and use SPI + DTR
-fn assert_spi_dtr(protocol: Protocol, rate: Rate) !void {
+fn assertSpiDtr(protocol: Protocol, rate: Rate) !void {
     if (protocol == .SPI and rate == .DTR) {
         return error.SpiAndDtr;
     }
 }
 
-/// Assert that we don't try and use OPI with 3byte address mode
-fn assert_opi_3bytes(protocol: Protocol, addr_width: AddressWidth) !void {
+fn assertOpiThreeBytes(protocol: Protocol, addr_width: AddressWidth) !void {
     if (protocol == .OPI and addr_width == .ThreeBytes) {
         return error.OpiAnd3B;
     }
 }
 
-/// Assert that we don't try and write data longer than a page's size
-fn assert_data_len(data: []const u8) !void {
+fn assertDataLength(data: []const u8) !void {
     if (data.len > PAGE_SIZE) {
         return error.DataTooLong;
     }
 }
 
-fn init(self: *Self) !void {
+fn init(self: *Self, rate: Rate) !void {
+    const flash_info = self.info();
+
     self.hxspi = .{
         .Instance = c.XSPI2,
         .Init = .{
             .FifoThresholdByte = 1,
-            .MemorySize = c.HAL_XSPI_SIZE_1GB,
+            // is this requivalent to POSITION_VAL??
+            .MemorySize = @clz(@bitReverse(flash_info.FlashSize)),
             .ChipSelectHighTimeCycle = 2, // 1 or 2 ??
             .FreeRunningClock = c.HAL_XSPI_FREERUNCLK_DISABLE,
             .ClockMode = c.HAL_XSPI_CLOCK_MODE_0,
-            .DelayHoldQuarterCycle = c.HAL_XSPI_DHQC_DISABLE,
-            .SampleShifting = c.HAL_XSPI_SAMPLE_SHIFT_NONE, // ??
+            // not using self.state because it is not set yet
+            // it will be set after initialization, thus we receive
+            // here the desired state
+            .DelayHoldQuarterCycle = switch (rate) {
+                .STR => c.HAL_XSPI_DHQC_DISABLE,
+                .DTR => c.HAL_XSPI_DHQC_ENABLE,
+            },
+            .SampleShifting = c.HAL_XSPI_SAMPLE_SHIFT_NONE,
             .ChipSelectBoundary = c.HAL_XSPI_BONDARYOF_NONE,
             .MemoryMode = c.HAL_XSPI_SINGLE_MEM,
             .WrapSize = c.HAL_XSPI_WRAP_NOT_SUPPORTED,
             .MemoryType = c.HAL_XSPI_MEMTYPE_MACRONIX,
-            // .MemorySelect = c.HAL_XSPI_CSSEL_NCS1, // need or skip ??
         },
     };
 
@@ -520,11 +508,10 @@ fn init(self: *Self) !void {
     try hal.zig.xspi.init(&self.hxspi);
 }
 
-fn reset_enable(self: *Self, protocol: Protocol, rate: Rate) !void {
-    try assert_spi_dtr(protocol, rate);
+fn resetEnable(self: *Self, protocol: Protocol, rate: Rate) !void {
+    try assertSpiDtr(protocol, rate);
 
-    var command = std.mem.zeroes(c.XSPI_RegularCmdTypeDef);
-    command = .{
+    const command: c.XSPI_RegularCmdTypeDef = .{
         .OperationType = c.HAL_XSPI_OPTYPE_COMMON_CFG,
         .IOSelect = c.HAL_XSPI_SELECT_IO_3_0,
         .InstructionMode = switch (protocol) {
@@ -549,14 +536,13 @@ fn reset_enable(self: *Self, protocol: Protocol, rate: Rate) !void {
         .DummyCycles = 0,
         .DQSMode = c.HAL_XSPI_DQS_DISABLE,
     };
-    try hal.zig.xspi.send_command(&self.hxspi, &command);
+    try hal.zig.xspi.command(&self.hxspi, &command);
 }
 
-fn reset_memory(self: *Self, protocol: Protocol, rate: Rate) !void {
-    try assert_spi_dtr(protocol, rate);
+fn resetMemory(self: *Self, protocol: Protocol, rate: Rate) !void {
+    try assertSpiDtr(protocol, rate);
 
-    var command = std.mem.zeroes(c.XSPI_RegularCmdTypeDef);
-    command = .{
+    const command: c.XSPI_RegularCmdTypeDef = .{
         .OperationType = c.HAL_XSPI_OPTYPE_COMMON_CFG,
         .InstructionMode = switch (protocol) {
             .SPI => c.HAL_XSPI_INSTRUCTION_1_LINE,
@@ -580,14 +566,13 @@ fn reset_memory(self: *Self, protocol: Protocol, rate: Rate) !void {
         .DummyCycles = 0,
         .DQSMode = c.HAL_XSPI_DQS_DISABLE,
     };
-    try hal.zig.xspi.send_command(&self.hxspi, &command);
+    try hal.zig.xspi.command(&self.hxspi, &command);
 }
 
-fn auto_polling_ready(self: *Self, protocol: Protocol, rate: Rate) !void {
-    try assert_spi_dtr(protocol, rate);
+fn pollReady(self: *Self, protocol: Protocol, rate: Rate) !void {
+    try assertSpiDtr(protocol, rate);
 
-    var command = std.mem.zeroes(c.XSPI_RegularCmdTypeDef);
-    command = .{
+    const command: c.XSPI_RegularCmdTypeDef = .{
         .OperationType = c.HAL_XSPI_OPTYPE_COMMON_CFG,
         .InstructionMode = switch (protocol) {
             .SPI => c.HAL_XSPI_INSTRUCTION_1_LINE,
@@ -624,7 +609,13 @@ fn auto_polling_ready(self: *Self, protocol: Protocol, rate: Rate) !void {
             .STR => c.HAL_XSPI_DATA_DTR_DISABLE,
             .DTR => c.HAL_XSPI_DATA_DTR_ENABLE,
         },
-        .DummyCycles = dummy_cycles(protocol, rate),
+        .DummyCycles = switch (protocol) {
+            .SPI => 0,
+            .OPI => switch (rate) {
+                .STR => DummyCyclesConfig.REG_OCTAL,
+                .DTR => DummyCyclesConfig.REG_OCTAL_DTR,
+            },
+        },
         .DataLength = switch (rate) {
             .STR => 1,
             .DTR => 2,
@@ -634,26 +625,22 @@ fn auto_polling_ready(self: *Self, protocol: Protocol, rate: Rate) !void {
             .DTR => c.HAL_XSPI_DQS_ENABLE,
         },
     };
-    try hal.zig.xspi.send_command(&self.hxspi, &command);
+    try hal.zig.xspi.command(&self.hxspi, &command);
 
-    var config = std.mem.zeroInit(
-        c.XSPI_AutoPollingTypeDef,
-        .{
-            .MatchValue = 0,
-            .MatchMask = Registers.Status.WIP,
-            .MatchMode = c.HAL_XSPI_MATCH_MODE_AND,
-            .IntervalTime = AUTOPOLLING_INTERVAL_TIME,
-            .AutomaticStop = c.HAL_XSPI_AUTOMATIC_STOP_ENABLE,
-        },
-    );
-    try hal.zig.xspi.auto_polling(&self.hxspi, &config);
+    const config: c.XSPI_AutoPollingTypeDef = .{
+        .MatchValue = 0,
+        .MatchMask = Registers.Status.WIP,
+        .MatchMode = c.HAL_XSPI_MATCH_MODE_AND,
+        .IntervalTime = AUTOPOLLING_INTERVAL_TIME,
+        .AutomaticStop = c.HAL_XSPI_AUTOMATIC_STOP_ENABLE,
+    };
+    try hal.zig.xspi.polling(&self.hxspi, &config);
 }
 
-fn write_enable(self: *Self, protocol: Protocol, rate: Rate) !void {
-    try assert_spi_dtr(protocol, rate);
+fn writeEnable(self: *Self, protocol: Protocol, rate: Rate) !void {
+    try assertSpiDtr(protocol, rate);
 
-    var command = std.mem.zeroes(c.XSPI_RegularCmdTypeDef);
-    command = .{
+    const write_enable_command: c.XSPI_RegularCmdTypeDef = .{
         .OperationType = c.HAL_XSPI_OPTYPE_COMMON_CFG,
         .InstructionMode = switch (protocol) {
             .SPI => c.HAL_XSPI_INSTRUCTION_1_LINE,
@@ -677,59 +664,9 @@ fn write_enable(self: *Self, protocol: Protocol, rate: Rate) !void {
         .DummyCycles = 0,
         .DQSMode = c.HAL_XSPI_DQS_DISABLE,
     };
-    try hal.zig.xspi.send_command(&self.hxspi, &command);
+    try hal.zig.xspi.command(&self.hxspi, &write_enable_command);
 
-    command.Instruction = switch (protocol) {
-        .SPI => Commands.SPI.Register.READ_STATUS_REG,
-        .OPI => Commands.OPI.Register.READ_STATUS_REG,
-    };
-    command.AddressMode = switch (protocol) {
-        .SPI => c.HAL_XSPI_ADDRESS_NONE,
-        .OPI => c.HAL_XSPI_ADDRESS_8_LINES,
-    };
-    command.AddressDTRMode = switch (rate) {
-        .STR => c.HAL_XSPI_ADDRESS_DTR_DISABLE,
-        .DTR => c.HAL_XSPI_ADDRESS_DTR_ENABLE,
-    };
-    command.AddressWidth = c.HAL_XSPI_ADDRESS_32_BITS;
-    command.Address = 0;
-    command.DataMode = switch (protocol) {
-        .SPI => c.HAL_XSPI_DATA_1_LINE,
-        .OPI => c.HAL_XSPI_DATA_8_LINES,
-    };
-    command.DataDTRMode = switch (rate) {
-        .STR => c.HAL_XSPI_DATA_DTR_DISABLE,
-        .DTR => c.HAL_XSPI_DATA_DTR_ENABLE,
-    };
-    command.DummyCycles = dummy_cycles(protocol, rate);
-    command.DataLength = switch (rate) {
-        .STR => 1,
-        .DTR => 2,
-    };
-    command.DQSMode = switch (rate) {
-        .STR => c.HAL_XSPI_DQS_DISABLE,
-        .DTR => c.HAL_XSPI_DQS_ENABLE,
-    };
-    try hal.zig.xspi.send_command(&self.hxspi, &command);
-
-    var config = std.mem.zeroInit(
-        c.XSPI_AutoPollingTypeDef,
-        .{
-            .MatchValue = 2,
-            .MatchMask = 2,
-            .MatchMode = c.HAL_XSPI_MATCH_MODE_AND,
-            .IntervalTime = AUTOPOLLING_INTERVAL_TIME,
-            .AutomaticStop = c.HAL_XSPI_AUTOMATIC_STOP_ENABLE,
-        },
-    );
-    try hal.zig.xspi.auto_polling(&self.hxspi, &config);
-}
-
-fn write_cfg2(self: *Self, protocol: Protocol, rate: Rate, address: u32, value: u8) !void {
-    try assert_spi_dtr(protocol, rate);
-
-    var command = std.mem.zeroes(c.XSPI_RegularCmdTypeDef);
-    command = .{
+    const read_status_command: c.XSPI_RegularCmdTypeDef = .{
         .OperationType = c.HAL_XSPI_OPTYPE_COMMON_CFG,
         .InstructionMode = switch (protocol) {
             .SPI => c.HAL_XSPI_INSTRUCTION_1_LINE,
@@ -744,297 +681,395 @@ fn write_cfg2(self: *Self, protocol: Protocol, rate: Rate, address: u32, value: 
             .OPI => c.HAL_XSPI_INSTRUCTION_16_BITS,
         },
         .Instruction = switch (protocol) {
-            .SPI => Commands.SPI.Register.WRITE_CFG_REG2,
-            .OPI => Commands.OPI.Register.WRITE_CFG_REG2,
+            .SPI => Commands.SPI.Register.READ_STATUS_REG,
+            .OPI => Commands.OPI.Register.READ_STATUS_REG,
         },
         .AddressMode = switch (protocol) {
             .SPI => c.HAL_XSPI_ADDRESS_NONE,
             .OPI => c.HAL_XSPI_ADDRESS_8_LINES,
         },
-        .AddressDTRMode = switch (rate) {
-            .STR => c.HAL_XSPI_ADDRESS_DTR_DISABLE,
-            .DTR => c.HAL_XSPI_ADDRESS_DTR_ENABLE,
-        },
-        .AddressWidth = c.HAL_XSPI_ADDRESS_32_BITS,
-        .Address = address,
         .AlternateBytesMode = c.HAL_XSPI_ALT_BYTES_NONE,
         .DataMode = switch (protocol) {
             .SPI => c.HAL_XSPI_DATA_1_LINE,
             .OPI => c.HAL_XSPI_DATA_8_LINES,
         },
-        .DataDTRMode = switch (rate) {
-            .STR => c.HAL_XSPI_DATA_DTR_DISABLE,
-            .DTR => c.HAL_XSPI_DATA_DTR_ENABLE,
-        },
-        .DummyCycles = 0,
-        .DataLength = switch (rate) {
-            .STR => 1,
-            .DTR => 2,
-        },
-        .DQSMode = c.HAL_XSPI_DQS_DISABLE,
-    };
-    try hal.zig.xspi.send_command(&self.hxspi, &command);
-
-    // zig does not like &value (it is `*const u8` instead of `[]const u8`)
-    const temp = [_]u8{value};
-    try hal.zig.xspi.transmit(&self.hxspi, &temp);
-}
-
-fn read_cfg2(self: *Self, protocol: Protocol, rate: Rate, address: u32) !u8 {
-    try assert_spi_dtr(protocol, rate);
-
-    var command = std.mem.zeroes(c.XSPI_RegularCmdTypeDef);
-    command = .{
-        .OperationType = c.HAL_XSPI_OPTYPE_COMMON_CFG,
-        .InstructionMode = switch (protocol) {
-            .SPI => c.HAL_XSPI_INSTRUCTION_1_LINE,
-            .OPI => c.HAL_XSPI_INSTRUCTION_8_LINES,
-        },
-        .InstructionDTRMode = switch (rate) {
-            .STR => c.HAL_XSPI_INSTRUCTION_DTR_DISABLE,
-            .DTR => c.HAL_XSPI_INSTRUCTION_DTR_ENABLE,
-        },
-        .InstructionWidth = switch (protocol) {
-            .SPI => c.HAL_XSPI_INSTRUCTION_8_BITS,
-            .OPI => c.HAL_XSPI_INSTRUCTION_16_BITS,
-        },
-        .Instruction = switch (protocol) {
-            .SPI => Commands.SPI.Register.READ_CFG_REG2,
-            .OPI => Commands.OPI.Register.READ_CFG_REG2,
-        },
-        .AddressMode = switch (protocol) {
-            .SPI => c.HAL_XSPI_ADDRESS_NONE,
-            .OPI => c.HAL_XSPI_ADDRESS_8_LINES,
-        },
-        .AddressDTRMode = switch (rate) {
-            .STR => c.HAL_XSPI_ADDRESS_DTR_DISABLE,
-            .DTR => c.HAL_XSPI_ADDRESS_DTR_ENABLE,
-        },
-        .AddressWidth = c.HAL_XSPI_ADDRESS_32_BITS,
-        .Address = address,
-        .AlternateBytesMode = c.HAL_XSPI_ALT_BYTES_NONE,
-        .DataMode = switch (protocol) {
-            .SPI => c.HAL_XSPI_DATA_1_LINE,
-            .OPI => c.HAL_XSPI_DATA_8_LINES,
-        },
-        .DataDTRMode = switch (rate) {
-            .STR => c.HAL_XSPI_DATA_DTR_DISABLE,
-            .DTR => c.HAL_XSPI_DATA_DTR_ENABLE,
-        },
-        .DummyCycles = dummy_cycles(protocol, rate),
-        .DataLength = switch (rate) {
-            .STR => 1,
-            .DTR => 2,
+        .DummyCycles = switch (protocol) {
+            .SPI => 0,
+            .OPI => switch (rate) {
+                .STR => DummyCyclesConfig.REG_OCTAL,
+                .DTR => DummyCyclesConfig.REG_OCTAL_DTR,
+            },
         },
         .DQSMode = switch (rate) {
             .STR => c.HAL_XSPI_DQS_DISABLE,
             .DTR => c.HAL_XSPI_DQS_ENABLE,
         },
-    };
-    try hal.zig.xspi.send_command(&self.hxspi, &command);
-
-    var value: [2]u8 = undefined;
-    try hal.zig.xspi.receive(&self.hxspi, &value);
-
-    return value[0];
-}
-
-fn exit_opi(self: *Self) !void {
-    try self.write_enable(self.state.protocol, self.state.rate);
-
-    try self.write_cfg2(self.state.protocol, self.state.rate, Registers.CR2.REG1.ADDR, 0);
-
-    hal.zig.timer.sleep(WRITE_REG_MAX_TIME);
-
-    if (self.state.rate == .DTR) {
-        self.hxspi.Init.MemoryType = c.HAL_XSPI_MEMTYPE_MICRON;
-        self.hxspi.Init.DelayHoldQuarterCycle = c.HAL_XSPI_DHQC_DISABLE;
-        try hal.zig.xspi.init(&self.hxspi);
-    }
-
-    try self.auto_polling_ready(.SPI, .STR);
-
-    const value = try self.read_cfg2(.SPI, .STR, Registers.CR2.REG1.ADDR);
-    if (value != 0) {
-        return error.DidNotExitOPI;
-    }
-}
-
-fn enter_opi(self: *Self, rate: Rate) !void {
-    try self.write_enable(self.state.protocol, self.state.rate);
-
-    try self.write_cfg2(self.state.protocol, self.state.rate, Registers.CR2.REG3.ADDR, dummy_cycles_array[(DummyCyclesConfig.READ_OCTAL / 2) - 3]);
-
-    try self.write_enable(self.state.protocol, self.state.rate);
-
-    try self.write_cfg2(self.state.protocol, self.state.rate, Registers.CR2.REG1.ADDR, switch (rate) {
-        .STR => Registers.CR2.REG1.SOPI,
-        .DTR => Registers.CR2.REG1.DOPI,
-    });
-
-    hal.zig.timer.sleep(WRITE_REG_MAX_TIME);
-
-    if (rate == .DTR) {
-        self.hxspi.Init.MemoryType = c.HAL_XSPI_MEMTYPE_MACRONIX;
-        self.hxspi.Init.DelayHoldQuarterCycle = c.HAL_XSPI_DHQC_ENABLE;
-        try hal.zig.xspi.init(&self.hxspi);
-    }
-
-    try self.auto_polling_ready(.OPI, rate);
-
-    const value = try self.read_cfg2(.OPI, rate, Registers.CR2.REG1.ADDR);
-    switch (rate) {
-        .STR => if (value != Registers.CR2.REG1.SOPI) {
-            return error.DidNotEnterSOPI;
+        // ^ copied from above ^
+        // v specific for this command v
+        .AddressDTRMode = switch (rate) {
+            .STR => c.HAL_XSPI_ADDRESS_DTR_DISABLE,
+            .DTR => c.HAL_XSPI_ADDRESS_DTR_ENABLE,
         },
-        .DTR => if (value != Registers.CR2.REG1.DOPI) {
-            return error.DidNotEnterDOPI;
-        },
-    }
-}
-
-/// Read data from the XSPI NOR Flash
-/// Supports both SPI and OPI, but only in STR mode
-fn page_read_str(self: *Self, read_address: u32, data: []u8) !void {
-    const addr_width: AddressWidth = .FourBytes;
-
-    try assert_opi_3bytes(self.state.protocol, addr_width);
-    try assert_data_len(data);
-
-    var command = std.mem.zeroes(c.XSPI_RegularCmdTypeDef);
-    command = .{
-        .OperationType = c.HAL_XSPI_OPTYPE_COMMON_CFG,
-        .InstructionMode = switch (self.state.protocol) {
-            .SPI => c.HAL_XSPI_INSTRUCTION_1_LINE,
-            .OPI => c.HAL_XSPI_INSTRUCTION_8_LINES,
-        },
-        .InstructionDTRMode = c.HAL_XSPI_INSTRUCTION_DTR_DISABLE,
-        .InstructionWidth = switch (self.state.protocol) {
-            .SPI => c.HAL_XSPI_INSTRUCTION_8_BITS,
-            .OPI => c.HAL_XSPI_INSTRUCTION_16_BITS,
-        },
-        .Instruction = switch (self.state.protocol) {
-            .SPI => switch (addr_width) {
-                .ThreeBytes => Commands.SPI.ThreeBytes.FAST_READ,
-                .FourBytes => Commands.SPI.FourBytes.FAST_READ,
-            },
-            .OPI => Commands.OPI.Memory.READ,
-        },
-        .AddressMode = switch (self.state.protocol) {
-            .SPI => c.HAL_XSPI_ADDRESS_1_LINE,
-            .OPI => c.HAL_XSPI_ADDRESS_8_LINES,
-        },
-        .AddressDTRMode = c.HAL_XSPI_ADDRESS_DTR_DISABLE,
-        .AddressWidth = switch (addr_width) {
-            .ThreeBytes => c.HAL_XSPI_ADDRESS_24_BITS,
-            .FourBytes => c.HAL_XSPI_ADDRESS_32_BITS,
-        },
-        .Address = read_address,
-        .AlternateBytesMode = c.HAL_XSPI_ALT_BYTES_NONE,
-        .DataMode = switch (self.state.protocol) {
-            .SPI => c.HAL_XSPI_DATA_1_LINE,
-            .OPI => c.HAL_XSPI_DATA_8_LINES,
-        },
-        .DataDTRMode = c.HAL_XSPI_DATA_DTR_DISABLE,
-        .DummyCycles = switch (self.state.protocol) {
-            .SPI => DummyCyclesConfig.READ,
-            .OPI => DummyCyclesConfig.READ_OCTAL,
-        },
-        .DataLength = data.len,
-        .DQSMode = c.HAL_XSPI_DQS_DISABLE,
-    };
-    try hal.zig.xspi.send_command(&self.hxspi, &command);
-
-    try hal.zig.xspi.receive(&self.hxspi, data.ptr);
-}
-
-fn page_read_dtr(self: *Self, read_address: u32, data: []u8) !void {
-    try assert_spi_dtr(self.state.protocol, self.state.rate);
-
-    var command = std.mem.zeroes(c.XSPI_RegularCmdTypeDef);
-    command = .{
-        .OperationType = c.HAL_XSPI_OPTYPE_COMMON_CFG,
-        .InstructionMode = c.HAL_XSPI_INSTRUCTION_8_LINES,
-        .InstructionDTRMode = c.HAL_XSPI_INSTRUCTION_DTR_ENABLE,
-        .InstructionWidth = c.HAL_XSPI_INSTRUCTION_16_BITS,
-        .Instruction = Commands.OPI.Memory.READ_DTR,
-        .AddressMode = c.HAL_XSPI_ADDRESS_8_LINES,
-        .AddressDTRMode = c.HAL_XSPI_ADDRESS_DTR_ENABLE,
         .AddressWidth = c.HAL_XSPI_ADDRESS_32_BITS,
-        .Address = read_address,
-        .AlternateBytesMode = c.HAL_XSPI_ALT_BYTES_NONE,
-        .DataMode = c.HAL_XSPI_DATA_8_LINES,
-        .DataDTRMode = c.HAL_XSPI_DATA_DTR_ENABLE,
-        .DummyCycles = DummyCyclesConfig.READ_OCTAL_DTR,
-        .DataLength = data.len,
-        .DQSMode = c.HAL_XSPI_DQS_ENABLE,
+        .Address = 0,
+        .DataDTRMode = switch (rate) {
+            .STR => c.HAL_XSPI_DATA_DTR_DISABLE,
+            .DTR => c.HAL_XSPI_DATA_DTR_ENABLE,
+        },
+        .DataLength = switch (rate) {
+            .STR => 1,
+            .DTR => 2,
+        },
     };
-    try hal.zig.xspi.send_command(&self.hxspi, &command);
+    try hal.zig.xspi.command(&self.hxspi, &read_status_command);
 
-    try hal.zig.xspi.receive(&self.hxspi, data.ptr);
+    const config: c.XSPI_AutoPollingTypeDef = .{
+        .MatchValue = 2,
+        .MatchMask = 2,
+        .MatchMode = c.HAL_XSPI_MATCH_MODE_AND,
+        .IntervalTime = AUTOPOLLING_INTERVAL_TIME,
+        .AutomaticStop = c.HAL_XSPI_AUTOMATIC_STOP_ENABLE,
+    };
+    try hal.zig.xspi.polling(&self.hxspi, &config);
 }
 
-/// Write data to the XSPI NOR Flash
-/// len(data) <= PAGE_SIZE
-fn page_write_str(self: *Self, write_address: u32, data: []const u8) !void {
-    const addr_width: AddressWidth = .FourBytes;
+/// Namespace for convenience (might break into smaller files later)
+const Cfg2 = struct {
+    fn write(self: *Self, protocol: Protocol, rate: Rate, address: u32, value: u8) !void {
+        try assertSpiDtr(protocol, rate);
 
-    try assert_opi_3bytes(self.state.protocol, addr_width);
-    try assert_data_len(data);
-
-    var command = std.mem.zeroes(c.XSPI_RegularCmdTypeDef);
-    command = .{
-        .OperationType = c.HAL_XSPI_OPTYPE_COMMON_CFG,
-        .InstructionMode = switch (self.state.protocol) {
-            .SPI => c.HAL_XSPI_INSTRUCTION_1_LINE,
-            .OPI => c.HAL_XSPI_INSTRUCTION_8_LINES,
-        },
-        .InstructionDTRMode = c.HAL_XSPI_INSTRUCTION_DTR_DISABLE,
-        .InstructionWidth = switch (self.state.protocol) {
-            .SPI => c.HAL_XSPI_INSTRUCTION_8_BITS,
-            .OPI => c.HAL_XSPI_INSTRUCTION_16_BITS,
-        },
-        .Instruction = switch (self.state.protocol) {
-            .SPI => switch (addr_width) {
-                .ThreeBytes => Commands.SPI.ThreeBytes.PAGE_PROG,
-                .FourBytes => Commands.SPI.FourBytes.PAGE_PROG,
+        const command: c.XSPI_RegularCmdTypeDef = .{
+            .OperationType = c.HAL_XSPI_OPTYPE_COMMON_CFG,
+            .InstructionMode = switch (protocol) {
+                .SPI => c.HAL_XSPI_INSTRUCTION_1_LINE,
+                .OPI => c.HAL_XSPI_INSTRUCTION_8_LINES,
             },
-            .OPI => Commands.OPI.Memory.PAGE_PROG,
-        },
-        .AddressMode = switch (self.state.protocol) {
-            .SPI => c.HAL_XSPI_ADDRESS_1_LINE,
-            .OPI => c.HAL_XSPI_ADDRESS_8_LINES,
-        },
-        .AddressDTRMode = c.HAL_XSPI_ADDRESS_DTR_DISABLE,
-        .AddressWidth = switch (addr_width) {
-            .ThreeBytes => c.HAL_XSPI_ADDRESS_24_BITS,
-            .FourBytes => c.HAL_XSPI_ADDRESS_32_BITS,
-        },
-        .Address = write_address,
-        .AlternateBytesMode = c.HAL_XSPI_ALT_BYTES_NONE,
-        .DataMode = switch (self.state.protocol) {
-            .SPI => c.HAL_XSPI_DATA_1_LINE,
-            .OPI => c.HAL_XSPI_DATA_8_LINES,
-        },
-        .DataDTRMode = c.HAL_XSPI_DATA_DTR_DISABLE,
-        .DummyCycles = 0,
-        .DataLength = data.len,
-        .DQSMode = c.HAL_XSPI_DQS_DISABLE,
-    };
-    try hal.zig.xspi.send_command(&self.hxspi, &command);
+            .InstructionDTRMode = switch (rate) {
+                .STR => c.HAL_XSPI_INSTRUCTION_DTR_DISABLE,
+                .DTR => c.HAL_XSPI_INSTRUCTION_DTR_ENABLE,
+            },
+            .InstructionWidth = switch (protocol) {
+                .SPI => c.HAL_XSPI_INSTRUCTION_8_BITS,
+                .OPI => c.HAL_XSPI_INSTRUCTION_16_BITS,
+            },
+            .Instruction = switch (protocol) {
+                .SPI => Commands.SPI.Register.WRITE_CFG_REG2,
+                .OPI => Commands.OPI.Register.WRITE_CFG_REG2,
+            },
+            .AddressMode = switch (protocol) {
+                .SPI => c.HAL_XSPI_ADDRESS_NONE,
+                .OPI => c.HAL_XSPI_ADDRESS_8_LINES,
+            },
+            .AddressDTRMode = switch (rate) {
+                .STR => c.HAL_XSPI_ADDRESS_DTR_DISABLE,
+                .DTR => c.HAL_XSPI_ADDRESS_DTR_ENABLE,
+            },
+            .AddressWidth = c.HAL_XSPI_ADDRESS_32_BITS,
+            .Address = address,
+            .AlternateBytesMode = c.HAL_XSPI_ALT_BYTES_NONE,
+            .DataMode = switch (protocol) {
+                .SPI => c.HAL_XSPI_DATA_1_LINE,
+                .OPI => c.HAL_XSPI_DATA_8_LINES,
+            },
+            .DataDTRMode = switch (rate) {
+                .STR => c.HAL_XSPI_DATA_DTR_DISABLE,
+                .DTR => c.HAL_XSPI_DATA_DTR_ENABLE,
+            },
+            .DummyCycles = 0,
+            .DataLength = switch (rate) {
+                .STR => 1,
+                .DTR => 2,
+            },
+            .DQSMode = c.HAL_XSPI_DQS_DISABLE,
+        };
+        try hal.zig.xspi.command(&self.hxspi, &command);
 
-    try hal.zig.xspi.transmit(&self.hxspi, data.ptr);
-}
+        // zig does not like &value (it is `*const u8` instead of `[]const u8`)
+        const temp = [_]u8{value};
+        try hal.zig.xspi.transmit(&self.hxspi, &temp);
+    }
 
-/// Write data to the XSPI NOR Flash
-/// len(data) <= PAGE_SIZE
-fn page_write_dtr(self: *Self, write_address: u32, data: []const u8) !void {
-    try assert_spi_dtr(self.state.protocol, self.state.rate);
-    try assert_data_len(data);
+    fn read(self: *Self, protocol: Protocol, rate: Rate, address: u32) !u8 {
+        try assertSpiDtr(protocol, rate);
 
-    var command = std.mem.zeroInit(
-        c.XSPI_RegularCmdTypeDef,
-        .{
+        const command: c.XSPI_RegularCmdTypeDef = .{
+            .OperationType = c.HAL_XSPI_OPTYPE_COMMON_CFG,
+            .InstructionMode = switch (protocol) {
+                .SPI => c.HAL_XSPI_INSTRUCTION_1_LINE,
+                .OPI => c.HAL_XSPI_INSTRUCTION_8_LINES,
+            },
+            .InstructionDTRMode = switch (rate) {
+                .STR => c.HAL_XSPI_INSTRUCTION_DTR_DISABLE,
+                .DTR => c.HAL_XSPI_INSTRUCTION_DTR_ENABLE,
+            },
+            .InstructionWidth = switch (protocol) {
+                .SPI => c.HAL_XSPI_INSTRUCTION_8_BITS,
+                .OPI => c.HAL_XSPI_INSTRUCTION_16_BITS,
+            },
+            .Instruction = switch (protocol) {
+                .SPI => Commands.SPI.Register.READ_CFG_REG2,
+                .OPI => Commands.OPI.Register.READ_CFG_REG2,
+            },
+            .AddressMode = switch (protocol) {
+                .SPI => c.HAL_XSPI_ADDRESS_1_LINE,
+                .OPI => c.HAL_XSPI_ADDRESS_8_LINES,
+            },
+            .AddressDTRMode = switch (rate) {
+                .STR => c.HAL_XSPI_ADDRESS_DTR_DISABLE,
+                .DTR => c.HAL_XSPI_ADDRESS_DTR_ENABLE,
+            },
+            .AddressWidth = c.HAL_XSPI_ADDRESS_32_BITS,
+            .Address = address,
+            .AlternateBytesMode = c.HAL_XSPI_ALT_BYTES_NONE,
+            .DataMode = switch (protocol) {
+                .SPI => c.HAL_XSPI_DATA_1_LINE,
+                .OPI => c.HAL_XSPI_DATA_8_LINES,
+            },
+            .DataDTRMode = switch (rate) {
+                .STR => c.HAL_XSPI_DATA_DTR_DISABLE,
+                .DTR => c.HAL_XSPI_DATA_DTR_ENABLE,
+            },
+            .DummyCycles = switch (protocol) {
+                .SPI => 0,
+                .OPI => switch (rate) {
+                    .STR => DummyCyclesConfig.REG_OCTAL,
+                    .DTR => DummyCyclesConfig.REG_OCTAL_DTR,
+                },
+            },
+            .DataLength = switch (rate) {
+                .STR => 1,
+                .DTR => 2,
+            },
+            .DQSMode = switch (rate) {
+                .STR => c.HAL_XSPI_DQS_DISABLE,
+                .DTR => c.HAL_XSPI_DQS_ENABLE,
+            },
+        };
+        try hal.zig.xspi.command(&self.hxspi, &command);
+
+        var value = [_]u8{ 0, 0 };
+        try hal.zig.xspi.receive(&self.hxspi, &value);
+
+        return value[0];
+    }
+};
+
+/// Namespace for convenience (might break into smaller files later)
+const Opi = struct {
+    fn enter(self: *Self, rate: Rate) !void {
+        try self.writeEnable(self.state.protocol, self.state.rate);
+
+        const cycles = dummy_cycles[(DummyCyclesConfig.READ_OCTAL / 2) - 3];
+        try Cfg2.write(
+            self,
+            self.state.protocol,
+            self.state.rate,
+            Registers.CR2.REG3.ADDR,
+            cycles,
+        );
+
+        try self.writeEnable(self.state.protocol, self.state.rate);
+
+        try Cfg2.write(
+            self,
+            self.state.protocol,
+            self.state.rate,
+            Registers.CR2.REG1.ADDR,
+            switch (rate) {
+                .STR => Registers.CR2.REG1.SOPI,
+                .DTR => Registers.CR2.REG1.DOPI,
+            },
+        );
+
+        hal.zig.timer.sleep(WRITE_REG_MAX_TIME);
+
+        if (rate == .DTR) {
+            self.hxspi.Init.DelayHoldQuarterCycle = c.HAL_XSPI_DHQC_ENABLE;
+            try hal.zig.xspi.init(&self.hxspi);
+        }
+
+        try self.pollReady(.OPI, rate);
+
+        const value = try Cfg2.read(self, .OPI, rate, Registers.CR2.REG1.ADDR);
+        switch (rate) {
+            .STR => if (value != Registers.CR2.REG1.SOPI) {
+                return error.DidNotEnterSOPI;
+            },
+            .DTR => if (value != Registers.CR2.REG1.DOPI) {
+                return error.DidNotEnterDOPI;
+            },
+        }
+    }
+
+    fn exit(self: *Self) !void {
+        try self.writeEnable(self.state.protocol, self.state.rate);
+
+        try Cfg2.write(self, self.state.protocol, self.state.rate, Registers.CR2.REG1.ADDR, 0);
+
+        hal.zig.timer.sleep(WRITE_REG_MAX_TIME);
+
+        if (self.state.rate == .DTR) {
+            self.hxspi.Init.MemoryType = c.HAL_XSPI_MEMTYPE_MICRON;
+            self.hxspi.Init.DelayHoldQuarterCycle = c.HAL_XSPI_DHQC_DISABLE;
+            try hal.zig.xspi.init(&self.hxspi);
+        }
+
+        try self.pollReady(.SPI, .STR);
+
+        const value = try Cfg2.read(self, .SPI, .STR, Registers.CR2.REG1.ADDR);
+        if (value != 0) {
+            return error.DidNotExitOPI;
+        }
+    }
+};
+
+/// Namespace for convenience (might break into smaller files later)
+const Read = struct {
+    fn str(self: *Self, read_address: u32, data: []u8) !void {
+        const addr_width: AddressWidth = .FourBytes;
+
+        try assertOpiThreeBytes(self.state.protocol, addr_width);
+        try assertDataLength(data);
+
+        const command: c.XSPI_RegularCmdTypeDef = .{
+            .OperationType = c.HAL_XSPI_OPTYPE_COMMON_CFG,
+            .InstructionMode = switch (self.state.protocol) {
+                .SPI => c.HAL_XSPI_INSTRUCTION_1_LINE,
+                .OPI => c.HAL_XSPI_INSTRUCTION_8_LINES,
+            },
+            .InstructionDTRMode = c.HAL_XSPI_INSTRUCTION_DTR_DISABLE,
+            .InstructionWidth = switch (self.state.protocol) {
+                .SPI => c.HAL_XSPI_INSTRUCTION_8_BITS,
+                .OPI => c.HAL_XSPI_INSTRUCTION_16_BITS,
+            },
+            .Instruction = switch (self.state.protocol) {
+                .SPI => switch (addr_width) {
+                    .ThreeBytes => Commands.SPI.ThreeBytes.FAST_READ,
+                    .FourBytes => Commands.SPI.FourBytes.FAST_READ,
+                },
+                .OPI => Commands.OPI.Memory.READ,
+            },
+            .AddressMode = switch (self.state.protocol) {
+                .SPI => c.HAL_XSPI_ADDRESS_1_LINE,
+                .OPI => c.HAL_XSPI_ADDRESS_8_LINES,
+            },
+            .AddressDTRMode = c.HAL_XSPI_ADDRESS_DTR_DISABLE,
+            .AddressWidth = switch (addr_width) {
+                .ThreeBytes => c.HAL_XSPI_ADDRESS_24_BITS,
+                .FourBytes => c.HAL_XSPI_ADDRESS_32_BITS,
+            },
+            .Address = read_address,
+            .AlternateBytesMode = c.HAL_XSPI_ALT_BYTES_NONE,
+            .DataMode = switch (self.state.protocol) {
+                .SPI => c.HAL_XSPI_DATA_1_LINE,
+                .OPI => c.HAL_XSPI_DATA_8_LINES,
+            },
+            .DataDTRMode = c.HAL_XSPI_DATA_DTR_DISABLE,
+            .DummyCycles = switch (self.state.protocol) {
+                .SPI => DummyCyclesConfig.READ,
+                .OPI => DummyCyclesConfig.READ_OCTAL,
+            },
+            .DataLength = data.len,
+            .DQSMode = c.HAL_XSPI_DQS_DISABLE,
+        };
+        try hal.zig.xspi.command(&self.hxspi, &command);
+
+        try hal.zig.xspi.receive(&self.hxspi, data.ptr);
+    }
+
+    fn dtr(self: *Self, read_address: u32, data: []u8) !void {
+        try assertSpiDtr(self.state.protocol, self.state.rate);
+
+        const command: c.XSPI_RegularCmdTypeDef = .{
+            .OperationType = c.HAL_XSPI_OPTYPE_COMMON_CFG,
+            .InstructionMode = c.HAL_XSPI_INSTRUCTION_8_LINES,
+            .InstructionDTRMode = c.HAL_XSPI_INSTRUCTION_DTR_ENABLE,
+            .InstructionWidth = c.HAL_XSPI_INSTRUCTION_16_BITS,
+            .Instruction = Commands.OPI.Memory.READ_DTR,
+            .AddressMode = c.HAL_XSPI_ADDRESS_8_LINES,
+            .AddressDTRMode = c.HAL_XSPI_ADDRESS_DTR_ENABLE,
+            .AddressWidth = c.HAL_XSPI_ADDRESS_32_BITS,
+            .Address = read_address,
+            .AlternateBytesMode = c.HAL_XSPI_ALT_BYTES_NONE,
+            .DataMode = c.HAL_XSPI_DATA_8_LINES,
+            .DataDTRMode = c.HAL_XSPI_DATA_DTR_ENABLE,
+            .DummyCycles = DummyCyclesConfig.READ_OCTAL_DTR,
+            .DataLength = data.len,
+            .DQSMode = c.HAL_XSPI_DQS_ENABLE,
+        };
+        try hal.zig.xspi.command(&self.hxspi, &command);
+
+        try hal.zig.xspi.receive(&self.hxspi, data.ptr);
+    }
+
+    fn read(self: *Self, read_address: u32, data: []u8) !void {
+        switch (self.state.rate) {
+            .STR => try str(self, read_address, data),
+            .DTR => try dtr(self, read_address, data),
+        }
+
+        logger.debug("read: {any}", .{data});
+    }
+};
+
+/// Namespace for convenience (might break into smaller files later)
+const Write = struct {
+    fn str(self: *Self, write_address: u32, data: []const u8) !void {
+        const addr_width: AddressWidth = .FourBytes;
+
+        try assertOpiThreeBytes(self.state.protocol, addr_width);
+        try assertDataLength(data);
+
+        const command: c.XSPI_RegularCmdTypeDef = .{
+            .OperationType = c.HAL_XSPI_OPTYPE_COMMON_CFG,
+            .InstructionMode = switch (self.state.protocol) {
+                .SPI => c.HAL_XSPI_INSTRUCTION_1_LINE,
+                .OPI => c.HAL_XSPI_INSTRUCTION_8_LINES,
+            },
+            .InstructionDTRMode = c.HAL_XSPI_INSTRUCTION_DTR_DISABLE,
+            .InstructionWidth = switch (self.state.protocol) {
+                .SPI => c.HAL_XSPI_INSTRUCTION_8_BITS,
+                .OPI => c.HAL_XSPI_INSTRUCTION_16_BITS,
+            },
+            .Instruction = switch (self.state.protocol) {
+                .SPI => switch (addr_width) {
+                    .ThreeBytes => Commands.SPI.ThreeBytes.PAGE_PROG,
+                    .FourBytes => Commands.SPI.FourBytes.PAGE_PROG,
+                },
+                .OPI => Commands.OPI.Memory.PAGE_PROG,
+            },
+            .AddressMode = switch (self.state.protocol) {
+                .SPI => c.HAL_XSPI_ADDRESS_1_LINE,
+                .OPI => c.HAL_XSPI_ADDRESS_8_LINES,
+            },
+            .AddressDTRMode = c.HAL_XSPI_ADDRESS_DTR_DISABLE,
+            .AddressWidth = switch (addr_width) {
+                .ThreeBytes => c.HAL_XSPI_ADDRESS_24_BITS,
+                .FourBytes => c.HAL_XSPI_ADDRESS_32_BITS,
+            },
+            .Address = write_address,
+            .AlternateBytesMode = c.HAL_XSPI_ALT_BYTES_NONE,
+            .DataMode = switch (self.state.protocol) {
+                .SPI => c.HAL_XSPI_DATA_1_LINE,
+                .OPI => c.HAL_XSPI_DATA_8_LINES,
+            },
+            .DataDTRMode = c.HAL_XSPI_DATA_DTR_DISABLE,
+            .DummyCycles = 0,
+            .DataLength = data.len,
+            .DQSMode = c.HAL_XSPI_DQS_DISABLE,
+        };
+        try hal.zig.xspi.command(&self.hxspi, &command);
+
+        try hal.zig.xspi.transmit(&self.hxspi, data.ptr);
+    }
+
+    /// Write data to the XSPI NOR Flash
+    /// len(data) <= PAGE_SIZE
+    fn dtr(self: *Self, write_address: u32, data: []const u8) !void {
+        try assertSpiDtr(self.state.protocol, self.state.rate);
+        try assertDataLength(data);
+
+        const command: c.XSPI_RegularCmdTypeDef = .{
             .OperationType = c.HAL_XSPI_OPTYPE_COMMON_CFG,
             .InstructionMode = c.HAL_XSPI_INSTRUCTION_8_LINES,
             .InstructionDTRMode = c.HAL_XSPI_INSTRUCTION_DTR_ENABLE,
@@ -1050,12 +1085,29 @@ fn page_write_dtr(self: *Self, write_address: u32, data: []const u8) !void {
             .DummyCycles = 0,
             .DataLength = data.len,
             .DQSMode = c.HAL_XSPI_DQS_DISABLE,
-        },
-    );
-    try hal.zig.xspi.send_command(&self.hxspi, &command);
+        };
+        try hal.zig.xspi.command(&self.hxspi, &command);
 
-    try hal.zig.xspi.transmit(&self.hxspi, data.ptr);
-}
+        try hal.zig.xspi.transmit(&self.hxspi, data.ptr);
+    }
+
+    fn write(self: *Self, write_address: u32, data: []const u8) !void {
+        // TODO
+        //   - (?) Support buffer.len > PAGE_SIZE
+        //   - Check if we will ever need to use .ThreeBytes
+
+        try self.pollReady(self.state.protocol, self.state.rate);
+        try self.writeEnable(self.state.protocol, self.state.rate);
+
+        switch (self.state.rate) {
+            .STR => try str(self, write_address, data),
+            .DTR => try dtr(self, write_address, data),
+        }
+        logger.debug("wrote {any}", .{data});
+
+        try self.pollReady(self.state.protocol, self.state.rate);
+    }
+};
 
 // Public API
 
@@ -1069,17 +1121,19 @@ pub fn new(protocol: Protocol, rate: Rate) !Self {
         },
     };
 
-    try self.init();
+    errdefer hal.zig.xspi.printError(&self.hxspi);
+
+    try self.init(rate);
     try self.reset();
-    try self.auto_polling_ready(.SPI, .STR);
+    // first poll is always .SPI + .STR
+    try self.pollReady(.SPI, .STR);
     try self.configure(protocol, rate);
 
-    logger.debug("OSPI flash ready", .{});
+    logger.info("Flash ready", .{});
     return self;
 }
 
-/// Get information about the chip
-pub fn flashInfo(_: *const Self) Info {
+pub fn info(_: *const Self) Info {
     // TODO?: actually query
     return Info{
         .FlashSize = FLASH_SIZE,
@@ -1094,16 +1148,15 @@ pub fn flashInfo(_: *const Self) Info {
     };
 }
 
-/// Reset the device
 pub fn reset(self: *Self) !void {
-    try self.reset_enable(.SPI, .STR);
-    try self.reset_memory(.SPI, .STR);
+    try self.resetEnable(.SPI, .STR);
+    try self.resetMemory(.SPI, .STR);
 
-    try self.reset_enable(.OPI, .STR);
-    try self.reset_memory(.OPI, .STR);
+    try self.resetEnable(.OPI, .STR);
+    try self.resetMemory(.OPI, .STR);
 
-    try self.reset_enable(.OPI, .DTR);
-    try self.reset_memory(.OPI, .DTR);
+    try self.resetEnable(.OPI, .DTR);
+    try self.resetMemory(.OPI, .DTR);
 
     // Wait in case we sent message while deleting (or something like that)
     hal.zig.timer.sleep(RESET_MAX_TIME);
@@ -1120,17 +1173,17 @@ pub fn configure(self: *Self, protocol: Protocol, rate: Rate) !void {
         .SPI => switch (protocol) {
             // already SPI, it has no STR/DTR, nothing to do here
             .SPI => {},
-            .OPI => try self.enter_opi(rate),
+            .OPI => try Opi.enter(self, rate),
         },
 
         .OPI => {
-            try self.exit_opi();
+            try Opi.exit(self);
 
             switch (protocol) {
                 // SPI has no STR/DTR, just exit OPI
                 .SPI => {},
                 .OPI => if (self.state.rate != rate) {
-                    try self.enter_opi(rate);
+                    try Opi.enter(self, rate);
                 },
             }
         },
@@ -1139,36 +1192,11 @@ pub fn configure(self: *Self, protocol: Protocol, rate: Rate) !void {
     self.state.protocol = protocol;
     self.state.rate = rate;
 
-    logger.debug("Configured {} {}", .{ protocol, rate });
+    logger.info("Configured {} {}", .{ protocol, rate });
 }
 
-/// Read from the flash
-pub fn read(self: *Self, read_address: u32, data: []u8) !void {
-    switch (self.state.rate) {
-        .STR => try self.page_read_str(read_address, data),
-        .DTR => try self.page_read_dtr(read_address, data),
-    }
-
-    logger.debug("read: {any}", .{data});
-}
-
-/// Write into the flash
-pub fn write(self: *Self, write_address: u32, data: []const u8) !void {
-    // TODO
-    //   - (?) Support buffer.len > PAGE_SIZE
-    //   - Check if we will ever need to use .ThreeBytes
-
-    try self.auto_polling_ready(self.state.protocol, self.state.rate);
-    try self.write_enable(self.state.protocol, self.state.rate);
-
-    switch (self.state.rate) {
-        .STR => try self.page_write_str(write_address, data),
-        .DTR => try self.page_write_dtr(write_address, data),
-    }
-    logger.debug("wrote {any}", .{data});
-
-    try self.auto_polling_ready(self.state.protocol, self.state.rate);
-}
+pub const read = Read.read;
+pub const write = Write.write;
 
 // TODO?
 //  - MX66UW1G45G_EnableMemoryMappedModeSTR
