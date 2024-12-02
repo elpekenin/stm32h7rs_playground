@@ -43,7 +43,7 @@ fn toggle() noreturn {
 }
 
 pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
-    @setCold(true);
+    @branchHint(.cold);
 
     logger.err("{s}", .{msg});
     switch (config.panic.type) {

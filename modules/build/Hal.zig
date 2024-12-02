@@ -106,10 +106,10 @@ USE_HAL_USART_REGISTER_CALLBACKS: bool = false,
 USE_HAL_WWDG_REGISTER_CALLBACKS: bool = false,
 USE_HAL_XSPI_REGISTER_CALLBACKS: bool = false,
 
-pub fn fromArgs(b: *std.Build) Self {
+pub fn fromArgs(b: *Build) Self {
     var self: Self = .{}; // initialize with default values
 
-    inline for (@typeInfo(Self).Struct.fields) |field| {
+    inline for (@typeInfo(Self).@"struct".fields) |field| {
         const name = field.name;
 
         // if arg passed in, overwrite default

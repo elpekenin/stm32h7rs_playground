@@ -9,6 +9,7 @@ const logger = std.log.scoped(.main);
 const hal = @import("hal");
 const program = @import("program");
 
+const logging = @import("logging");
 const panic_mod = @import("panic.zig");
 
 const VectorTable = @import("vector_table.zig").VectorTable;
@@ -16,7 +17,7 @@ const VectorTable = @import("vector_table.zig").VectorTable;
 // zig std config
 pub const std_options = std.Options{
     .log_level = .debug,
-    .logFn = @import("logging").logFn,
+    .logFn = logging.logFn,
     .log_scope_levels = if (@hasDecl(program, "log_scope_levels"))
         program.log_scope_levels
     else
@@ -69,7 +70,8 @@ pub export fn _start() noreturn {
     const ret = program.main() catch |main_err| {
         logger.err("returned an error ({s})", .{@errorName(main_err)});
 
-        if (@errorReturnTrace()) |stack_trace| {
+        const maybe_stack_trace: ?*std.builtin.StackTrace = @errorReturnTrace();
+        if (maybe_stack_trace) |stack_trace| {
             var frame_index: usize = 0;
             var frames_left: usize = @min(stack_trace.index, stack_trace.instruction_addresses.len);
 

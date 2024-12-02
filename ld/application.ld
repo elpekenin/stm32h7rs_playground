@@ -1,12 +1,10 @@
-/* TODO: sizes based on external memories (once bootloader works :^P) */
-
 /* Pretty much copied from picolibc */
 
 /* Not really a thing on embedded, but logical entrypoint is main */
 ENTRY(main)
 
-__flash      = 0x08000000;
-__flash_size = 0x00010000;
+__flash      = 0x70000000;
+__flash_size = 0x08000000;
 
 __ram      = 0x24000000;
 __ram_size = 0x00071C00;

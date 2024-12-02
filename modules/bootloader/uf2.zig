@@ -37,7 +37,7 @@ const Flag = struct {
 };
 
 fn flashTest() !i32 {
-    var flash = try mx66.new(.OPI, .DTR);
+    var flash = try mx66.new(.SPI, .STR);
 
     const SIZE = 10;
 

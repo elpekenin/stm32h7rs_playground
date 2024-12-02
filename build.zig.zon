@@ -19,8 +19,8 @@
             .hash = "12206812bf16e697049b257fbccba955113a076f470b6e39e064e9f43e3febc249c7",
         },
         .zfat = .{
-            .url = "git+https://github.com/ZigEmbeddedGroup/zfat#9644549c78d90f98b3921c12d760b0eaaaf219da",
-            .hash = "1220cca763cc3867e8b9fa2d1b0ff62236341698e37dd527f3815455429fc624e7e6",
+            .url = "git+https://github.com/ZigEmbeddedGroup/zfat#0c86f71e85908882ea01aaf58a351eeaeb08040f",
+            .hash = "1220e8349097f005ff3da61e3680717b7bd7a72314a5c0cdb4bac72de7313062edb7",
         },
     },
 
