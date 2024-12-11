@@ -1,5 +1,5 @@
 const std = @import("std");
-const hal = @import("../hal.zig");
+const hal = @import("../mod.zig");
 const c = hal.c;
 
 pub fn enableIoSpeedOptimize(selection: u32) void {

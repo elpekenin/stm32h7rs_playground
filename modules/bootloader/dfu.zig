@@ -3,8 +3,8 @@
 
 const hal = @import("hal");
 const c = hal.c;
-const NVIC = hal.zig.peripherals.NVIC;
-const SysTick = hal.zig.peripherals.SysTick;
+const NVIC = hal.zig.NVIC;
+const SysTick = hal.zig.SysTick;
 
 const jump = @import("jump.zig");
 
@@ -19,7 +19,7 @@ pub fn checkJump() bool {
 
 pub fn jumpToBootloader() noreturn {
     INDICATOR.set(true);
-    hal.zig.timer.sleep(500);
+    hal.zig.timer.sleep(.{ .milliseconds = 500 });
     INDICATOR.set(false);
 
     hal.assembly.disableIrq();

@@ -5,8 +5,6 @@
 //     .preferred_optimize_mode = .ReleaseSmall,
 // }),
 
-pub const IMPORT_NAME = "build_config";
-
 const std = @import("std");
 const Build = std.Build;
 const Module = Build.Module;
@@ -20,6 +18,8 @@ const Logging = @import("Logging.zig");
 const Panic = @import("Panic.zig");
 const Program = @import("Program.zig");
 
+const logger = std.log.scoped(.build);
+
 // sorted alphabetically
 hal: Hal,
 libc: LibC,
@@ -28,6 +28,29 @@ optimize: std.builtin.OptimizeMode,
 panic: Panic,
 program: Program,
 target: std.Build.ResolvedTarget,
+
+/// Shared logic for optional flag, printing default value selected
+pub fn option(
+    b: *Build,
+    comptime T: type,
+    name: []const u8,
+    description: []const u8,
+    comptime default: T,
+) T {
+    const maybe_val: ?T = b.option(T, name, description);
+
+    if (maybe_val) |val| {
+        return val;
+    }
+
+    // specialization for enum printing
+    switch (@typeInfo(T)) {
+        .@"enum" => logger.info("'{s}' not specified, using `.{s}`", .{ name, @tagName(default) }),
+        else => logger.info("'{s}' not specified, using `{}`", .{ name, default }),
+    }
+
+    return default;
+}
 
 pub fn fromArgs(b: *Build) Self {
     return Self{
@@ -69,6 +92,29 @@ pub fn getEntrypoint(self: *const Self, b: *Build) *std.Build.Step.Compile {
         .target = self.target,
     });
 
+    if (self.logging.filesystem) {
+        const zfat = b.dependency(
+            "zfat",
+            .{
+                .@"no-libc" = true,
+                .optimize = self.optimize,
+                .@"static-rtc" = currentDate(b),
+                .target = self.target,
+            },
+        ).module("zfat");
+
+        zfat.linkLibrary(self.getLibC(b)); // FIXME: Clean this up
+        start.root_module.addImport("fatfs", zfat);
+    }
+
+    if (self.logging.rtt) {
+        const rtt = b.dependency(
+            "rtt",
+            .{},
+        ).module("rtt");
+        start.root_module.addImport("rtt", rtt);
+    }
+
     start.setLinkerScript(
         b.path(
             b.fmt("ld/{s}.ld", .{
@@ -104,40 +150,6 @@ pub fn getLibC(self: *const Self, b: *Build) *Compile {
 fn currentDate(b: *Build) []const u8 {
     const out = b.run(&.{ "date", "+\"%Y-%m-%d\"" });
     return out[1 .. out.len - 2]; // output is wrapped in quotes, remove them
-}
-
-pub fn getLogging(self: *const Self, b: *Build) *Module {
-    const module = b.addModule(
-        "logging",
-        .{
-            .root_source_file = b.path("modules/logging/logging.zig"),
-        },
-    );
-
-    if (self.logging.filesystem) {
-        const zfat = b.dependency(
-            "zfat",
-            .{
-                .@"no-libc" = true,
-                .optimize = self.optimize,
-                .@"static-rtc" = currentDate(b),
-                .target = self.target,
-            },
-        ).module("zfat");
-
-        zfat.linkLibrary(self.getLibC(b)); // FIXME: Clean this up
-        module.addImport("fatfs", zfat);
-    }
-
-    if (self.logging.rtt) {
-        const rtt = b.dependency(
-            "rtt",
-            .{},
-        ).module("rtt");
-        module.addImport("rtt", rtt);
-    }
-
-    return module;
 }
 
 pub fn getOptions(self: *const Self, b: *Build) *Module {

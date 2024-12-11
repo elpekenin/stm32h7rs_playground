@@ -1,5 +1,5 @@
 const std = @import("std");
-const hal = @import("../../hal.zig");
+const hal = @import("../../mod.zig");
 const c = hal.c;
 
 export fn HAL_SD_MspInit(hsd: *c.SD_HandleTypeDef) void {

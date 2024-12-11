@@ -1,19 +1,21 @@
 //! "Tiny" zig wrappers on top of STM HAL
 
 const std = @import("std");
-const hal = @import("../hal.zig");
+const hal = @import("../mod.zig");
 const c = hal.c;
 
 pub const cache = @import("cache.zig");
 pub const peripherals = @import("peripherals.zig");
 pub const rcc = @import("rcc.zig");
-pub const sd = @import("sd.zig");
+const Sd = @import("Sd.zig");
 pub const timer = @import("timer.zig");
 pub const usb = @import("usb.zig");
 pub const xspi = @import("xspi.zig");
 
-const RCC = peripherals.RCC;
-const SCB = peripherals.SCB;
+pub const NVIC = peripherals.NVIC;
+pub const RCC = peripherals.RCC;
+pub const SCB = peripherals.SCB;
+pub const SysTick = peripherals.SysTick;
 
 fn asF32(val: anytype) f32 {
     return @as(f32, @floatFromInt(val));

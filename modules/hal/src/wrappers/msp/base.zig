@@ -1,5 +1,5 @@
 const std = @import("std");
-const hal = @import("../../hal.zig");
+const hal = @import("../../mod.zig");
 const c = hal.c;
 
 export fn HAL_MspInit() void {

@@ -7,23 +7,24 @@ const std = @import("std");
 const logger = std.log.scoped(.main);
 
 const hal = @import("hal");
+const rtt = @import("rtt");
 const program = @import("program");
 
-const logging = @import("logging");
+const logging = @import("logging.zig");
 const panic_mod = @import("panic.zig");
 
 const VectorTable = @import("vector_table.zig").VectorTable;
 
 // zig std config
-pub const std_options = std.Options{
+pub const std_options: std.Options = .{
     .log_level = .debug,
     .logFn = logging.logFn,
-    .log_scope_levels = if (@hasDecl(program, "log_scope_levels"))
-        program.log_scope_levels
-    else
-        &.{},
 };
 pub const panic = panic_mod.panic;
+
+// app-level config
+pub const rtt_channels = rtt.RTT(program.rtt_config);
+pub const dummy_cycles_config = program.dummy_cycles_config;
 
 const symbols = struct {
     extern var __stack: anyopaque;
@@ -65,6 +66,7 @@ pub export fn _start() noreturn {
     // halts, apparently, right after executing the func
     // hal.zig.cache.i_cache.enable();
 
+    rtt_channels.init();
     hal.zig.init();
 
     const ret = program.main() catch |main_err| {
@@ -94,6 +96,6 @@ pub export fn _start() noreturn {
 export const vector_table: VectorTable linksection(".data.init.enter") = .{
     .stack_pointer = &symbols.__stack,
     .Reset = @import("start.zig")._start,
-    .SDMMC1 = hal.zig.sd.isr,
+    .SDMMC1 = hal.bsp.sdIsr,
     .TIM6 = hal.zig.timer.isr,
 };

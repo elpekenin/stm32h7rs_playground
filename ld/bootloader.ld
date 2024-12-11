@@ -73,6 +73,12 @@ SECTIONS
 
 	} >flash AT>flash :text
 
+	.defmt : {
+		PROVIDE_HIDDEN (__defmt_start = .);
+		KEEP (*(.defmt))
+		PROVIDE_HIDDEN (__defmt_end = .);
+	} >flash AT>flash :text
+
 	.rodata : {
 
 		/* read-only data */

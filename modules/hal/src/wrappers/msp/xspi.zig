@@ -1,7 +1,7 @@
 // TODO: Double-check values here, XSPI is failing and **might** be some mis-config here
 
 const std = @import("std");
-const hal = @import("../../hal.zig");
+const hal = @import("../../mod.zig");
 const c = hal.c;
 
 const state = struct {
@@ -40,6 +40,7 @@ export fn HAL_XSPI_MspInit(hxspi: *c.XSPI_HandleTypeDef) void {
             hal.zig.rcc.XSPI2.enable();
             hal.zig.rcc.GPION.enable();
         },
+        // any other value gets rejected earlier on this function
         else => unreachable,
     }
 
@@ -74,6 +75,7 @@ export fn HAL_XSPI_MspInit(hxspi: *c.XSPI_HandleTypeDef) void {
             };
             c.HAL_GPIO_Init(c.GPION, &gpio_init);
         },
+        // any other value gets rejected earlier on this function
         else => unreachable,
     }
 }

@@ -6,6 +6,8 @@ const std = @import("std");
 const Build = std.Build;
 const Options = Build.Step.Options;
 
+const Config = @import("Config.zig");
+
 const Self = @This();
 
 pub const Type = enum {
@@ -20,17 +22,21 @@ type: Type,
 time: Time,
 
 pub fn fromArgs(b: *std.Build) Self {
-    const type_: Type = b.option(
+    const type_: Type = Config.option(
+        b,
         Type,
         "panic_type",
         "control panic behavior",
-    ) orelse .CycleLeds;
+        .CycleLeds,
+    );
 
-    const time: Time = b.option(
+    const time: Time = Config.option(
+        b,
         Time,
         "panic_timer",
         "control panic behavior",
-    ) orelse 500;
+        500,
+    );
 
     return Self{
         .type = type_,

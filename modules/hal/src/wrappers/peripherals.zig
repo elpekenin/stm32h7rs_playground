@@ -1,4 +1,4 @@
-const c = @import("../hal.zig").c;
+const c = @import("../mod.zig").c;
 
 pub const NVIC = @as(*c.NVIC_Type, @ptrFromInt(c.NVIC_BASE));
 pub const RCC: *c.RCC_TypeDef = @ptrFromInt(c.RCC_BASE);

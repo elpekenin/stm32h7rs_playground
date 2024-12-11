@@ -3,9 +3,9 @@
 const std = @import("std");
 const logger = std.log.scoped(.cache);
 
-const hal = @import("../hal.zig");
+const hal = @import("../mod.zig");
 const c = hal.c;
-const SCB = hal.zig.peripherals.SCB;
+const SCB = hal.zig.SCB;
 
 inline fn DSB() void {
     asm volatile ("dsb 0xF");

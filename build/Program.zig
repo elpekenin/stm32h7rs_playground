@@ -6,6 +6,8 @@ const std = @import("std");
 const Build = std.Build;
 const Options = Build.Step.Options;
 
+const Config = @import("Config.zig");
+
 const Self = @This();
 
 const Type = enum {
@@ -27,11 +29,13 @@ pub fn name(self: *const Self) []const u8 {
 }
 
 pub fn fromArgs(b: *Build) Self {
-    const type_: Type = b.option(
+    const type_: Type = Config.option(
+        b,
         Type,
         "program",
         "target program",
-    ) orelse .bootloader;
+        .bootloader,
+    );
 
     return Self{
         .type = type_,

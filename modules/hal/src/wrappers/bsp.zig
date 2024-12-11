@@ -1,12 +1,16 @@
 //! Aliases for STM32H7S78-DK board
 
 const std = @import("std");
-const hal = @import("../hal.zig");
+const hal = @import("../mod.zig");
 const c = hal.c;
 
 const Pin = hal.zig.Pin;
 const DigitalIn = hal.zig.DigitalIn;
 const DigitalOut = hal.zig.DigitalOut;
+
+const Sd = @import("../wrappers/Sd.zig");
+
+const logger = std.log.scoped(.bsp);
 
 pub const DCMI = struct {
     pub const HSYNC: Pin = .{
@@ -552,6 +556,13 @@ pub const SD = struct {
         .port = c.GPIOC,
     };
 };
+pub var sd: ?Sd = null;
+/// Do not use, only public for vector_table.zig to access it
+pub fn sdIsr() callconv(.C) void {
+    // ugly hack
+    std.log.scoped(.sd).debug("SDMMC1_IRQHandler", .{});
+    c.HAL_SD_IRQHandler(&sd.?.hsd);
+}
 
 pub const SPI = struct {
     pub const CLK: Pin = .{
@@ -636,8 +647,8 @@ pub const BUTTON = DigitalIn{
     .active = .High,
 };
 
-pub const LEDS = .{
-    DigitalOut{
+pub const LEDS: []const DigitalOut = &.{
+    .{
         .base = .{
             .pin = c.GPIO_PIN_1,
             .port = c.GPIOO,
@@ -645,7 +656,7 @@ pub const LEDS = .{
         .active = .High,
     },
 
-    DigitalOut{
+    .{
         .base = .{
             .pin = c.GPIO_PIN_5,
             .port = c.GPIOO,
@@ -653,7 +664,7 @@ pub const LEDS = .{
         .active = .High,
     },
 
-    DigitalOut{
+    .{
         .base = .{
             .pin = c.GPIO_PIN_2,
             .port = c.GPIOM,
@@ -661,7 +672,7 @@ pub const LEDS = .{
         .active = .Low,
     },
 
-    DigitalOut{
+    .{
         .base = .{
             .pin = c.GPIO_PIN_3,
             .port = c.GPIOM,
@@ -671,9 +682,15 @@ pub const LEDS = .{
 };
 
 pub fn init() void {
-    inline for (.{ SD.DET, BUTTON }) |pin| {
-        pin.init();
-    }
+    // initialize SD first, so that we can log to it (if such feat is enabled)
+    // as soon as possible
+    SD.DET.init();
+    sd = Sd.new() catch |err| blk: {
+        logger.err("Failed to initialize sd: {s}", .{@errorName(err)});
+        break :blk null;
+    };
+
+    BUTTON.init();
 
     inline for (LEDS) |pin| {
         pin.init();

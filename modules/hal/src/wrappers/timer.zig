@@ -1,7 +1,7 @@
 //! Configure the system timer
 
 const std = @import("std");
-const hal = @import("../hal.zig");
+const hal = @import("../mod.zig");
 const c = hal.c;
 
 /// Timer counter frequency : 500 kHz
@@ -10,7 +10,40 @@ const TIM_CNT_FREQ = 500000;
 /// Timer frequency : 1 kHz => to have 1 ms interrupt
 const TIM_FREQ = 1000;
 
-const TickT = u32;
+pub const Time = union(enum) {
+    const Self = @This();
+
+    const SecMs = struct {
+        seconds: u32,
+        milliseconds: u32,
+    };
+
+    milliseconds: u32,
+    seconds: u32,
+
+    pub fn to_ms(self: *const Self) u32 {
+        return switch (self.*) {
+            .milliseconds => |ms| ms,
+            .seconds => |s| s * std.time.ms_per_s,
+        };
+    }
+
+    pub fn to_s(self: *const Self) u32 {
+        return switch (self.*) {
+            .milliseconds => |ms| ms / std.time.ms_per_s,
+            .seconds => |s| s,
+        };
+    }
+
+    pub fn to_s_ms(self: *const Self) SecMs {
+        const ms = self.to_ms();
+
+        return .{
+            .seconds = ms / std.time.ms_per_s,
+            .milliseconds = ms % std.time.ms_per_s,
+        };
+    }
+};
 
 var TimHandle = std.mem.zeroes(c.TIM_HandleTypeDef);
 
@@ -96,11 +129,10 @@ export fn HAL_SuspendTick() void {
     TimHandle.Instance.*.DIER &= ~c.TIM_IT_UPDATE;
 }
 
-pub fn now() TickT {
-    return c.HAL_GetTick();
+pub fn now() Time {
+    return .{ .milliseconds = c.HAL_GetTick() };
 }
 
-/// TODO: union(enum) for .ms, .ticks, etc
-pub fn sleep(ticks: TickT) void {
-    c.HAL_Delay(ticks);
+pub fn sleep(time: Time) void {
+    c.HAL_Delay(time.to_s());
 }

@@ -11,12 +11,16 @@
             .url = "git+https://github.com/ZigEmbeddedGroup/foundation-libc#5281055623dff89af7b05572f5aebae0f606e6a1",
             .hash = "1220048600075db8d58faa59d9671e7e4056d134d1f53b0efd9774d01321ef3e343e",
         },
+        .defmt = .{
+            .path = "../defmt",
+        },
         .hal = .{
             .path = "modules/hal",
         },
         .rtt = .{
-            .url = "git+https://github.com/elpekenin/segger-rtt#4029d24ccadd4c0b7c5ba863940915a5e4bbd2fe",
-            .hash = "12206812bf16e697049b257fbccba955113a076f470b6e39e064e9f43e3febc249c7",
+            .path = "../zig-rtt",
+            // .url = "git+https://github.com/haydenridd/zig-rtt#595a42f4b80a77ffa87619f2a61ddc1b8ff53df1",
+            // .hash = "12205fd51be74c1f7c77283fb5e7c70fb2f631cfed0aa8d71bd9f65abe4900491099",
         },
         .zfat = .{
             .url = "git+https://github.com/ZigEmbeddedGroup/zfat#0c86f71e85908882ea01aaf58a351eeaeb08040f",

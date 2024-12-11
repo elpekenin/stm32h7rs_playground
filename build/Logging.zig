@@ -4,23 +4,29 @@ const std = @import("std");
 const Build = std.Build;
 const Options = Build.Step.Options;
 
+const Config = @import("Config.zig");
+
 const Self = @This();
 
 filesystem: bool,
 rtt: bool,
 
 pub fn fromArgs(b: *std.Build) Self {
-    const filesystem: bool = b.option(
+    const filesystem: bool = Config.option(
+        b,
         bool,
         "logging_filesystem",
         "whether to log into filesystem",
-    ) orelse true;
+        false,
+    );
 
-    const rtt: bool = b.option(
+    const rtt: bool = Config.option(
+        b,
         bool,
         "logging_rtt",
         "whether to log over rtt",
-    ) orelse true;
+        true,
+    );
 
     return Self{
         .filesystem = filesystem,

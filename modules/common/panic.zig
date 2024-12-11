@@ -25,7 +25,7 @@ fn cycle() noreturn {
     while (true) {
         inline for (hal.bsp.LEDS) |led| {
             led.toggle();
-            hal.zig.timer.sleep(config.panic.time);
+            hal.zig.timer.sleep(.{ .milliseconds = config.panic.time });
         }
     }
 }

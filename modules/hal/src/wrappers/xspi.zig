@@ -5,7 +5,7 @@
 const std = @import("std");
 const logger = std.log.scoped(.xspi);
 
-const hal = @import("../hal.zig");
+const hal = @import("../mod.zig");
 const c = hal.c;
 
 pub fn init(hxspi: *c.XSPI_HandleTypeDef) !void {

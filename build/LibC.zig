@@ -4,6 +4,8 @@ const std = @import("std");
 const Build = std.Build;
 const Options = Build.Step.Options;
 
+const Config = @import("Config.zig");
+
 const Self = @This();
 
 const Implementation = enum {
@@ -28,11 +30,13 @@ fn from(impl: Implementation) Self {
 }
 
 pub fn fromArgs(b: *std.Build) Self {
-    const implementation: Implementation = b.option(
+    const implementation: Implementation = Config.option(
+        b,
         Implementation,
         "libc",
         "libc implementation to use",
-    ) orelse .foundation;
+        .foundation,
+    );
 
     return Self.from(implementation);
 }

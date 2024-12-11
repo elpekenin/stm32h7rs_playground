@@ -3,9 +3,9 @@
 //! Eg, to enable GPIO ports.
 
 const std = @import("std");
-const hal = @import("../hal.zig");
+const hal = @import("../mod.zig");
 const c = hal.c;
-const RCC = hal.zig.peripherals.RCC;
+const RCC = hal.zig.RCC;
 
 var _tmpreg: u32 = 0;
 const tmpreg: *volatile u32 = &_tmpreg;
@@ -136,8 +136,7 @@ fn portToClock(port: *c.GPIO_TypeDef) Clock {
         c.GPION => GPION,
         c.GPIOO => GPIOO,
         c.GPIOP => GPIOP,
-
-        else => unreachable,
+        else => std.debug.panic("Invalid GPIO port value ({})", .{port}),
     };
 }
 

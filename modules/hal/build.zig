@@ -12,7 +12,7 @@ pub fn build(b: *std.Build) !void {
         "hal",
         .{
             .optimize = optimize,
-            .root_source_file = b.path("src/hal.zig"),
+            .root_source_file = b.path("src/mod.zig"),
             .target = target,
         },
     );
