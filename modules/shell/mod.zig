@@ -5,14 +5,14 @@ const Type = std.builtin.Type;
 
 const logger = std.log.scoped(.terminal);
 
-const Keys = @import("Keys.zig");
+pub const Args = @import("Args.zig");
+pub const Escape = @import("Escape.zig");
+pub const Keys = @import("Keys.zig");
 
 /// Tiny wrapper for convenience
 pub fn matches(first: []const u8, second: []const u8) bool {
     return std.mem.eql(u8, first, second);
 }
-
-pub const Args = @import("Args.zig");
 
 // TODO?: Change signature, eg mutable Inner
 fn Handler(Inner: type) type {
@@ -105,9 +105,11 @@ pub fn Wrapper(comptime Inner: type) type {
             }
         }
 
-        fn findCommandHandler(name: []const u8) ?Handler(Inner) {
+        fn findCommandHandler(name: ?[]const u8) ?Handler(Inner) {
+            const unwrapped = name orelse return null;
+
             inline for (@typeInfo(Inner.Commands).@"struct".decls) |decl| {
-                if (matches(name, decl.name)) {
+                if (matches(unwrapped, decl.name)) {
                     return @field(Inner.Commands, decl.name);
                 }
             }
@@ -115,10 +117,10 @@ pub fn Wrapper(comptime Inner: type) type {
             return null;
         }
 
-        pub fn handle(self: *const Self, line: []const u8) void {
+        pub fn handle(self: *const Self, line: []const u8) !void {
             var args = Args.new(line);
 
-            const command_name = args.commandName();
+            const command_name = try args.commandName();
             if (findCommandHandler(command_name)) |func| {
                 return func(&self.inner, &args) catch {};
             }

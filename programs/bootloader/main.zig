@@ -2,7 +2,7 @@
 //! or use UF2
 
 const std = @import("std");
-const logger = std.log.scoped(.bootloader);
+const Type = std.builtin.Type;
 
 /// root is the real entrypoint (common/start.zig), not the "logical" one (this file)
 const start = @import("root");
@@ -15,6 +15,8 @@ const shell = @import("shell");
 
 const dfu = @import("dfu.zig");
 const uf2 = @import("uf2.zig");
+
+const logger = std.log.scoped(.bootloader);
 
 pub const dummy_cycles_config: mx66.DummyCyclesConfiguration = .{
     .READ = 8,
@@ -42,37 +44,53 @@ const defmt_logger: defmt.Logger = .{
 };
 
 // -- Playground start --
-const LedAction = enum {
-    const Self = @This();
-
-    on,
-    off,
-    toggle,
-
-    fn apply(self: *const Self, led_num: u2) void {
-        const led = hal.bsp.LEDS[led_num];
-
-        switch (self.*) {
-            .on => led.set(true),
-            .off => led.set(false),
-            .toggle => led.toggle(),
-        }
-    }
-};
-
 const Shell = shell.Wrapper(struct {
     const Self = @This();
     const prompt = "stm32h7s7-dk $ ";
 
+    const sorted_commands = blk: {
+        const commands = @typeInfo(Commands).@"struct".decls;
+
+        var sorted: [commands.len]Type.Declaration = undefined;
+        @memcpy(&sorted, commands);
+        std.sort.insertion(Type.Declaration, &sorted, {}, compareDeclarations);
+
+        var names: [commands.len][]const u8 = undefined;
+        for (sorted, 0..) |command, i| {
+            names[i] = command.name;
+        }
+
+        break :blk names;
+    };
+
     reader: std.io.AnyReader,
     writer: std.io.AnyWriter,
 
-    fn print(self: *const Self, comptime fmt: []const u8, args: anytype) !void {
-        return std.fmt.format(self.writer, fmt, args);
+    fn print(self: *const Self, comptime fmt: []const u8, args: anytype) void {
+        std.fmt.format(self.writer, fmt, args) catch {};
     }
 
-    fn showPrompt(self: *const Self) !void {
-        try self.print("{s}", .{prompt});
+    fn showPrompt(self: *const Self) void {
+        self.print("{s}", .{prompt});
+    }
+
+    fn showUsage(self: *const Self, usage: []const u8) void {
+        self.print("Usage: {s}", .{usage});
+    }
+
+    fn assertExhausted(self: *const Self, args: *shell.Args) !void {
+        if (args.tokensLeft()) {
+            self.print("Too many arguments\n", .{});
+            return error.TooManyArgs;
+        }
+    }
+
+    fn compareStrings(_: void, lhs: []const u8, rhs: []const u8) bool {
+        return std.mem.order(u8, lhs, rhs).compare(std.math.CompareOperator.lt);
+    }
+
+    fn compareDeclarations(_: void, lhs: Type.Declaration, rhs: Type.Declaration) bool {
+        return compareStrings({}, lhs.name, rhs.name);
     }
 
     pub fn readByte(self: *const Self) !u8 {
@@ -83,44 +101,57 @@ const Shell = shell.Wrapper(struct {
     /// As they are introspected by @CompilerBuiltins in anotheer file, they must be pub.
     /// To invoke a function named <foo>, you must input <foo [...]> in the "reader" stream.
     pub const Commands = struct {
-        pub fn date(self: *const Self, _: *shell.Args) !void {
-            const now = hal.zig.timer.now().to_s_ms();
-            try self.print("{}.{:0>3}s", .{ now.seconds, now.milliseconds });
+        pub fn help(self: *const Self, args: *shell.Args) !void {
+            try self.assertExhausted(args);
+
+            self.print("Available commands:\n", .{});
+
+            for (sorted_commands) |command| {
+                self.print("  * {s}\n", .{command});
+            }
+        }
+
+        pub fn clear(self: *const Self, args: *shell.Args) !void {
+            try self.assertExhausted(args);
+
+            self.print("{s}", .{shell.Escape.Clear});
         }
 
         pub fn echo(self: *const Self, args: *shell.Args) !void {
-            try self.print("{s}", .{args.rest()});
+            self.print("{s}", .{args.rest()});
+        }
+
+        pub fn date(self: *const Self, args: *shell.Args) !void {
+            try self.assertExhausted(args);
+
+            const now = hal.zig.timer.now().to_s_ms();
+            self.print("{}.{:0>3}s", .{ now.seconds, now.milliseconds });
+        }
+
+        pub fn sleep(self: *const Self, args: *shell.Args) !void {
+            errdefer self.showUsage("sleep <ms>");
+
+            const duration = try args.required(u32);
+            try self.assertExhausted(args);
+
+            hal.zig.timer.sleep(.{
+                .milliseconds = duration,
+            });
         }
 
         pub fn led(self: *const Self, args: *shell.Args) !void {
-            const usage = "Usage: led {0,1,2,3} {on,off,toggle}";
+            errdefer self.showUsage("led {0,1,2,3} <bool>");
 
             // luckily, there are 4 LEDs, thus we can use a u2 and not check bounds :)
-            const led_num = args.next(u2) catch |err| {
-                self.print("{s}", .{usage}) catch {};
-                return err;
-            };
+            const led_num = try args.required(u2);
+            const state = try args.required(bool);
+            try self.assertExhausted(args);
 
-            const action = args.next(LedAction) catch |err| {
-                self.print("{s}", .{usage}) catch {};
-                return err;
-            };
-
-            action.apply(led_num);
-            try self.print("Done!", .{});
+            hal.bsp.LEDS[led_num].set(state);
         }
 
-        pub fn ls(self: *const Self, _: *shell.Args) !void {
-            try self.print("bar.zig  foo.zig", .{});
-        }
-
-        pub fn pwd(self: *const Self, _: *shell.Args) !void {
-            try self.print("/home/elpekenin", .{});
-        }
-
-        pub fn reboot(self: *const Self, _: *shell.Args) !void {
-            // Usually not seen (lost because RTT block is re-initialized on boot?)
-            try self.print("Restarting...\n\n", .{});
+        pub fn reboot(self: *const Self, args: *shell.Args) !void {
+            try self.assertExhausted(args);
 
             // This is __NVIC_SystemReset from core_cm7.h, zig was unable to translate
             asm volatile ("dsb 0xF" ::: "memory");
@@ -129,24 +160,22 @@ const Shell = shell.Wrapper(struct {
 
             while (true) {}
         }
-
-        pub fn whoami(self: *const Self, _: *shell.Args) !void {
-            try self.print("elpekenin", .{});
-        }
     };
 
     /// Functions called under special circumstances. They are optional.
     pub const Special = struct {
-        pub fn tab(_: *const Self, _: *shell.Args) !void {}
-
         /// Fallback when no command matches
         pub fn fallback(self: *const Self, args: *shell.Args) !void {
-            const command_name = args.commandName();
+            const command_name = args.commandName() catch {
+                // error -> no command name found -> do not print
+                return;
+            };
 
-            // special case: nothing written -> noop + don't print
-            if (command_name.len == 0) return;
+            if (std.mem.eql(u8, command_name, "?")) {
+                return Commands.help(self, args);
+            }
 
-            try self.print("{s}: command not found", .{command_name});
+            self.print("{s}: command not found", .{command_name});
         }
     };
 });
@@ -164,12 +193,12 @@ fn playground() !noreturn {
     try defmt_logger.err("Potato {d}", .{@as(u8, 'A')});
     _ = try writer.write("\nFinished\n");
 
-    try terminal.inner.showPrompt();
+    terminal.inner.showPrompt();
     while (true) {
         const line = try terminal.readline();
-        terminal.handle(line);
-        try terminal.inner.print("\n", .{});
-        try terminal.inner.showPrompt();
+        terminal.handle(line) catch {};
+        terminal.inner.print("\n", .{});
+        terminal.inner.showPrompt();
     }
 }
 

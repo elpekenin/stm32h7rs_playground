@@ -15,13 +15,13 @@ const ArgError = error{
 /// "whitespace" chars to split at (delimit words) when parsing
 const delimiters = " \r\n";
 
-const BoolStr = struct {
+const BoolLiteral = struct {
     value: bool,
     strings: []const []const u8,
 };
 
 /// Strings that will be interpreted as true/false
-const bool_strings: []BoolStr = &.{
+const bool_literals: []const BoolLiteral = &.{
     .{
         .value = false,
         .strings = &.{ "n", "no", "false", "0" },
@@ -32,7 +32,24 @@ const bool_strings: []BoolStr = &.{
     },
 };
 
+const max_bool_arg_len = blk: {
+    var max_len = 0;
+
+    for (bool_literals) |bool_literal| {
+        for (bool_literal.strings) |string| {
+            max_len = @max(string.len, max_len);
+        }
+    }
+
+    break :blk max_len;
+};
+
 iterator: Iterator,
+command_name: ?[]const u8 = null,
+
+fn info(T: type) Type {
+    return @typeInfo(T);
+}
 
 /// Create this wrapper on top of a string
 pub fn new(line: []const u8) Self {
@@ -47,49 +64,85 @@ pub fn rawLine(self: *const Self) []const u8 {
 }
 
 /// Get the command name (first word in input)
-pub fn commandName(self: *Self) []const u8 {
-    self.iterator.reset();
-    return self.iterator.first();
+pub fn commandName(self: *Self) ![]const u8 {
+    if (self.command_name == null) {
+        self.iterator.reset();
+        self.command_name = self.next() orelse {
+            return error.NoCommand;
+        };
+    }
+
+    return self.command_name.?;
 }
 
-/// Get remaining (yet unparsed) input
+/// Get remaining (yet to be parsed) input
 pub fn rest(self: *Self) []const u8 {
     return self.iterator.rest();
 }
 
 /// Get next element as is (ie: string)
-pub fn nextRaw(self: *Self) ArgError![]const u8 {
-    return self.iterator.next() orelse return error.MissingArg;
+pub fn next(self: *Self) ?[]const u8 {
+    const raw = self.iterator.next() orelse {
+        // iterator exhausted
+        return null;
+    };
+
+    // a "token" of len 0 would be detected on "foo  bar"
+    //                      between these 2 spaces ^^
+    // if this happens, run another iteration
+    if (raw.len == 0) {
+        return self.next();
+    }
+
+    return raw;
 }
 
-/// Convert the next element to the provided type
-pub fn next(self: *Self, T: type) ArgError!T {
-    const I = @typeInfo(T);
+/// Parse the next token as T, or null if iterator was exhausted
+pub fn optional(self: *Self, T: type) ArgError!?T {
+    const token = self.next() orelse return null;
+
+    const I = info(T);
 
     return switch (I) {
-        .bool => self.Bool(),
-        .@"enum" => self.Enum(T),
-        .int => self.Int(T),
+        .bool => self.Bool(token),
+        .@"enum" => self.Enum(T, token),
+        .int => self.Int(T, token),
         else => {
             const msg = "Parsing arguments of type '" ++ @typeName(T) ++ "' not supported at the moment.";
             @compileError(msg);
         },
-    };
+    } catch error.InvalidArg;
 }
 
-fn info(T: type) Type {
-    return @typeInfo(T);
+/// Parse next token as T, or default value if iterator exhausted
+pub fn default(self: *Self, T: type, default_value: T) ArgError!T {
+    return try self.optional(T) orelse default_value;
 }
 
-fn Bool(self: *Self) ArgError!bool {
-    const arg = try self.nextRaw();
+/// Parse next token as T, or error.MissingArg if iterator exhausted
+pub fn required(self: *Self, T: type) ArgError!T {
+    return try self.optional(T) orelse error.MissingArg;
+}
 
-    const lower = std.ascii.lowerString(arg, arg);
+/// Confirm that is nothing left to parse
+pub fn tokensLeft(self: *Self) bool {
+    const copy = self.iterator;
+    defer self.iterator = copy;
 
-    for (bool_strings) |bool_string| {
-        for (bool_string.strings) |string| {
+    const token = self.next();
+    return token != null;
+}
+
+fn Bool(_: *Self, token: []const u8) !bool {
+    if (token.len > max_bool_arg_len) return error.InvalidArg;
+
+    var buff: [max_bool_arg_len]u8 = undefined;
+    const lower = std.ascii.lowerString(&buff, token);
+
+    for (bool_literals) |bool_literal| {
+        for (bool_literal.strings) |string| {
             if (std.mem.eql(u8, string, lower)) {
-                return bool_string.value;
+                return bool_literal.value;
             }
         }
     }
@@ -97,13 +150,11 @@ fn Bool(self: *Self) ArgError!bool {
     return error.InvalidArg;
 }
 
-fn Enum(self: *Self, T: type) ArgError!T {
+fn Enum(_: *Self, T: type, token: []const u8) !T {
     const I = info(T);
 
-    const arg = try self.nextRaw();
-
     inline for (I.@"enum".fields) |field| {
-        if (std.mem.eql(u8, arg, field.name)) {
+        if (std.mem.eql(u8, token, field.name)) {
             return @enumFromInt(field.value);
         }
     }
@@ -112,7 +163,6 @@ fn Enum(self: *Self, T: type) ArgError!T {
 }
 
 // TODO: Add support for different bases
-fn Int(self: *Self, T: type) ArgError!T {
-    const arg = try self.nextRaw();
-    return std.fmt.parseInt(T, arg, 10) catch return error.InvalidArg;
+fn Int(_: *Self, T: type, token: []const u8) !T {
+    return std.fmt.parseInt(T, token, 10);
 }
