@@ -12,7 +12,8 @@
             .hash = "1220048600075db8d58faa59d9671e7e4056d134d1f53b0efd9774d01321ef3e343e",
         },
         .defmt = .{
-            .path = "../defmt",
+            .url = "git+https://github.com/elpekenin/defmt#7d63bb7dbc28f1b5dc5ffaa73a84781da3e410ae",
+            .hash = "12204e7f12d3eba173733b2db680e5b59ed72358ffc26edef3a70f2ca6d1b0f0ab10",
         },
         .hal = .{
             .path = "modules/hal",

@@ -1,18 +1,15 @@
 /* Pretty much copied from picolibc */
 
+RAM_START = 0x24000000;
+RAM_SIZE  = 0x00071C00;
+
 /* Not really a thing on embedded, but logical entrypoint is main */
 ENTRY(main)
 
-__flash      = 0x08000000;
-__flash_size = 0x00010000;
-
-__ram      = 0x24000000;
-__ram_size = 0x00071C00;
-
 MEMORY
 {
-	flash (rx!w) : ORIGIN = __flash, LENGTH = __flash_size
-	ram (w!rx) : ORIGIN = __ram, LENGTH = __ram_size
+	flash (rx!w) : ORIGIN = FLASH_START, LENGTH = FLASH_SIZE
+	ram (w!rx) : ORIGIN = RAM_START, LENGTH = RAM_SIZE
 
 	ITCM (xrw) : ORIGIN = 0x00000000, LENGTH = 0x00010000
 	DTCM (rw) : ORIGIN = 0x20000000, LENGTH = 0x00010000

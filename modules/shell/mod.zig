@@ -5,70 +5,21 @@ const Type = std.builtin.Type;
 
 const logger = std.log.scoped(.terminal);
 
-/// Convenience namespace
-const Keys = struct {
-    const Backspace = 8;
-    const Tab = 9;
-    const Newline = 10;
-};
-
-/// "whitespace" chars to split at when parsing input
-const delimiters = " \r\n";
-
-pub const ArgIterator = std.mem.SplitIterator(u8, .any);
+const Keys = @import("Keys.zig");
 
 /// Tiny wrapper for convenience
 pub fn matches(first: []const u8, second: []const u8) bool {
     return std.mem.eql(u8, first, second);
 }
 
-const ArgError = error{
-    MissingArg,
-    InvalidArg,
-};
+pub const Args = @import("Args.zig");
 
-/// Utilities to get the next word in input (if present) and parse it
-pub const parser = struct {
-    fn wrongType() noreturn {
-        const msg = "Invalid type passed in";
-        @compileError(msg);
-    }
+// TODO?: Change signature, eg mutable Inner
+fn Handler(Inner: type) type {
+    return *const fn (*const Inner, *Args) anyerror!void;
+}
 
-    fn next(args: *ArgIterator) ![]const u8 {
-        return args.next() orelse return error.MissingArg;
-    }
-
-    pub fn Enum(args: *ArgIterator, T: type) ArgError!T {
-        const I = @typeInfo(T);
-        if (I != .@"enum") wrongType();
-
-        const arg = try next(args);
-        inline for (I.@"enum".fields) |field| {
-            if (matches(arg, field.name)) {
-                return @enumFromInt(field.value);
-            }
-        }
-
-        return error.InvalidArg;
-    }
-
-    pub fn Int(
-        args: *ArgIterator,
-        T: type,
-        options: struct {
-            base: u8 = 10,
-            // TODO?: bounds check
-        },
-    ) ArgError!T {
-        if (@typeInfo(T) != .int) wrongType();
-
-        const arg = try next(args);
-        return std.fmt.parseInt(T, arg, options.base) catch return error.InvalidArg;
-    }
-};
-
-// Mutable Inner?
-fn findSpecial(Inner: type, name: []const u8) ?*const fn (*const Inner, []const u8) anyerror!void {
+fn findSpecial(Inner: type, name: []const u8) ?Handler(Inner) {
     if (!@hasDecl(Inner, "Special")) return null;
     if (!@hasDecl(Inner.Special, name)) return null;
     return @field(Inner.Special, name);
@@ -94,9 +45,6 @@ pub fn Wrapper(comptime Inner: type) type {
         @compileError(msg);
     }
 
-    // Mutable Inner?
-    const CommandFnPtr = *const fn (*const Inner, *ArgIterator) anyerror!void;
-
     const maybe_tab = findSpecial(Inner, "tab");
     const maybe_fallback = findSpecial(Inner, "fallback");
 
@@ -110,7 +58,7 @@ pub fn Wrapper(comptime Inner: type) type {
         buffer: Buff,
 
         pub fn new(inner: Inner) Self {
-            return .{
+            return Self{
                 .inner = inner,
                 // has size rx_len (>0), can't fail
                 .buffer = Buff.init(0) catch unreachable,
@@ -142,7 +90,8 @@ pub fn Wrapper(comptime Inner: type) type {
                     },
                     Keys.Tab => {
                         if (maybe_tab) |tab| {
-                            tab(&self.inner, self.buffer.constSlice()) catch {};
+                            var args = Args.new(self.buffer.constSlice());
+                            tab(&self.inner, &args) catch {};
                         }
                     },
                     Keys.Backspace => {
@@ -156,7 +105,7 @@ pub fn Wrapper(comptime Inner: type) type {
             }
         }
 
-        fn findCommandHandler(name: []const u8) ?CommandFnPtr {
+        fn findCommandHandler(name: []const u8) ?Handler(Inner) {
             inline for (@typeInfo(Inner.Commands).@"struct".decls) |decl| {
                 if (matches(name, decl.name)) {
                     return @field(Inner.Commands, decl.name);
@@ -167,16 +116,15 @@ pub fn Wrapper(comptime Inner: type) type {
         }
 
         pub fn handle(self: *const Self, line: []const u8) void {
-            var iterator = std.mem.splitAny(u8, line, delimiters);
-            const command_name = iterator.first();
+            var args = Args.new(line);
 
+            const command_name = args.commandName();
             if (findCommandHandler(command_name)) |func| {
-                return func(&self.inner, &iterator) catch {};
+                return func(&self.inner, &args) catch {};
             }
 
             if (maybe_fallback) |fallback| {
-                iterator.reset(); // to get full line on handler
-                return fallback(&self.inner, self.buffer.constSlice()) catch {};
+                return fallback(&self.inner, &args) catch {};
             }
         }
     };

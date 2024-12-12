@@ -1,5 +1,5 @@
 const std = @import("std");
-const hal = @import("hal").zig;
+const hal = @import("hal");
 
 pub fn main() noreturn {
     while (true) {}

@@ -76,7 +76,7 @@ pub fn new(bus_config: BusConfiguration) !Self {
 
 pub fn info(_: *const Self) types.Info {
     // TODO?: actually query
-    return .{
+    return types.Info{
         .FlashSize = constants.FLASH_SIZE,
         .EraseSectorSize = constants.BLOCK_64K,
         .EraseSectorsNumber = constants.FLASH_SIZE / constants.BLOCK_64K,

@@ -38,7 +38,7 @@ pub const Time = union(enum) {
     pub fn to_s_ms(self: *const Self) SecMs {
         const ms = self.to_ms();
 
-        return .{
+        return SecMs{
             .seconds = ms / std.time.ms_per_s,
             .milliseconds = ms % std.time.ms_per_s,
         };
@@ -130,7 +130,9 @@ export fn HAL_SuspendTick() void {
 }
 
 pub fn now() Time {
-    return .{ .milliseconds = c.HAL_GetTick() };
+    return Time{
+        .milliseconds = c.HAL_GetTick(),
+    };
 }
 
 pub fn sleep(time: Time) void {

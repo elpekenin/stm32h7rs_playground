@@ -117,7 +117,7 @@ pub fn getEntrypoint(self: *const Self, b: *Build) *std.Build.Step.Compile {
 
     start.setLinkerScript(
         b.path(
-            b.fmt("ld/{s}.ld", .{
+            b.fmt("programs/{s}/linker.ld", .{
                 self.program.name(),
             }),
         ),
@@ -169,7 +169,7 @@ pub fn getProgram(self: *const Self, b: *Build) *Module {
         "program",
         .{
             .root_source_file = b.path(
-                b.fmt("modules/{s}/main.zig", .{self.program.name()}),
+                b.fmt("programs/{s}/main.zig", .{self.program.name()}),
             ),
         },
     );
