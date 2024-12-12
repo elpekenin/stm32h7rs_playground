@@ -65,6 +65,7 @@ const Shell = shell.Wrapper(struct {
 
     reader: std.io.AnyReader,
     writer: std.io.AnyWriter,
+    stop_running: bool = false,
 
     fn print(self: *const Self, comptime fmt: []const u8, args: anytype) void {
         std.fmt.format(self.writer, fmt, args) catch {};
@@ -160,6 +161,11 @@ const Shell = shell.Wrapper(struct {
 
             while (true) {}
         }
+
+        pub fn exit(self: *Self, args: *shell.Args) !void {
+            try self.assertExhausted(args);
+            self.stop_running = true;
+        }
     };
 
     /// Functions called under special circumstances. They are optional.
@@ -194,12 +200,14 @@ fn playground() !noreturn {
     _ = try writer.write("\nFinished\n");
 
     terminal.inner.showPrompt();
-    while (true) {
+    while (!terminal.inner.stop_running) {
         const line = try terminal.readline();
         terminal.handle(line) catch {};
         terminal.inner.print("\n", .{});
         terminal.inner.showPrompt();
     }
+
+    return error.ShellExit;
 }
 
 /// Actual entrypoint/logic of the bootloader

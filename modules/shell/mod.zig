@@ -14,9 +14,8 @@ pub fn matches(first: []const u8, second: []const u8) bool {
     return std.mem.eql(u8, first, second);
 }
 
-// TODO?: Change signature, eg mutable Inner
 fn Handler(Inner: type) type {
-    return *const fn (*const Inner, *Args) anyerror!void;
+    return *const fn (*Inner, *Args) anyerror!void;
 }
 
 fn findSpecial(Inner: type, name: []const u8) ?Handler(Inner) {
@@ -117,7 +116,7 @@ pub fn Wrapper(comptime Inner: type) type {
             return null;
         }
 
-        pub fn handle(self: *const Self, line: []const u8) !void {
+        pub fn handle(self: *Self, line: []const u8) !void {
             var args = Args.new(line);
 
             const command_name = try args.commandName();
