@@ -18,11 +18,10 @@ pub fn build(b: *std.Build) !void {
     const options = build_config.getOptions(b);
 
     const defmt = b.dependency("defmt", .{}).module("defmt");
+    const ushell = b.dependency("ushell", .{}).module("ushell");
+
     const mx66 = b.addModule("mx66", .{
         .root_source_file = b.path("modules/mx66/mod.zig"),
-    });
-    const shell = b.addModule("shell", .{
-        .root_source_file = b.path("modules/shell/mod.zig"),
     });
 
     // Put things together
@@ -37,7 +36,7 @@ pub fn build(b: *std.Build) !void {
     program.addImport("hal", hal);
     program.addImport("mx66", mx66);
     program.addImport("rtt", startup.root_module.import_table.get("rtt").?); // FIXME: remove hack
-    program.addImport("shell", shell);
+    program.addImport("ushell", ushell);
 
     startup.linkLibrary(libc);
     startup.root_module.addImport("build_config", options);

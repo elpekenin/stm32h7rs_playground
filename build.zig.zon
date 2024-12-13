@@ -3,25 +3,29 @@
     .version = "0.0.0-alpha",
 
     .dependencies = .{
-        .picolibc = .{
-            .url = "git+https://github.com/allyourcodebase/picolibc-zig#7a128e1d7a3781b3eae7cf3d7c59c66a2bee36e7",
-            .hash = "1220e83a23185cb5a9749e107a3ee4d725f50dc176f48460a89ecd545d249e8f1e87",
+        .defmt = .{
+            .url = "git+https://github.com/elpekenin/defmt#7d63bb7dbc28f1b5dc5ffaa73a84781da3e410ae",
+            .hash = "12204e7f12d3eba173733b2db680e5b59ed72358ffc26edef3a70f2ca6d1b0f0ab10",
         },
         .foundation = .{
             .url = "git+https://github.com/ZigEmbeddedGroup/foundation-libc#5281055623dff89af7b05572f5aebae0f606e6a1",
             .hash = "1220048600075db8d58faa59d9671e7e4056d134d1f53b0efd9774d01321ef3e343e",
         },
-        .defmt = .{
-            .url = "git+https://github.com/elpekenin/defmt#7d63bb7dbc28f1b5dc5ffaa73a84781da3e410ae",
-            .hash = "12204e7f12d3eba173733b2db680e5b59ed72358ffc26edef3a70f2ca6d1b0f0ab10",
-        },
         .hal = .{
             .path = "modules/hal",
+        },
+        .picolibc = .{
+            .url = "git+https://github.com/allyourcodebase/picolibc-zig#7a128e1d7a3781b3eae7cf3d7c59c66a2bee36e7",
+            .hash = "1220e83a23185cb5a9749e107a3ee4d725f50dc176f48460a89ecd545d249e8f1e87",
         },
         .rtt = .{
             .path = "../zig-rtt",
             // .url = "git+https://github.com/haydenridd/zig-rtt#595a42f4b80a77ffa87619f2a61ddc1b8ff53df1",
             // .hash = "12205fd51be74c1f7c77283fb5e7c70fb2f631cfed0aa8d71bd9f65abe4900491099",
+        },
+        .ushell = .{
+            .url = "git+https://github.com/elpekenin/ushell#d2725dd15fbd8822faf4d0221855ea54ed02f4c6",
+            .hash = "1220180ee7ae0c701625ddc99e2a821e13f91cf81f90fe4a496cdfe6714511219687",
         },
         .zfat = .{
             .url = "git+https://github.com/ZigEmbeddedGroup/zfat#0c86f71e85908882ea01aaf58a351eeaeb08040f",

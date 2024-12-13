@@ -11,7 +11,7 @@ const defmt = @import("defmt");
 const hal = @import("hal");
 const mx66 = @import("mx66");
 const rtt = @import("rtt");
-const shell = @import("shell");
+const ushell = @import("ushell");
 
 const dfu = @import("dfu.zig");
 const uf2 = @import("uf2.zig");
@@ -44,7 +44,7 @@ const defmt_logger: defmt.Logger = .{
 };
 
 // -- Playground start --
-const Shell = shell.Wrapper(struct {
+const Shell = ushell.Wrapper(struct {
     const Self = @This();
     const prompt = "stm32h7s7-dk $ ";
 
@@ -83,7 +83,7 @@ const Shell = shell.Wrapper(struct {
         self.print("Usage: {s}", .{usage});
     }
 
-    fn assertExhausted(self: *const Self, parser: *shell.Parser) !void {
+    fn assertExhausted(self: *const Self, parser: *ushell.Parser) !void {
         if (parser.tokensLeft()) {
             self.print("Too many arguments\n", .{});
             return error.TooManyArgs;
@@ -98,7 +98,7 @@ const Shell = shell.Wrapper(struct {
         return compareStrings({}, lhs.name, rhs.name);
     }
 
-    fn byteMask(self: *const Self, parser: *shell.Parser) !usize {
+    fn byteMask(self: *const Self, parser: *ushell.Parser) !usize {
         const byte_width = try parser.default(u8, 4);
 
         return switch (byte_width) {
@@ -116,7 +116,7 @@ const Shell = shell.Wrapper(struct {
     /// As they are introspected by @CompilerBuiltins in anotheer file, they must be pub.
     /// To invoke a function named <foo>, you must input <foo [...]> in the "reader" stream.
     pub const Commands = struct {
-        pub fn help(self: *const Self, parser: *shell.Parser) !void {
+        pub fn help(self: *const Self, parser: *ushell.Parser) !void {
             try self.assertExhausted(parser);
 
             self.print("Available commands:\n", .{});
@@ -125,27 +125,27 @@ const Shell = shell.Wrapper(struct {
             }
         }
 
-        pub fn clear(self: *const Self, parser: *shell.Parser) !void {
+        pub fn clear(self: *const Self, parser: *ushell.Parser) !void {
             try self.assertExhausted(parser);
 
-            self.print("{s}", .{shell.Escape.Clear});
+            self.print("{s}", .{ushell.Escape.Clear});
         }
 
-        pub fn echo(self: *const Self, parser: *shell.Parser) !void {
+        pub fn echo(self: *const Self, parser: *ushell.Parser) !void {
             while (parser.next()) |token| {
                 self.print("{s} ", .{token});
             }
             self.print("\n", .{});
         }
 
-        pub fn uptime(self: *const Self, parser: *shell.Parser) !void {
+        pub fn uptime(self: *const Self, parser: *ushell.Parser) !void {
             try self.assertExhausted(parser);
 
             const now = hal.zig.timer.now().to_s_ms();
             self.print("{}.{:0>3}s", .{ now.seconds, now.milliseconds });
         }
 
-        pub fn sleep(self: *const Self, parser: *shell.Parser) !void {
+        pub fn sleep(self: *const Self, parser: *ushell.Parser) !void {
             errdefer self.showUsage("sleep time_ms");
 
             const duration = try parser.required(u32);
@@ -156,7 +156,7 @@ const Shell = shell.Wrapper(struct {
             });
         }
 
-        pub fn led(self: *const Self, parser: *shell.Parser) !void {
+        pub fn led(self: *const Self, parser: *ushell.Parser) !void {
             errdefer self.showUsage("led number state");
 
             // luckily, there are 4 LEDs, thus we can use a u2 and not check bounds :)
@@ -167,7 +167,7 @@ const Shell = shell.Wrapper(struct {
             hal.bsp.LEDS[led_num].set(state);
         }
 
-        pub fn reboot(self: *const Self, parser: *shell.Parser) !void {
+        pub fn reboot(self: *const Self, parser: *ushell.Parser) !void {
             try self.assertExhausted(parser);
 
             // This is __NVIC_SystemReset from core_cm7.h, zig was unable to translate
@@ -178,12 +178,12 @@ const Shell = shell.Wrapper(struct {
             while (true) {}
         }
 
-        pub fn exit(self: *Self, parser: *shell.Parser) !void {
+        pub fn exit(self: *Self, parser: *ushell.Parser) !void {
             try self.assertExhausted(parser);
             self.stop_running = true;
         }
 
-        pub fn get(self: *const Self, parser: *shell.Parser) !void {
+        pub fn get(self: *const Self, parser: *ushell.Parser) !void {
             errdefer self.showUsage("get address [bytes=4]");
 
             const address = try parser.required(usize);
@@ -196,7 +196,7 @@ const Shell = shell.Wrapper(struct {
             self.print("{d}", .{value});
         }
 
-        pub fn set(self: *const Self, parser: *shell.Parser) !void {
+        pub fn set(self: *const Self, parser: *ushell.Parser) !void {
             errdefer self.showUsage("set address value [bytes=4]");
 
             const address = try parser.required(usize);
@@ -212,7 +212,7 @@ const Shell = shell.Wrapper(struct {
     /// Functions called under special circumstances. They are optional.
     pub const Special = struct {
         /// Fallback when no command matches
-        pub fn fallback(self: *const Self, parser: *shell.Parser) !void {
+        pub fn fallback(self: *const Self, parser: *ushell.Parser) !void {
             const command_name = parser.commandName() catch {
                 // error -> no command name found -> do not print
                 return;
@@ -228,7 +228,7 @@ const Shell = shell.Wrapper(struct {
 });
 
 fn playground() !noreturn {
-    var terminal = Shell.new(.{
+    var shell = Shell.new(.{
         .reader = rtt_channels.reader(0).any(),
         .writer = rtt_channels.writer(0).any(),
     });
@@ -237,13 +237,13 @@ fn playground() !noreturn {
     try defmt_logger.err("Potato {d}", .{@as(u8, 'A')});
     _ = try defmt_logger.writer.write("\nFinished\n");
 
-    while (!terminal.inner.stop_running) {
-        terminal.inner.print("\n", .{});
-        terminal.inner.showPrompt();
+    while (!shell.inner.stop_running) {
+        shell.inner.print("\n", .{});
+        shell.inner.showPrompt();
 
         // do not break loop because of errors
-        const line = terminal.readline() catch continue;
-        terminal.handle(line) catch continue;
+        const line = shell.readline() catch continue;
+        shell.handle(line) catch continue;
     }
 
     return error.ShellExit;
