@@ -106,6 +106,7 @@ pub fn optional(self: *Self, T: type) ArgError!?T {
     return switch (I) {
         .bool => self.Bool(token),
         .@"enum" => self.Enum(T, token),
+        .float => self.Float(T, token),
         .int => self.Int(T, token),
         else => {
             const msg = "Parsing arguments of type '" ++ @typeName(T) ++ "' not supported at the moment.";
@@ -160,6 +161,10 @@ fn Enum(_: *Self, T: type, token: []const u8) !T {
     }
 
     return error.InvalidArg;
+}
+
+fn Float(_: *Self, T: type, token: []const u8) !T {
+    return std.fmt.parseFloat(T, token);
 }
 
 // TODO: Add support for different bases
