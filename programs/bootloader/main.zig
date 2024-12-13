@@ -98,7 +98,7 @@ const Shell = shell.Wrapper(struct {
         return compareStrings({}, lhs.name, rhs.name);
     }
 
-    fn byteMask(self: *const Self, parser: *shell.Parser) !u32 {
+    fn byteMask(self: *const Self, parser: *shell.Parser) !usize {
         const byte_width = try parser.default(u8, 4);
 
         return switch (byte_width) {
@@ -187,21 +187,21 @@ const Shell = shell.Wrapper(struct {
             const mask = try self.byteMask(parser);
             try self.assertExhausted(parser);
 
-            const ptr: *u32 = @ptrFromInt(address);
-            const value = ptr.*;
+            const ptr: *usize = @ptrFromInt(address);
+            const value = ptr.* & mask;
 
-            self.print("{d}", .{value & mask});
+            self.print("{d}", .{value});
         }
 
         pub fn set(self: *const Self, parser: *shell.Parser) !void {
             errdefer self.showUsage("set address value [bytes=4]");
 
             const address = try parser.required(usize);
-            const value = try parser.required(u32);
+            const value = try parser.required(usize);
             const mask = try self.byteMask(parser);
             try self.assertExhausted(parser);
 
-            const ptr: *u32 = @ptrFromInt(address);
+            const ptr: *usize = @ptrFromInt(address);
             ptr.* = value & mask;
         }
     };
