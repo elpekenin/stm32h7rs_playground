@@ -5,12 +5,12 @@ const Type = std.builtin.Type;
 
 const logger = std.log.scoped(.terminal);
 
-pub const Args = @import("Args.zig");
 pub const Escape = @import("Escape.zig");
 pub const Keys = @import("Keys.zig");
+pub const Parser = @import("Parser.zig");
 
 fn Handler(Inner: type) type {
-    return *const fn (*Inner, *Args) anyerror!void;
+    return *const fn (*Inner, *Parser) anyerror!void;
 }
 
 fn findSpecial(Inner: type, name: []const u8) ?Handler(Inner) {
@@ -108,7 +108,7 @@ pub fn Wrapper(comptime Inner: type) type {
                     },
                     Keys.Tab => {
                         if (maybe_tab) |tab| {
-                            var args = Args.new(self.buffer.constSlice());
+                            var args = Parser.new(self.buffer.constSlice());
                             try tab(&self.inner, &args);
                         }
                     },
@@ -124,7 +124,7 @@ pub fn Wrapper(comptime Inner: type) type {
         }
 
         pub fn handle(self: *Self, line: []const u8) !void {
-            var args = Args.new(line);
+            var args = Parser.new(line);
 
             const command_name = try args.commandName();
             if (self.commands.get(command_name)) |func| {

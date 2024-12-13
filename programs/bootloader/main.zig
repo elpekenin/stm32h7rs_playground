@@ -67,6 +67,10 @@ const Shell = shell.Wrapper(struct {
     writer: std.io.AnyWriter,
     stop_running: bool = false,
 
+    pub fn readByte(self: *const Self) !u8 {
+        return self.reader.readByte();
+    }
+
     fn print(self: *const Self, comptime fmt: []const u8, args: anytype) void {
         std.fmt.format(self.writer, fmt, args) catch {};
     }
@@ -79,8 +83,8 @@ const Shell = shell.Wrapper(struct {
         self.print("Usage: {s}", .{usage});
     }
 
-    fn assertExhausted(self: *const Self, args: *shell.Args) !void {
-        if (args.tokensLeft()) {
+    fn assertExhausted(self: *const Self, parser: *shell.Parser) !void {
+        if (parser.tokensLeft()) {
             self.print("Too many arguments\n", .{});
             return error.TooManyArgs;
         }
@@ -94,16 +98,26 @@ const Shell = shell.Wrapper(struct {
         return compareStrings({}, lhs.name, rhs.name);
     }
 
-    pub fn readByte(self: *const Self) !u8 {
-        return self.reader.readByte();
+    fn byteMask(self: *const Self, parser: *shell.Parser) !u32 {
+        const byte_width = try parser.default(u8, 4);
+
+        return switch (byte_width) {
+            1 => 0x000F,
+            2 => 0x00FF,
+            4 => 0xFFFF,
+            else => {
+                self.print("Can only operate on 1, 2 and 4 byte widths\n", .{});
+                return error.InvalidArg;
+            },
+        };
     }
 
     /// Every function in here defines a command.
     /// As they are introspected by @CompilerBuiltins in anotheer file, they must be pub.
     /// To invoke a function named <foo>, you must input <foo [...]> in the "reader" stream.
     pub const Commands = struct {
-        pub fn help(self: *const Self, args: *shell.Args) !void {
-            try self.assertExhausted(args);
+        pub fn help(self: *const Self, parser: *shell.Parser) !void {
+            try self.assertExhausted(parser);
 
             self.print("Available commands:\n", .{});
             for (sorted_commands) |command| {
@@ -111,47 +125,47 @@ const Shell = shell.Wrapper(struct {
             }
         }
 
-        pub fn clear(self: *const Self, args: *shell.Args) !void {
-            try self.assertExhausted(args);
+        pub fn clear(self: *const Self, parser: *shell.Parser) !void {
+            try self.assertExhausted(parser);
 
             self.print("{s}", .{shell.Escape.Clear});
         }
 
-        pub fn echo(self: *const Self, args: *shell.Args) !void {
-            self.print("{s}", .{args.rest()});
+        pub fn echo(self: *const Self, parser: *shell.Parser) !void {
+            self.print("{s}", .{parser.rest()});
         }
 
-        pub fn uptime(self: *const Self, args: *shell.Args) !void {
-            try self.assertExhausted(args);
+        pub fn uptime(self: *const Self, parser: *shell.Parser) !void {
+            try self.assertExhausted(parser);
 
             const now = hal.zig.timer.now().to_s_ms();
             self.print("{}.{:0>3}s", .{ now.seconds, now.milliseconds });
         }
 
-        pub fn sleep(self: *const Self, args: *shell.Args) !void {
-            errdefer self.showUsage("sleep <ms>");
+        pub fn sleep(self: *const Self, parser: *shell.Parser) !void {
+            errdefer self.showUsage("sleep time_ms");
 
-            const duration = try args.required(u32);
-            try self.assertExhausted(args);
+            const duration = try parser.required(u32);
+            try self.assertExhausted(parser);
 
             hal.zig.timer.sleep(.{
                 .milliseconds = duration,
             });
         }
 
-        pub fn led(self: *const Self, args: *shell.Args) !void {
-            errdefer self.showUsage("led {0,1,2,3} <bool>");
+        pub fn led(self: *const Self, parser: *shell.Parser) !void {
+            errdefer self.showUsage("led number state");
 
             // luckily, there are 4 LEDs, thus we can use a u2 and not check bounds :)
-            const led_num = try args.required(u2);
-            const state = try args.required(bool);
-            try self.assertExhausted(args);
+            const led_num = try parser.required(u2);
+            const state = try parser.required(bool);
+            try self.assertExhausted(parser);
 
             hal.bsp.LEDS[led_num].set(state);
         }
 
-        pub fn reboot(self: *const Self, args: *shell.Args) !void {
-            try self.assertExhausted(args);
+        pub fn reboot(self: *const Self, parser: *shell.Parser) !void {
+            try self.assertExhausted(parser);
 
             // This is __NVIC_SystemReset from core_cm7.h, zig was unable to translate
             asm volatile ("dsb 0xF" ::: "memory");
@@ -161,23 +175,48 @@ const Shell = shell.Wrapper(struct {
             while (true) {}
         }
 
-        pub fn exit(self: *Self, args: *shell.Args) !void {
-            try self.assertExhausted(args);
+        pub fn exit(self: *Self, parser: *shell.Parser) !void {
+            try self.assertExhausted(parser);
             self.stop_running = true;
+        }
+
+        pub fn get(self: *const Self, parser: *shell.Parser) !void {
+            errdefer self.showUsage("get address [bytes=4]");
+
+            const address = try parser.required(usize);
+            const mask = try self.byteMask(parser);
+            try self.assertExhausted(parser);
+
+            const ptr: *u32 = @ptrFromInt(address);
+            const value = ptr.*;
+
+            self.print("{d}", .{value & mask});
+        }
+
+        pub fn set(self: *const Self, parser: *shell.Parser) !void {
+            errdefer self.showUsage("set address value [bytes=4]");
+
+            const address = try parser.required(usize);
+            const value = try parser.required(u32);
+            const mask = try self.byteMask(parser);
+            try self.assertExhausted(parser);
+
+            const ptr: *u32 = @ptrFromInt(address);
+            ptr.* = value & mask;
         }
     };
 
     /// Functions called under special circumstances. They are optional.
     pub const Special = struct {
         /// Fallback when no command matches
-        pub fn fallback(self: *const Self, args: *shell.Args) !void {
-            const command_name = args.commandName() catch {
+        pub fn fallback(self: *const Self, parser: *shell.Parser) !void {
+            const command_name = parser.commandName() catch {
                 // error -> no command name found -> do not print
                 return;
             };
 
             if (std.mem.eql(u8, command_name, "?")) {
-                return Commands.help(self, args);
+                return Commands.help(self, parser);
             }
 
             self.print("{s}: command not found", .{command_name});

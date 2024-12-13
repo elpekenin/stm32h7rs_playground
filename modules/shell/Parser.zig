@@ -167,7 +167,6 @@ fn Float(_: *Self, T: type, token: []const u8) !T {
     return std.fmt.parseFloat(T, token);
 }
 
-// TODO: Add support for different bases
 fn Int(_: *Self, T: type, token: []const u8) !T {
-    return std.fmt.parseInt(T, token, 10);
+    return std.fmt.parseInt(T, token, 0);
 }
