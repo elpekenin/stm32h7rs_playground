@@ -132,7 +132,10 @@ const Shell = shell.Wrapper(struct {
         }
 
         pub fn echo(self: *const Self, parser: *shell.Parser) !void {
-            self.print("{s}", .{parser.rest()});
+            while (parser.next()) |token| {
+                self.print("{s} ", .{token});
+            }
+            self.print("\n", .{});
         }
 
         pub fn uptime(self: *const Self, parser: *shell.Parser) !void {

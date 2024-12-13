@@ -75,11 +75,6 @@ pub fn commandName(self: *Self) ![]const u8 {
     return self.command_name.?;
 }
 
-/// Get remaining (yet to be parsed) input
-pub fn rest(self: *Self) []const u8 {
-    return self.iterator.rest();
-}
-
 /// Get next element as is (ie: string)
 pub fn next(self: *Self) ?[]const u8 {
     const raw = self.iterator.next() orelse {
