@@ -106,7 +106,6 @@ const Shell = shell.Wrapper(struct {
             try self.assertExhausted(args);
 
             self.print("Available commands:\n", .{});
-
             for (sorted_commands) |command| {
                 self.print("  * {s}\n", .{command});
             }
@@ -122,7 +121,7 @@ const Shell = shell.Wrapper(struct {
             self.print("{s}", .{args.rest()});
         }
 
-        pub fn date(self: *const Self, args: *shell.Args) !void {
+        pub fn uptime(self: *const Self, args: *shell.Args) !void {
             try self.assertExhausted(args);
 
             const now = hal.zig.timer.now().to_s_ms();
