@@ -186,24 +186,22 @@ const Shell = shell.Wrapper(struct {
 });
 
 fn playground() !noreturn {
-    const reader: std.io.AnyReader = rtt_channels.reader(0).any();
-    const writer: std.io.AnyWriter = rtt_channels.writer(0).any();
-
     var terminal = Shell.new(.{
-        .reader = reader,
-        .writer = writer,
+        .reader = rtt_channels.reader(0).any(),
+        .writer = rtt_channels.writer(0).any(),
     });
 
-    _ = try writer.write("Testing defmt:\n");
+    _ = try defmt_logger.writer.write("Testing defmt\n");
     try defmt_logger.err("Potato {d}", .{@as(u8, 'A')});
-    _ = try writer.write("\nFinished\n");
+    _ = try defmt_logger.writer.write("\nFinished\n");
 
-    terminal.inner.showPrompt();
     while (!terminal.inner.stop_running) {
-        const line = try terminal.readline();
-        terminal.handle(line) catch {};
         terminal.inner.print("\n", .{});
         terminal.inner.showPrompt();
+
+        // do not break loop because of errors
+        const line = terminal.readline() catch continue;
+        terminal.handle(line) catch continue;
     }
 
     return error.ShellExit;

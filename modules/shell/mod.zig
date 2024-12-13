@@ -9,11 +9,6 @@ pub const Args = @import("Args.zig");
 pub const Escape = @import("Escape.zig");
 pub const Keys = @import("Keys.zig");
 
-/// Tiny wrapper for convenience
-pub fn matches(first: []const u8, second: []const u8) bool {
-    return std.mem.eql(u8, first, second);
-}
-
 fn Handler(Inner: type) type {
     return *const fn (*Inner, *Args) anyerror!void;
 }
@@ -50,15 +45,39 @@ pub fn Wrapper(comptime Inner: type) type {
     const Outer = struct {
         const Self = @This();
 
+        const Fn = Handler(Inner);
+        const KeyVal = struct { []const u8, Fn };
+        const CommandMap = std.StaticStringMap(Fn);
+
         const rx_len = 1024;
         const Buff = std.BoundedArray(u8, rx_len);
 
         inner: Inner,
+        commands: CommandMap,
         buffer: Buff,
 
+        fn getKeyVals() []KeyVal {
+            const commands = @typeInfo(Inner.Commands).@"struct".decls;
+
+            var buffer: [commands.len]KeyVal = undefined;
+
+            for (commands, 0..) |command, i| {
+                const key = command.name;
+                const val = @field(Inner.Commands, key);
+
+                buffer[i] = KeyVal{ key, val };
+            }
+
+            return buffer[0..commands.len];
+        }
+
         pub fn new(inner: Inner) Self {
+            const key_vals = comptime getKeyVals();
+            const map = CommandMap.initComptime(key_vals);
+
             return Self{
                 .inner = inner,
+                .commands = map,
                 // has size rx_len (>0), can't fail
                 .buffer = Buff.init(0) catch unreachable,
             };
@@ -90,7 +109,7 @@ pub fn Wrapper(comptime Inner: type) type {
                     Keys.Tab => {
                         if (maybe_tab) |tab| {
                             var args = Args.new(self.buffer.constSlice());
-                            tab(&self.inner, &args) catch {};
+                            try tab(&self.inner, &args);
                         }
                     },
                     Keys.Backspace => {
@@ -104,28 +123,16 @@ pub fn Wrapper(comptime Inner: type) type {
             }
         }
 
-        fn findCommandHandler(name: ?[]const u8) ?Handler(Inner) {
-            const unwrapped = name orelse return null;
-
-            inline for (@typeInfo(Inner.Commands).@"struct".decls) |decl| {
-                if (matches(unwrapped, decl.name)) {
-                    return @field(Inner.Commands, decl.name);
-                }
-            }
-
-            return null;
-        }
-
         pub fn handle(self: *Self, line: []const u8) !void {
             var args = Args.new(line);
 
             const command_name = try args.commandName();
-            if (findCommandHandler(command_name)) |func| {
-                return func(&self.inner, &args) catch {};
+            if (self.commands.get(command_name)) |func| {
+                return func(&self.inner, &args);
             }
 
             if (maybe_fallback) |fallback| {
-                return fallback(&self.inner, &args) catch {};
+                return fallback(&self.inner, &args);
             }
         }
     };
