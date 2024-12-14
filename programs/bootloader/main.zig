@@ -102,11 +102,9 @@ const Shell = ushell.Wrapper(struct {
         const byte_width = try parser.default(u8, 4);
 
         return switch (byte_width) {
-            1 => 0x000F,
-            2 => 0x00FF,
-            4 => 0xFFFF,
+            1, 2, 4, 8 => (1 << (byte_width * 8)) - 1,
             else => {
-                self.print("Can only operate on 1, 2 and 4 byte widths\n", .{});
+                self.print("Can only operate on byte widths that are a power of 2\n", .{});
                 return error.InvalidArg;
             },
         };
@@ -119,9 +117,9 @@ const Shell = ushell.Wrapper(struct {
         pub fn help(self: *const Self, parser: *ushell.Parser) !void {
             try self.assertExhausted(parser);
 
-            self.print("Available commands:\n", .{});
+            self.print("Available commands:", .{});
             for (sorted_commands) |command| {
-                self.print("  * {s}\n", .{command});
+                self.print("\n  * {s}", .{command});
             }
         }
 
@@ -135,7 +133,6 @@ const Shell = ushell.Wrapper(struct {
             while (parser.next()) |token| {
                 self.print("{s} ", .{token});
             }
-            self.print("\n", .{});
         }
 
         pub fn uptime(self: *const Self, parser: *ushell.Parser) !void {
