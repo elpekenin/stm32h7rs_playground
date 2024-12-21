@@ -63,11 +63,17 @@ const ByteMask = enum {
     }
 };
 
+fn print(comptime fmt: []const u8, args: anytype) void {
+    std.fmt.format(writer, fmt, args) catch {};
+}
+
 const Commands = union(enum) {
     echo: struct {
+        pub const allow_extra_args = true;
+
         pub fn handle(_: *const @This(), parser: *ushell.Parser) !void {
             while (parser.next()) |val| {
-                try std.fmt.format(writer, "{s} ", .{val});
+                print("{s} ", .{val});
             }
         }
     },
@@ -84,7 +90,7 @@ const Commands = union(enum) {
     uptime: struct {
         pub fn handle(_: *const @This(), _: *ushell.Parser) !void {
             const now = hal.zig.timer.now().to_s_ms();
-            try std.fmt.format(writer, "{}.{:0>3}s", .{ now.seconds, now.milliseconds });
+            print("{}.{:0>3}s", .{ now.seconds, now.milliseconds });
         }
     },
 
@@ -95,7 +101,7 @@ const Commands = union(enum) {
         pub fn handle(self: *const @This(), _: *ushell.Parser) !void {
             const ptr: *usize = @ptrFromInt(self.address);
             const value = ptr.* & self.bytes.mask();
-            try std.fmt.format(writer, "{d}", .{value});
+            print("{d}", .{value});
         }
     },
 
