@@ -43,130 +43,64 @@ const defmt_logger: defmt.Logger = .{
     .writer = rtt_channels.writer(1).any(),
 };
 
+const reader: std.io.AnyReader = rtt_channels.reader(0).any();
+const writer: std.io.AnyWriter = rtt_channels.writer(0).any();
+
 // -- Playground start --
-const Shell = ushell.Wrapper(struct {
+const ByteMask = enum {
     const Self = @This();
-    const prompt = "stm32h7s7-dk $ ";
 
-    const sorted_commands = blk: {
-        const commands = @typeInfo(Commands).@"struct".decls;
+    @"1",
+    @"2",
+    @"4",
 
-        var sorted: [commands.len]Type.Declaration = undefined;
-        @memcpy(&sorted, commands);
-        std.sort.insertion(Type.Declaration, &sorted, {}, compareDeclarations);
-
-        var names: [commands.len][]const u8 = undefined;
-        for (sorted, 0..) |command, i| {
-            names[i] = command.name;
-        }
-
-        break :blk names;
-    };
-
-    reader: std.io.AnyReader,
-    writer: std.io.AnyWriter,
-    stop_running: bool = false,
-
-    pub fn readByte(self: *const Self) !u8 {
-        return self.reader.readByte();
-    }
-
-    fn print(self: *const Self, comptime fmt: []const u8, args: anytype) void {
-        std.fmt.format(self.writer, fmt, args) catch {};
-    }
-
-    fn showPrompt(self: *const Self) void {
-        self.print("{s}", .{prompt});
-    }
-
-    fn showUsage(self: *const Self, usage: []const u8) void {
-        self.print("Usage: {s}", .{usage});
-    }
-
-    fn assertExhausted(self: *const Self, parser: *ushell.Parser) !void {
-        if (parser.tokensLeft()) {
-            self.print("Too many arguments\n", .{});
-            return error.TooManyArgs;
-        }
-    }
-
-    fn compareStrings(_: void, lhs: []const u8, rhs: []const u8) bool {
-        return std.mem.order(u8, lhs, rhs).compare(std.math.CompareOperator.lt);
-    }
-
-    fn compareDeclarations(_: void, lhs: Type.Declaration, rhs: Type.Declaration) bool {
-        return compareStrings({}, lhs.name, rhs.name);
-    }
-
-    fn byteMask(self: *const Self, parser: *ushell.Parser) !usize {
-        const byte_width = try parser.default(u8, 4);
-
-        return switch (byte_width) {
-            1, 2, 4, 8 => (1 << (byte_width * 8)) - 1,
-            else => {
-                self.print("Can only operate on byte widths that are a power of 2\n", .{});
-                return error.InvalidArg;
-            },
+    fn mask(self: *const Self) usize {
+        return switch (self.*) {
+            .@"1" => (1 << (1 * 8)) - 1,
+            .@"2" => (1 << (2 * 8)) - 1,
+            .@"4" => (1 << (4 * 8)) - 1,
         };
     }
+};
 
-    /// Every function in here defines a command.
-    /// As they are introspected by @CompilerBuiltins in anotheer file, they must be pub.
-    /// To invoke a function named <foo>, you must input <foo [...]> in the "reader" stream.
-    pub const Commands = struct {
-        pub fn help(self: *const Self, parser: *ushell.Parser) !void {
-            try self.assertExhausted(parser);
-
-            self.print("Available commands:", .{});
-            for (sorted_commands) |command| {
-                self.print("\n  * {s}", .{command});
+const Commands = union(enum) {
+    echo: struct {
+        pub fn handle(_: *const @This(), parser: *ushell.Parser) !void {
+            while (parser.next()) |val| {
+                try std.fmt.format(writer, "{s} ", .{val});
             }
         }
+    },
 
-        pub fn clear(self: *const Self, parser: *ushell.Parser) !void {
-            try self.assertExhausted(parser);
+    led: struct {
+        led: u2,
+        state: bool,
 
-            self.print("{s}", .{ushell.Escape.Clear});
+        pub fn handle(self: *const @This()) !void {
+            hal.bsp.LEDS[self.led].set(self.state);
         }
+    },
 
-        pub fn echo(self: *const Self, parser: *ushell.Parser) !void {
-            while (parser.next()) |token| {
-                self.print("{s} ", .{token});
-            }
-        }
-
-        pub fn uptime(self: *const Self, parser: *ushell.Parser) !void {
-            try self.assertExhausted(parser);
-
+    uptime: struct {
+        pub fn handle(_: *const @This()) !void {
             const now = hal.zig.timer.now().to_s_ms();
-            self.print("{}.{:0>3}s", .{ now.seconds, now.milliseconds });
+            try std.fmt.format(writer, "{}.{:0>3}s", .{ now.seconds, now.milliseconds });
         }
+    },
 
-        pub fn sleep(self: *const Self, parser: *ushell.Parser) !void {
-            errdefer self.showUsage("sleep time_ms");
+    read: struct {
+        address: usize,
+        bytes: ByteMask = .@"4",
 
-            const duration = try parser.required(u32);
-            try self.assertExhausted(parser);
-
-            hal.zig.timer.sleep(.{
-                .milliseconds = duration,
-            });
+        pub fn handle(self: *const @This()) !void {
+            const ptr: *usize = @ptrFromInt(self.address);
+            const value = ptr.* & self.bytes.mask();
+            try std.fmt.format(writer, "{d}", .{value});
         }
+    },
 
-        pub fn led(self: *const Self, parser: *ushell.Parser) !void {
-            errdefer self.showUsage("led number state");
-
-            // luckily, there are 4 LEDs, thus we can use a u2 and not check bounds :)
-            const led_num = try parser.required(u2);
-            const state = try parser.required(bool);
-            try self.assertExhausted(parser);
-
-            hal.bsp.LEDS[led_num].set(state);
-        }
-
-        pub fn reboot(self: *const Self, parser: *ushell.Parser) !void {
-            try self.assertExhausted(parser);
-
+    reboot: struct {
+        fn handle(_: *const @This()) !void {
             // This is __NVIC_SystemReset from core_cm7.h, zig was unable to translate
             asm volatile ("dsb 0xF" ::: "memory");
             hal.zig.SCB.AIRCR = (0x5FA << 16) | (hal.zig.SCB.AIRCR & (7 << 8)) | (1 << 2);
@@ -174,72 +108,61 @@ const Shell = ushell.Wrapper(struct {
 
             while (true) {}
         }
+    },
 
-        pub fn exit(self: *Self, parser: *ushell.Parser) !void {
-            try self.assertExhausted(parser);
-            self.stop_running = true;
+    sleep: struct {
+        pub const usage = "sleep time_ms";
+
+        duration: u32,
+
+        pub fn handle(args: *const @This()) !void {
+            hal.zig.timer.sleep(.{
+                .milliseconds = args.duration,
+            });
         }
+    },
 
-        pub fn get(self: *const Self, parser: *ushell.Parser) !void {
-            errdefer self.showUsage("get address [bytes=4]");
+    write: struct {
+        address: usize,
+        value: usize,
+        bytes: ByteMask = .@"4",
 
-            const address = try parser.required(usize);
-            const mask = try self.byteMask(parser);
-            try self.assertExhausted(parser);
-
-            const ptr: *usize = @ptrFromInt(address);
-            const value = ptr.* & mask;
-
-            self.print("{d}", .{value});
+        pub fn handle(self: *const @This()) !void {
+            const ptr: *usize = @ptrFromInt(self.address);
+            ptr.* = self.value & self.bytes.mask();
         }
+    },
 
-        pub fn set(self: *const Self, parser: *ushell.Parser) !void {
-            errdefer self.showUsage("set address value [bytes=4]");
+    pub fn handle(self: *Commands, parser: *ushell.Parser) !void {
+        return switch (self.*) {
+            .echo => |child| child.handle(parser),
+            .led => |child| child.handle(),
+            .read => |child| child.handle(),
+            .reboot => |child| child.handle(),
+            .sleep => |child| child.handle(),
+            .uptime => |child| child.handle(),
+            .write => |child| child.handle(),
+        };
+    }
+};
 
-            const address = try parser.required(usize);
-            const value = try parser.required(usize);
-            const mask = try self.byteMask(parser);
-            try self.assertExhausted(parser);
-
-            const ptr: *usize = @ptrFromInt(address);
-            ptr.* = value & mask;
-        }
-    };
-
-    /// Functions called under special circumstances. They are optional.
-    pub const Special = struct {
-        /// Fallback when no command matches
-        pub fn fallback(self: *const Self, parser: *ushell.Parser) !void {
-            const command_name = parser.commandName() catch {
-                // error -> no command name found -> do not print
-                return;
-            };
-
-            if (std.mem.eql(u8, command_name, "?")) {
-                return Commands.help(self, parser);
-            }
-
-            self.print("{s}: command not found", .{command_name});
-        }
-    };
+const Shell = ushell.Shell(Commands, .{
+    .prompt = "stm32h7s7-dk $ ",
 });
 
 fn playground() !noreturn {
-    var shell = Shell.new(.{
-        .reader = rtt_channels.reader(0).any(),
-        .writer = rtt_channels.writer(0).any(),
-    });
-
     _ = try defmt_logger.writer.write("Testing defmt\n");
     try defmt_logger.err("Potato {d}", .{@as(u8, 'A')});
     _ = try defmt_logger.writer.write("\nFinished\n");
 
-    while (!shell.inner.stop_running) {
-        shell.inner.print("\n", .{});
-        shell.inner.showPrompt();
+    var shell = Shell.new(reader, writer);
+
+    while (!shell.stop_running) {
+        shell.showPrompt();
 
         // do not break loop because of errors
         const line = shell.readline() catch continue;
+
         shell.handle(line) catch continue;
     }
 

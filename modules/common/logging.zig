@@ -205,11 +205,6 @@ pub fn logFn(
     comptime format: []const u8,
     args: anytype,
 ) void {
-    if (scope == .fatfs and level == .debug) {
-        // FatFS is too verbose with debug messages ON, lets ignore them
-        return;
-    }
-
     inline for (LOGGERS) |logger| {
         logger.log(level, scope, format, args);
     }

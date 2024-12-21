@@ -19,6 +19,16 @@ const VectorTable = @import("vector_table.zig").VectorTable;
 pub const std_options: std.Options = .{
     .log_level = .debug,
     .logFn = logging.logFn,
+    .log_scope_levels = &.{
+        .{
+            .scope = .ushell,
+            .level = .info,
+        },
+        .{
+            .scope = .fatfs,
+            .level = .info,
+        },
+    },
 };
 pub const panic = panic_mod.panic;
 
