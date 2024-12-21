@@ -73,16 +73,16 @@ const Commands = union(enum) {
     },
 
     led: struct {
-        led: u2,
+        n: u2,
         state: bool,
 
-        pub fn handle(self: *const @This()) !void {
-            hal.bsp.LEDS[self.led].set(self.state);
+        pub fn handle(self: *const @This(), _: *ushell.Parser) !void {
+            hal.bsp.LEDS[self.n].set(self.state);
         }
     },
 
     uptime: struct {
-        pub fn handle(_: *const @This()) !void {
+        pub fn handle(_: *const @This(), _: *ushell.Parser) !void {
             const now = hal.zig.timer.now().to_s_ms();
             try std.fmt.format(writer, "{}.{:0>3}s", .{ now.seconds, now.milliseconds });
         }
@@ -92,7 +92,7 @@ const Commands = union(enum) {
         address: usize,
         bytes: ByteMask = .@"4",
 
-        pub fn handle(self: *const @This()) !void {
+        pub fn handle(self: *const @This(), _: *ushell.Parser) !void {
             const ptr: *usize = @ptrFromInt(self.address);
             const value = ptr.* & self.bytes.mask();
             try std.fmt.format(writer, "{d}", .{value});
@@ -100,7 +100,7 @@ const Commands = union(enum) {
     },
 
     reboot: struct {
-        fn handle(_: *const @This()) !void {
+        fn handle(_: *const @This(), _: *ushell.Parser) !void {
             // This is __NVIC_SystemReset from core_cm7.h, zig was unable to translate
             asm volatile ("dsb 0xF" ::: "memory");
             hal.zig.SCB.AIRCR = (0x5FA << 16) | (hal.zig.SCB.AIRCR & (7 << 8)) | (1 << 2);
@@ -111,13 +111,11 @@ const Commands = union(enum) {
     },
 
     sleep: struct {
-        pub const usage = "sleep time_ms";
+        ms: u32,
 
-        duration: u32,
-
-        pub fn handle(args: *const @This()) !void {
+        pub fn handle(args: *const @This(), _: *ushell.Parser) !void {
             hal.zig.timer.sleep(.{
-                .milliseconds = args.duration,
+                .milliseconds = args.ms,
             });
         }
     },
@@ -127,7 +125,7 @@ const Commands = union(enum) {
         value: usize,
         bytes: ByteMask = .@"4",
 
-        pub fn handle(self: *const @This()) !void {
+        pub fn handle(self: *const @This(), _: *ushell.Parser) !void {
             const ptr: *usize = @ptrFromInt(self.address);
             ptr.* = self.value & self.bytes.mask();
         }
@@ -135,13 +133,7 @@ const Commands = union(enum) {
 
     pub fn handle(self: *Commands, parser: *ushell.Parser) !void {
         return switch (self.*) {
-            .echo => |child| child.handle(parser),
-            .led => |child| child.handle(),
-            .read => |child| child.handle(),
-            .reboot => |child| child.handle(),
-            .sleep => |child| child.handle(),
-            .uptime => |child| child.handle(),
-            .write => |child| child.handle(),
+            inline else => |child| child.handle(parser),
         };
     }
 };
