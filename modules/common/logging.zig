@@ -5,7 +5,7 @@
 //! and publicly re-export `std_options`
 
 const std = @import("std");
-const build_config = @import("build_config");
+const config = @import("config");
 
 const hal = @import("hal");
 const bsp = hal.bsp;
@@ -47,7 +47,7 @@ const noop_logger = struct {
 
 // TODO?: Lazy writing, it is somewhat slow, and it is best to write a 200byte message
 //        than to write 4x 50byte ones
-const fs_logger = if (build_config.logging.filesystem)
+const fs_logger = if (config.logging.filesystem)
     struct {
         const fatfs = @import("fatfs");
 
@@ -149,7 +149,7 @@ const fs_logger = if (build_config.logging.filesystem)
             }
 
             var file = try fatfs.File.open(
-                state.mount ++ build_config.program ++ ".log",
+                state.mount ++ config.program ++ ".log",
                 .{
                     .mode = .open_append,
                     .access = .write_only,
@@ -180,7 +180,7 @@ const fs_logger = if (build_config.logging.filesystem)
 else
     noop_logger;
 
-const rtt_logger = if (build_config.logging.rtt)
+const rtt_logger = if (config.logging.rtt)
     struct {
         const rtt = @import("rtt");
         const start = @import("start.zig");

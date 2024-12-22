@@ -4,6 +4,8 @@
 const std = @import("std");
 const Type = std.builtin.Type;
 
+const builtin = @import("builtin");
+
 /// root is the real entrypoint (common/start.zig), not the "logical" one (this file)
 const start = @import("root");
 
@@ -12,6 +14,7 @@ const hal = @import("hal");
 const mx66 = @import("mx66");
 const rtt = @import("rtt");
 const ushell = @import("ushell");
+const version = @import("version");
 
 const dfu = @import("dfu.zig");
 const uf2 = @import("uf2.zig");
@@ -68,16 +71,6 @@ fn print(comptime fmt: []const u8, args: anytype) void {
 }
 
 const Commands = union(enum) {
-    echo: struct {
-        pub const allow_extra_args = true;
-
-        pub fn handle(_: *const @This(), parser: *ushell.Parser) !void {
-            while (parser.next()) |val| {
-                print("{s} ", .{val});
-            }
-        }
-    },
-
     led: struct {
         n: u2,
         state: bool,
@@ -123,6 +116,24 @@ const Commands = union(enum) {
             hal.zig.timer.sleep(.{
                 .milliseconds = args.ms,
             });
+        }
+    },
+
+    version: struct {
+        type: enum {
+            zig,
+            git,
+            build,
+            all,
+        } = .all,
+
+        pub fn handle(self: *const @This(), _: *ushell.Parser) !void {
+            switch (self.type) {
+                .zig => print("{s}", .{builtin.zig_version_string}),
+                .git => print("{s}", .{version.commit}),
+                .build => print("{s}", .{version.datetime}),
+                .all => print("commit {s}, using zig {s} (built {s})", .{ version.commit, builtin.zig_version_string, version.datetime }),
+            }
         }
     },
 

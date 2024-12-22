@@ -4,7 +4,7 @@ const std = @import("std");
 const logger = std.log.scoped(.panic);
 
 const hal = @import("hal");
-const config = @import("build_config");
+const config = @import("config");
 
 fn deadlock() noreturn {
     while (true) {
