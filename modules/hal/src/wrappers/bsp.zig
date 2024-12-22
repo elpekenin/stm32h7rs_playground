@@ -692,7 +692,7 @@ pub fn init() void {
 
     BUTTON.init();
 
-    inline for (LEDS) |pin| {
+    for (LEDS) |pin| {
         pin.init();
         pin.set(false);
     }

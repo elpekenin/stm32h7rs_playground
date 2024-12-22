@@ -13,7 +13,7 @@ fn deadlock() noreturn {
 }
 
 fn on() void {
-    inline for (hal.bsp.LEDS) |led| {
+    for (hal.bsp.LEDS) |led| {
         led.set(true);
     }
 }
@@ -23,7 +23,7 @@ fn cycle() noreturn {
     on();
 
     while (true) {
-        inline for (hal.bsp.LEDS) |led| {
+        for (hal.bsp.LEDS) |led| {
             led.toggle();
             hal.zig.timer.sleep(.{ .milliseconds = config.panic.time });
         }
@@ -35,7 +35,7 @@ fn toggle() noreturn {
     on();
 
     while (true) {
-        inline for (hal.bsp.LEDS) |led| {
+        for (hal.bsp.LEDS) |led| {
             led.toggle();
         }
         hal.zig.timer.sleep(config.panic.time);

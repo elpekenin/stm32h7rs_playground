@@ -9,6 +9,7 @@ const builtin = @import("builtin");
 /// root is the real entrypoint (common/start.zig), not the "logical" one (this file)
 const start = @import("root");
 
+const config = @import("config");
 const defmt = @import("defmt");
 const hal = @import("hal");
 const mx66 = @import("mx66");
@@ -71,6 +72,63 @@ fn print(comptime fmt: []const u8, args: anytype) void {
 }
 
 const Commands = union(enum) {
+    config: struct {
+        type: enum {
+            build,
+            dummy_cycles,
+            rtt,
+        } = .build,
+
+        fn printRttChannel(i: usize, channel: rtt.channel.Config) void {
+            print("\n  [{}] {{ .name = \"{s}\", .buffer_size = {}, .mode = {s} }}", .{
+                i,
+                channel.name,
+                channel.buffer_size,
+                @tagName(channel.mode),
+            });
+        }
+
+        fn printDecl(comptime decl: Type.Declaration) bool {
+            const value = @field(config, decl.name);
+
+            switch (@TypeOf(value)) {
+                type => return false,
+                []const u8 => print("{s}: {s}", .{ decl.name, value }),
+                else => print("{s}: {}", .{ decl.name, value }),
+            }
+
+            return true;
+        }
+
+        pub fn handle(self: *const @This(), _: *ushell.Parser) !void {
+            switch (self.type) {
+                .build => {
+                    const I = @typeInfo(config);
+                    const decls = I.@"struct".decls;
+
+                    inline for (decls[0 .. decls.len - 1]) |decl| {
+                        if (printDecl(decl)) {
+                            print("\n", .{});
+                        }
+                    }
+                    _ = printDecl(decls[decls.len - 1]);
+                },
+                .dummy_cycles => print("{}", .{dummy_cycles_config}),
+                .rtt => {
+                    print("up", .{});
+                    for (0.., rtt_config.up_channels) |i, channel| {
+                        printRttChannel(i, channel);
+                    }
+
+                    print("\ndown", .{});
+                    for (0.., rtt_config.down_channels) |i, channel| {
+                        printRttChannel(i, channel);
+                    }
+                },
+            }
+        }
+    },
+
     led: struct {
         n: u2,
         state: bool,
