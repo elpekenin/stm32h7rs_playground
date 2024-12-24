@@ -7,7 +7,7 @@ const Type = std.builtin.Type;
 const builtin = @import("builtin");
 
 /// root is the real entrypoint (common/start.zig), not the "logical" one (this file)
-const start = @import("root");
+const root = @import("root");
 
 const config = @import("config");
 const defmt = @import("defmt");
@@ -33,7 +33,7 @@ pub const dummy_cycles_config: mx66.DummyCyclesConfiguration = .{
 /// inform root how to configure the code
 pub const rtt_config: rtt.Config = .{
     .up_channels = &.{
-        .{ .name = "Logger", .buffer_size = 1024, .mode = .NoBlockSkip },
+        .{ .name = "Logger", .buffer_size = 16 * 1024, .mode = .NoBlockSkip },
         .{ .name = "Defmt", .buffer_size = 1024, .mode = .NoBlockSkip },
     },
     .down_channels = &.{
@@ -41,7 +41,7 @@ pub const rtt_config: rtt.Config = .{
     },
 };
 /// as per rtt_config
-const rtt_channels = start.rtt_channels;
+const rtt_channels = root.rtt_channels;
 
 const defmt_logger: defmt.Logger = .{
     .writer = rtt_channels.writer(1).any(),
@@ -75,9 +75,50 @@ const Commands = union(enum) {
     config: struct {
         type: enum {
             build,
-            dummy_cycles,
+            cycles,
             rtt,
-        } = .build,
+        },
+
+        fn printAttribute(container: anytype, comptime name: []const u8) bool {
+            const value = @field(container, name);
+            const T = @TypeOf(value);
+
+            switch (T) {
+                type => return false,
+                []const u8 => print("{s}: {s}", .{ name, value }),
+                else => print("{s}: {any}", .{ name, value }),
+            }
+
+            return true;
+        }
+
+        fn printFields(container: anytype) void {
+            const T = @TypeOf(container);
+            const I = @typeInfo(T);
+            const fields = I.@"struct".fields;
+
+            inline for (fields[0 .. fields.len - 1]) |field| {
+                _ = printAttribute(container, field.name);
+                print("\n", .{});
+            }
+            _ = printAttribute(container, fields[fields.len - 1].name);
+        }
+
+        fn printConfig() void {
+            const I = @typeInfo(config);
+            const decls = I.@"struct".decls;
+
+            inline for (decls[0 .. decls.len - 1]) |decl| {
+                if (printAttribute(config, decl.name)) {
+                    print("\n", .{});
+                }
+            }
+            _ = printAttribute(config, decls[decls.len - 1].name);
+        }
+
+        fn printDummy() void {
+            printFields(dummy_cycles_config);
+        }
 
         fn printRttChannel(i: usize, channel: rtt.channel.Config) void {
             print("\n  [{}] {{ .name = \"{s}\", .buffer_size = {}, .mode = {s} }}", .{
@@ -88,43 +129,25 @@ const Commands = union(enum) {
             });
         }
 
-        fn printDecl(comptime decl: Type.Declaration) bool {
-            const value = @field(config, decl.name);
-
-            switch (@TypeOf(value)) {
-                type => return false,
-                []const u8 => print("{s}: {s}", .{ decl.name, value }),
-                else => print("{s}: {}", .{ decl.name, value }),
+        fn printRtt() void {
+            print("up", .{});
+            for (0.., rtt_config.up_channels) |i, channel| {
+                printRttChannel(i, channel);
             }
 
-            return true;
+            print("\n", .{});
+
+            print("down", .{});
+            for (0.., rtt_config.down_channels) |i, channel| {
+                printRttChannel(i, channel);
+            }
         }
 
         pub fn handle(self: *const @This(), _: *ushell.Parser) !void {
             switch (self.type) {
-                .build => {
-                    const I = @typeInfo(config);
-                    const decls = I.@"struct".decls;
-
-                    inline for (decls[0 .. decls.len - 1]) |decl| {
-                        if (printDecl(decl)) {
-                            print("\n", .{});
-                        }
-                    }
-                    _ = printDecl(decls[decls.len - 1]);
-                },
-                .dummy_cycles => print("{}", .{dummy_cycles_config}),
-                .rtt => {
-                    print("up", .{});
-                    for (0.., rtt_config.up_channels) |i, channel| {
-                        printRttChannel(i, channel);
-                    }
-
-                    print("\ndown", .{});
-                    for (0.., rtt_config.down_channels) |i, channel| {
-                        printRttChannel(i, channel);
-                    }
-                },
+                .build => printConfig(),
+                .cycles => printDummy(),
+                .rtt => printRtt(),
             }
         }
     },
@@ -215,6 +238,8 @@ const Commands = union(enum) {
 
 const Shell = ushell.Shell(Commands, .{
     .prompt = "stm32h7s7-dk $ ",
+    // bigger history size also needs bigger rtt's output buffer to fit all the text
+    .max_history_size = 100,
 });
 
 fn playground() !noreturn {

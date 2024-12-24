@@ -1,10 +1,5 @@
 //! Configuration for a build
 
-// TODO: research
-// .optimize = b.standardOptimizeOption(.{
-//     .preferred_optimize_mode = .ReleaseSmall,
-// }),
-
 const std = @import("std");
 const Build = std.Build;
 const Module = Build.Module;
@@ -53,11 +48,13 @@ pub fn option(
 }
 
 pub fn fromArgs(b: *Build) Self {
+    b.release_mode = .safe; // default is debug mode (not even release)
+
     return Self{
         .hal = Hal.fromArgs(b),
         .libc = LibC.fromArgs(b),
         .logging = Logging.fromArgs(b),
-        .optimize = .ReleaseSmall,
+        .optimize = b.standardOptimizeOption(.{}),
         .panic = Panic.fromArgs(b),
         .program = Program.fromArgs(b),
         .target = b.resolveTargetQuery(.{
