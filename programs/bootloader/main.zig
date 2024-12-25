@@ -67,61 +67,59 @@ const ByteMask = enum {
     }
 };
 
-fn print(comptime fmt: []const u8, args: anytype) void {
-    std.fmt.format(writer, fmt, args) catch {};
-}
-
 const Commands = union(enum) {
     config: struct {
+        const Args = @This();
+
         type: enum {
             build,
             cycles,
             rtt,
         },
 
-        fn printAttribute(container: anytype, comptime name: []const u8) bool {
+        fn printAttribute(shell: *Shell, container: anytype, comptime name: []const u8) bool {
             const value = @field(container, name);
             const T = @TypeOf(value);
 
             switch (T) {
                 type => return false,
-                []const u8 => print("{s}: {s}", .{ name, value }),
-                else => print("{s}: {any}", .{ name, value }),
+                []const u8 => shell.print("{s}: {s}", .{ name, value }),
+                else => shell.print("{s}: {any}", .{ name, value }),
             }
 
             return true;
         }
 
-        fn printFields(container: anytype) void {
+        fn printFields(shell: *Shell, container: anytype) void {
             const T = @TypeOf(container);
             const I = @typeInfo(T);
             const fields = I.@"struct".fields;
 
             inline for (fields[0 .. fields.len - 1]) |field| {
-                _ = printAttribute(container, field.name);
-                print("\n", .{});
+                _ = printAttribute(shell, container, field.name);
+                shell.print("\n", .{});
             }
-            _ = printAttribute(container, fields[fields.len - 1].name);
+            _ = printAttribute(shell, container, fields[fields.len - 1].name);
         }
 
-        fn printConfig() void {
+        fn printConfig(shell: *Shell) void {
             const I = @typeInfo(config);
             const decls = I.@"struct".decls;
 
             inline for (decls[0 .. decls.len - 1]) |decl| {
-                if (printAttribute(config, decl.name)) {
-                    print("\n", .{});
+                if (printAttribute(shell, config, decl.name)) {
+                    shell.print("\n", .{});
                 }
             }
-            _ = printAttribute(config, decls[decls.len - 1].name);
+            _ = printAttribute(shell, config, decls[decls.len - 1].name);
         }
 
-        fn printDummy() void {
-            printFields(dummy_cycles_config);
+        fn printDummy(shell: *Shell) void {
+            printFields(shell, dummy_cycles_config);
         }
 
-        fn printRttChannel(i: usize, channel: rtt.channel.Config) void {
-            print("\n  [{}] {{ .name = \"{s}\", .buffer_size = {}, .mode = {s} }}", .{
+        fn printRttChannel(shell: *Shell, i: usize, channel: rtt.channel.Config) void {
+            shell.print("\n  [{}] {{ .name = \"{s}\", .buffer_size = {}, .mode = {s} }}", .{
                 i,
                 channel.name,
                 channel.buffer_size,
@@ -129,58 +127,66 @@ const Commands = union(enum) {
             });
         }
 
-        fn printRtt() void {
-            print("up", .{});
+        fn printRtt(shell: *Shell) void {
+            shell.print("up", .{});
             for (0.., rtt_config.up_channels) |i, channel| {
-                printRttChannel(i, channel);
+                printRttChannel(shell, i, channel);
             }
 
-            print("\n", .{});
+            shell.print("\n", .{});
 
-            print("down", .{});
+            shell.print("down", .{});
             for (0.., rtt_config.down_channels) |i, channel| {
-                printRttChannel(i, channel);
+                printRttChannel(shell, i, channel);
             }
         }
 
-        pub fn handle(self: *const @This(), _: *ushell.Parser) !void {
-            switch (self.type) {
-                .build => printConfig(),
-                .cycles => printDummy(),
-                .rtt => printRtt(),
+        pub fn handle(args: *const Args, shell: *Shell, _: *ushell.Parser) !void {
+            switch (args.type) {
+                .build => printConfig(shell),
+                .cycles => printDummy(shell),
+                .rtt => printRtt(shell),
             }
         }
     },
 
     led: struct {
+        const Args = @This();
+
         n: u2,
         state: bool,
 
-        pub fn handle(self: *const @This(), _: *ushell.Parser) !void {
-            hal.bsp.LEDS[self.n].set(self.state);
+        pub fn handle(args: *const Args, _: *Shell, _: *ushell.Parser) !void {
+            hal.bsp.LEDS[args.n].set(args.state);
         }
     },
 
     uptime: struct {
-        pub fn handle(_: *const @This(), _: *ushell.Parser) !void {
+        const Args = @This();
+
+        pub fn handle(_: *const Args, shell: *Shell, _: *ushell.Parser) !void {
             const now = hal.zig.timer.now().to_s_ms();
-            print("{}.{:0>3}s", .{ now.seconds, now.milliseconds });
+            shell.print("{}.{:0>3}s", .{ now.seconds, now.milliseconds });
         }
     },
 
     read: struct {
+        const Args = @This();
+
         address: usize,
         bytes: ByteMask = .@"4",
 
-        pub fn handle(self: *const @This(), _: *ushell.Parser) !void {
-            const ptr: *usize = @ptrFromInt(self.address);
-            const value = ptr.* & self.bytes.mask();
-            print("{d}", .{value});
+        pub fn handle(args: *const Args, shell: *Shell, _: *ushell.Parser) !void {
+            const ptr: *usize = @ptrFromInt(args.address);
+            const value = ptr.* & args.bytes.mask();
+            shell.print("{d}", .{value});
         }
     },
 
     reboot: struct {
-        fn handle(_: *const @This(), _: *ushell.Parser) !void {
+        const Args = @This();
+
+        fn handle(_: *const Args, _: *Shell, _: *ushell.Parser) !void {
             // This is __NVIC_SystemReset from core_cm7.h, zig was unable to translate
             asm volatile ("dsb 0xF" ::: "memory");
             hal.zig.SCB.AIRCR = (0x5FA << 16) | (hal.zig.SCB.AIRCR & (7 << 8)) | (1 << 2);
@@ -191,9 +197,11 @@ const Commands = union(enum) {
     },
 
     sleep: struct {
+        const Args = @This();
+
         ms: u32,
 
-        pub fn handle(args: *const @This(), _: *ushell.Parser) !void {
+        pub fn handle(args: *const Args, _: *Shell, _: *ushell.Parser) !void {
             hal.zig.timer.sleep(.{
                 .milliseconds = args.ms,
             });
@@ -201,6 +209,8 @@ const Commands = union(enum) {
     },
 
     version: struct {
+        const Args = @This();
+
         type: enum {
             zig,
             git,
@@ -208,30 +218,32 @@ const Commands = union(enum) {
             all,
         } = .all,
 
-        pub fn handle(self: *const @This(), _: *ushell.Parser) !void {
-            switch (self.type) {
-                .zig => print("{s}", .{builtin.zig_version_string}),
-                .git => print("{s}", .{version.commit}),
-                .build => print("{s}", .{version.datetime}),
-                .all => print("commit {s}, using zig {s} (built {s})", .{ version.commit, builtin.zig_version_string, version.datetime }),
+        pub fn handle(args: *const Args, shell: *Shell, _: *ushell.Parser) !void {
+            switch (args.type) {
+                .zig => shell.print("{s}", .{builtin.zig_version_string}),
+                .git => shell.print("{s}", .{version.commit}),
+                .build => shell.print("{s}", .{version.datetime}),
+                .all => shell.print("commit {s}, using zig {s} (built {s})", .{ version.commit, builtin.zig_version_string, version.datetime }),
             }
         }
     },
 
     write: struct {
+        const Args = @This();
+
         address: usize,
         value: usize,
         bytes: ByteMask = .@"4",
 
-        pub fn handle(self: *const @This(), _: *ushell.Parser) !void {
-            const ptr: *usize = @ptrFromInt(self.address);
-            ptr.* = self.value & self.bytes.mask();
+        pub fn handle(args: *const Args, _: *Shell, _: *ushell.Parser) !void {
+            const ptr: *usize = @ptrFromInt(args.address);
+            ptr.* = args.value & args.bytes.mask();
         }
     },
 
-    pub fn handle(self: *Commands, parser: *ushell.Parser) !void {
+    pub fn handle(self: *Commands, shell: *Shell, parser: *ushell.Parser) !void {
         return switch (self.*) {
-            inline else => |child| child.handle(parser),
+            inline else => |child| child.handle(shell, parser),
         };
     }
 };

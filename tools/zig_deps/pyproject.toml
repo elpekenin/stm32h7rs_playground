@@ -1,5 +1,0 @@
-[tool.mypy]
-strict = true
-
-[tool.ruff.lint]
-extend-select = ["ALL"]

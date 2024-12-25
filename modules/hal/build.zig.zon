@@ -4,8 +4,8 @@
 
     .dependencies = .{
         .upstream = .{
-            .url = "git+https://github.com/STMicroelectronics/stm32h7rsxx_hal_driver#a4178a44ef7f60313420abf18e3a70ce35958abd",
-            .hash = "1220b2700df11e0fa2aeb4538408c878d4e3cbe64159925b576c7b188538a3d4b4ed",
+            .url = "git+https://github.com/STMicroelectronics/stm32h7rsxx_hal_driver#7ca2e07ca21bc66b53654e845b4c85c884343b60",
+            .hash = "12201bb6c41dc317de9dd4e413dc08c7f5708a04d74c77d965269487aa97be85a0e3",
         },
         .cmsis_device_h7rs = .{
             .url = "git+https://github.com/STMicroelectronics/cmsis-device-h7rs#832649d1fd09bd901e9f68e979522e5c209ebf20",

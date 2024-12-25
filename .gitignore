@@ -1,9 +1,3 @@
 zig-out
 .zig-cache
 .vscode
-
-# a couple shortcuts
-Makefile
-
-# python
-__pycache__

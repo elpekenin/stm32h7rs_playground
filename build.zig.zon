@@ -24,8 +24,8 @@
             // .hash = "12205fd51be74c1f7c77283fb5e7c70fb2f631cfed0aa8d71bd9f65abe4900491099",
         },
         .ushell = .{
-            .url = "git+https://github.com/elpekenin/ushell#7fb345cb9d810a2efa7e646da7741ec0c88b79cc",
-            .hash = "1220d5258df15835c012acee715e44fca047a6ab3f565bd89a8d6edd502f1fa53294",
+            .url = "git+https://github.com/elpekenin/ushell#d268ef53f395c60d88396c06661da21a41245c10",
+            .hash = "12202984377f6e9785cbc25803656a4807dfeb46d358e3af0fb49bd0782883145a2b",
         },
         .zfat = .{
             .url = "git+https://github.com/ZigEmbeddedGroup/zfat#0c86f71e85908882ea01aaf58a351eeaeb08040f",
