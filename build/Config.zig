@@ -89,29 +89,6 @@ pub fn getEntrypoint(self: *const Self, b: *Build) *std.Build.Step.Compile {
         .target = self.target,
     });
 
-    if (self.logging.filesystem) {
-        const zfat = b.dependency(
-            "zfat",
-            .{
-                .@"no-libc" = true,
-                .optimize = self.optimize,
-                .@"static-rtc" = currentDate(b),
-                .target = self.target,
-            },
-        ).module("zfat");
-
-        zfat.linkLibrary(self.getLibC(b)); // FIXME: Clean this up
-        start.root_module.addImport("fatfs", zfat);
-    }
-
-    if (self.logging.rtt) {
-        const rtt = b.dependency(
-            "rtt",
-            .{},
-        ).module("rtt");
-        start.root_module.addImport("rtt", rtt);
-    }
-
     start.setLinkerScript(
         b.path(
             b.fmt("programs/{s}/linker.ld", .{
@@ -141,12 +118,6 @@ pub fn getLibC(self: *const Self, b: *Build) *Compile {
             .target = self.target,
         },
     ).artifact(self.libc.artifact);
-}
-
-/// Fix the fake RTC shown by zfat/FatFS, to the date of building
-fn currentDate(b: *Build) []const u8 {
-    const out = b.run(&.{ "date", "+\"%Y-%m-%d\"" });
-    return out[1 .. out.len - 2]; // output is wrapped in quotes, remove them
 }
 
 pub fn getOptions(self: *const Self, b: *Build) *Module {

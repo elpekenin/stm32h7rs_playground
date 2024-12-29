@@ -33,8 +33,9 @@ pub const std_options: std.Options = .{
 pub const panic = panic_mod.panic;
 
 // app-level config
-pub const rtt_channels = rtt.RTT(program.rtt_config);
+pub const rtt_config = program.rtt_config;
 pub const dummy_cycles_config = program.dummy_cycles_config;
+pub const rtt_channels = rtt.RTT(rtt_config);
 
 const symbols = struct {
     extern var __stack: anyopaque;
