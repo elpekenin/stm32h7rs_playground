@@ -13,12 +13,14 @@ comptime {
 
 pub inline fn toFatFsPath(path: []const u8) fatfs.Path {
     const len = 100;
+    var buffer: [len:0]fatfs.PathChar = undefined;
+
     std.debug.assert(path.len < len);
 
-    var buffer: [len:0]fatfs.PathChar = undefined;
     for (0.., path) |i, char| {
         buffer[i] = char;
     }
+    buffer[path.len] = 0;
 
     return &buffer;
 }

@@ -3,7 +3,7 @@ const std = @import("std");
 const fatfs = @import("fatfs");
 const ushell = @import("ushell");
 
-const fs = @import("fs.zig");
+const fs = @import("../fs.zig");
 const Shell = @import("../../cli.zig").Shell;
 
 const Self = @This();
