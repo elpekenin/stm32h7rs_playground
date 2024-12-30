@@ -5,7 +5,7 @@ const fatfs = @import("fatfs");
 
 const bsp = hal.bsp;
 
-pub const mountpoint: [:0]const u8 = "0:/";
+const mountpoint: [:0]const u8 = "0:/";
 
 const state = struct {
     var init = false;

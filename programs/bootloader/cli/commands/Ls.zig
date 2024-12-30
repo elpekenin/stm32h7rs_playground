@@ -1,7 +1,7 @@
 const fatfs = @import("fatfs");
 
-const utils = @import("utils.zig");
-const Shell = @import("../../../cli.zig").Shell;
+const fs = @import("fs.zig");
+const Shell = @import("../../cli.zig").Shell;
 
 const Self = @This();
 
@@ -9,9 +9,9 @@ path: ?[]const u8 = null,
 
 pub fn handle(self: *const Self, shell: *Shell) !void {
     const path = if (self.path) |path|
-        utils.toFatFsPath(path)
+        fs.toFatFsPath(path)
     else
-        try utils.cwd();
+        try fs.cwd();
 
     var dir = try fatfs.Dir.open(path);
     defer dir.close();

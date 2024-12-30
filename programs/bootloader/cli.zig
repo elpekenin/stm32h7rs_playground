@@ -6,6 +6,7 @@ const Commands = union(enum) {
     cat: commands.Cat,
     cd: commands.Cd,
     config: commands.Config,
+    echo: commands.Echo,
     led: commands.Led,
     ls: commands.Ls,
     mkdir: commands.Mkdir,

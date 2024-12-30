@@ -60,7 +60,7 @@ const fs_logger = if (config.logging.filesystem)
             try sd_fatfs.mount();
 
             var file = try fatfs.File.open(
-                sd_fatfs.mountpoint ++ config.program ++ ".log",
+                "/var/log/" ++ config.program,
                 .{
                     .mode = .open_append,
                     .access = .write_only,
