@@ -1,20 +1,23 @@
+const std = @import("std");
+
 const fs = @import("../fs.zig");
 const Shell = @import("../../cli.zig").Shell;
 
 const Self = @This();
 
-path: []const u8 = "/home/elpekenin",
+path: []const u8,
 
 pub fn handle(self: *const Self, shell: *Shell) !void {
     if (!fs.exists(self.path)) {
-        return shell.print("'{s}': No such file or directory", .{self.path});
+        shell.print("'{s}': No such file or directory", .{self.path});
+        return;
     }
 
     if (fs.isFile(self.path)) {
-        return shell.print("'{s}': Is a file", .{self.path});
+        shell.print("'{s}': Is a file", .{self.path});
     }
 
-    try fs.chdir(self.path);
+    try fs.unlink(self.path);
 }
 
 pub fn tab(shell: *Shell) !void {

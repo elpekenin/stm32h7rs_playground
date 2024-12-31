@@ -13,6 +13,7 @@ const Commands = union(enum) {
     pwd: commands.Pwd,
     read: commands.Read,
     rm: commands.Rm,
+    rmdir: commands.Rmdir,
     reboot: commands.Reboot,
     sleep: commands.Sleep,
     touch: commands.Touch,

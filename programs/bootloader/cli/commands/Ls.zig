@@ -8,8 +8,18 @@ const Self = @This();
 path: ?[]const u8 = null,
 
 pub fn handle(self: *const Self, shell: *Shell) !void {
+    if (self.path) |path| {
+        if (!fs.exists(path)) {
+            return shell.print("'{s}': No such file or directory", .{path});
+        }
+
+        if (fs.isFile(path)) {
+            return shell.print("'{s}': Is a file", .{path});
+        }
+    }
+
     const path = if (self.path) |path|
-        fs.toFatFsPath(path)
+        fs.toPath(path)
     else
         try fs.cwd();
 
@@ -24,4 +34,8 @@ pub fn handle(self: *const Self, shell: *Shell) !void {
             .Directory => shell.print("{s}/ ", .{name}),
         }
     }
+}
+
+pub fn tab(shell: *Shell) !void {
+    return fs.autoComplete(shell, .Directory);
 }

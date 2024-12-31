@@ -8,9 +8,15 @@ const Self = @This();
 path: []const u8,
 
 pub fn handle(self: *const Self, shell: *Shell) !void {
-    const path = fs.toFatFsPath(self.path);
+    if (!fs.exists(self.path)) {
+        return shell.print("'{s}': No such file or directory", .{self.path});
+    }
 
-    var file = try fatfs.File.open(path, .{
+    if (fs.isDir(self.path)) {
+        return shell.print("'{s}': Is a directory", .{self.path});
+    }
+
+    var file = try fatfs.File.open(fs.toPath(self.path), .{
         .access = .read_only,
         .mode = .open_existing,
     });
@@ -22,4 +28,8 @@ pub fn handle(self: *const Self, shell: *Shell) !void {
         if (n == 0) return;
         shell.print("{s}", .{read_buffer[0..n]});
     }
+}
+
+pub fn tab(shell: *Shell) !void {
+    return fs.autoComplete(shell, .File);
 }

@@ -28,9 +28,7 @@ fn writeToFile(
     tokens: usize,
     mode: fatfs.File.Mode,
 ) !void {
-    const ff_path = fs.toFatFsPath(path);
-
-    var file = try fatfs.File.open(ff_path, .{ .access = .write_only, .mode = mode });
+    var file = try fatfs.File.open(fs.toPath(path), .{ .access = .write_only, .mode = mode });
     defer file.close();
 
     for (0..tokens) |_| {

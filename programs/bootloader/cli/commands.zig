@@ -9,6 +9,7 @@ pub const Pwd = @import("commands/Pwd.zig");
 pub const Read = @import("commands/Read.zig");
 pub const Reboot = @import("commands/Reboot.zig");
 pub const Rm = @import("commands/Rm.zig");
+pub const Rmdir = @import("commands/Rmdir.zig");
 pub const Sleep = @import("commands/Sleep.zig");
 pub const Touch = @import("commands/Touch.zig");
 pub const Uptime = @import("commands/Uptime.zig");

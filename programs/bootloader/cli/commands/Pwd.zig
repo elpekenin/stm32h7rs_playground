@@ -1,5 +1,3 @@
-const fatfs = @import("fatfs");
-
 const fs = @import("../fs.zig");
 const Shell = @import("../../cli.zig").Shell;
 
