@@ -76,7 +76,9 @@ pub fn autoComplete(shell: anytype, kind: fatfs.Kind) !void {
     defer dir.close();
 
     var n: usize = 0;
-    var names: [50][100]u8 = undefined;
+    const max_names = 50;
+    // extra u8 for sentinel value
+    var names: [max_names][fatfs.FileInfo.max_name_len + 1]u8 = undefined;
 
     while (try dir.next()) |child| {
         if (child.kind != kind) continue;
@@ -84,6 +86,11 @@ pub fn autoComplete(shell: anytype, kind: fatfs.Kind) !void {
         const name = child.name();
 
         if (input == null or std.mem.startsWith(u8, name, input.?)) {
+            if (n == max_names) { // buffer already filled completely
+                @branchHint(.unlikely);
+                std.debug.panic("Exhausted `names` buffer.", .{});
+            }
+
             for (0.., name) |i, char| {
                 names[n][i] = char;
             }
