@@ -63,6 +63,14 @@ pub fn exists(slice: []const u8) bool {
     return isFile(slice) or isDir(slice);
 }
 
+fn containsSpace(slice: []const u8) bool {
+    for (slice) |char| {
+        if (char == ' ') return true;
+    }
+
+    return false;
+}
+
 // TODO: handle directories
 // eg: `ls var/l<tab>` doesn't work now, should complete to `ls var/log`
 pub fn autoComplete(shell: anytype, kind: fatfs.Kind) !void {
@@ -101,17 +109,36 @@ pub fn autoComplete(shell: anytype, kind: fatfs.Kind) !void {
     }
 
     switch (n) {
-        0 => return,
+        0 => {},
         1 => {
             const name = std.mem.sliceTo(&names[0], 0);
-            const diff = name[input.?.len..name.len];
-            shell.buffer.appendSlice(diff) catch std.debug.panic("Exhausted reception buffer", .{});
-            shell.print("{s}", .{diff});
+
+            if (containsSpace(name)) {
+                // remove partial input
+                shell.popInputN(input.?.len);
+
+                // write complete path, quoted
+                shell.appendInput("'");
+                shell.appendInput(name);
+                shell.appendInput("'");
+            } else {
+                // just write the remaining of the name
+                const diff = name[input.?.len..name.len];
+                shell.appendInput(diff);
+            }
         },
         else => {
             shell.print("\n", .{});
-            for (names[0..n]) |name| {
-                shell.print("{s} ", .{std.mem.sliceTo(&name, 0)});
+
+            name_loop: for (names[0..n]) |raw| {
+                const name: []const u8 = std.mem.sliceTo(&raw, 0);
+
+                if (containsSpace(name)) {
+                    shell.print("'{s}' ", .{name});
+                    continue :name_loop;
+                }
+
+                shell.print("{s} ", .{name});
             }
             shell.showPrompt();
             shell.print("{s}", .{shell.buffer.constSlice()});
