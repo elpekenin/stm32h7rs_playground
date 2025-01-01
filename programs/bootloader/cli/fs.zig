@@ -71,23 +71,11 @@ fn containsSpace(slice: []const u8) bool {
     return false;
 }
 
-// TODO: fix handling of path with leading '/'
-// find deepest directory in input
-// Examples:
-//   foo -> null
-//   foo/ -> foo
-//   foo/bar -> foo
-//   foo/bar/baz -> foo/bar
-fn findDir(slice: []const u8) ?[]const u8 {
-    var end: usize = slice.len - 1;
-
-    while (end > 0) : (end -= 1) {
-        if (slice[end] == '/') {
-            return slice[0..end];
-        }
-    }
-
-    return null;
+fn getDir(slice: []const u8) ?[]const u8 {
+    // no slashes -> null -> work on cwd
+    // any slashes -> return up to (including) last one
+    const end = std.mem.lastIndexOf(u8, slice, "/") orelse return null;
+    return slice[0 .. end + 1];
 }
 
 pub const Entry = struct {
@@ -160,9 +148,8 @@ pub fn autoComplete(shell: anytype) !void {
     try shell.parser.assertExhausted();
 
     const path, const needle = if (maybe_input) |input|
-        if (findDir(input)) |dir|
-            // +1 because `dir` does not contain the '/'
-            .{ toPath(dir), input[dir.len + 1 .. input.len] }
+        if (getDir(input)) |dir|
+            .{ toPath(dir), input[dir.len..input.len] }
         else
             .{ try cwd(), input }
     else
