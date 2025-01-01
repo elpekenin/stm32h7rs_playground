@@ -1,6 +1,7 @@
 const fatfs = @import("fatfs");
 
 const fs = @import("../fs.zig");
+const t = @import("../tab.zig");
 const Shell = @import("../../cli.zig").Shell;
 
 const Self = @This();
@@ -30,4 +31,4 @@ pub fn handle(self: *const Self, shell: *Shell) !void {
     }
 }
 
-pub const tab = fs.autoComplete;
+pub const tab = t.path;

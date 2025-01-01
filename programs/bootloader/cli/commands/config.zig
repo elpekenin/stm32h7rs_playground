@@ -3,6 +3,7 @@ const root = @import("root");
 const config = @import("config");
 const rtt = @import("rtt");
 
+const t = @import("../tab.zig");
 const Shell = @import("../../cli.zig").Shell;
 
 pub const Config = enum {
@@ -84,5 +85,9 @@ pub const Config = enum {
             .cycles => printDummy(shell),
             .rtt => printRtt(shell),
         }
+    }
+
+    pub fn tab(shell: *Shell) !void {
+        return t.Enum(shell, Self);
     }
 };

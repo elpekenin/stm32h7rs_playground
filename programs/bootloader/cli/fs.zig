@@ -4,6 +4,8 @@ const std = @import("std");
 
 const fatfs = @import("fatfs");
 
+const Shell = @import("../cli.zig").Shell;
+
 comptime {
     if (fatfs.PathChar != u8) {
         const msg = "Unsupported config";
@@ -63,21 +65,6 @@ pub fn exists(slice: []const u8) bool {
     return isFile(slice) or isDir(slice);
 }
 
-fn containsSpace(slice: []const u8) bool {
-    for (slice) |char| {
-        if (char == ' ') return true;
-    }
-
-    return false;
-}
-
-fn getDir(slice: []const u8) ?[]const u8 {
-    // no slashes -> null -> work on cwd
-    // any slashes -> return up to (including) last one
-    const end = std.mem.lastIndexOf(u8, slice, "/") orelse return null;
-    return slice[0 .. end + 1];
-}
-
 pub const Entry = struct {
     const Self = @This();
 
@@ -123,7 +110,7 @@ pub const Entry = struct {
         };
     }
 
-    pub fn print(self: *const Self, shell: anytype) void {
+    pub fn print(self: *const Self, shell: *Shell) void {
         const name = self.getName();
 
         const reset = shell.style(.default);
@@ -132,81 +119,10 @@ pub const Entry = struct {
             .File => reset,
         };
 
-        if (containsSpace(name)) {
+        if (std.mem.containsAtLeast(u8, name, 1, " ")) {
             shell.print("{s}'{s}'{s} ", .{ style, name, reset });
         } else {
             shell.print("{s}{s}{s} ", .{ style, name, reset });
         }
     }
 };
-
-pub fn autoComplete(shell: anytype) !void {
-    const maybe_input: ?[]const u8 = shell.parser.optional([]const u8) catch unreachable;
-
-    // tokens left means the command looks something like `<command> foo bar<tab>`
-    // nothing we can suggest, this is a single arg command
-    try shell.parser.assertExhausted();
-
-    const path, const needle = if (maybe_input) |input|
-        if (getDir(input)) |dir|
-            .{ toPath(dir), input[dir.len..input.len] }
-        else
-            .{ try cwd(), input }
-    else
-        // std.mem.startsWith(<some_input>, "") always matches
-        .{ try cwd(), "" };
-
-    var dir = try fatfs.Dir.open(path);
-    defer dir.close();
-
-    var n: usize = 0;
-    const max_names = 50;
-    var entries: [max_names]Entry = undefined;
-
-    while (try dir.next()) |child| {
-        const name = child.name();
-
-        if (std.mem.startsWith(u8, name, needle)) {
-            if (n == max_names) { // buffer already filled completely
-                @branchHint(.unlikely);
-                std.debug.panic("Exhausted `names` buffer.", .{});
-            }
-
-            entries[n] = Entry.from(child);
-            n += 1;
-        }
-    }
-
-    switch (n) {
-        0 => {},
-        1 => {
-            const completion = entries[0].getCompletion();
-
-            if (std.mem.eql(u8, needle, completion)) return;
-
-            if (containsSpace(completion)) {
-                // remove partial input
-                shell.popInputN(needle.len);
-
-                // write complete path, quoted
-                shell.appendInput("'");
-                shell.appendInput(completion);
-                shell.appendInput("'");
-            } else {
-                // just write the remaining of the name
-                const diff = completion[needle.len..completion.len];
-                shell.appendInput(diff);
-            }
-        },
-        else => {
-            shell.print("\n", .{});
-
-            for (entries[0..n]) |entry| {
-                entry.print(shell);
-            }
-
-            shell.showPrompt();
-            shell.print("{s}", .{shell.buffer.constSlice()});
-        },
-    }
-}

@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const fs = @import("../fs.zig");
+const t = @import("../tab.zig");
 const Shell = @import("../../cli.zig").Shell;
 
 const Self = @This();
@@ -20,4 +21,4 @@ pub fn handle(self: *const Self, shell: *Shell) !void {
     try fs.unlink(self.path);
 }
 
-pub const tab = fs.autoComplete;
+pub const tab = t.path;
