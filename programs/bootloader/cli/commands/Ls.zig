@@ -27,12 +27,8 @@ pub fn handle(self: *const Self, shell: *Shell) !void {
     defer dir.close();
 
     while (try dir.next()) |child| {
-        const name = child.name();
-
-        switch (child.kind) {
-            .File => shell.print("{s} ", .{name}),
-            .Directory => shell.print("{s}/ ", .{name}),
-        }
+        const entry = fs.Entry.from(child);
+        entry.print(shell);
     }
 }
 

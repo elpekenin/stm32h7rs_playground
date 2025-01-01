@@ -71,6 +71,7 @@ fn containsSpace(slice: []const u8) bool {
     return false;
 }
 
+// TODO: fix handling of path with leading '/'
 // find deepest directory in input
 // Examples:
 //   foo -> null
@@ -89,6 +90,68 @@ fn findDir(slice: []const u8) ?[]const u8 {
     return null;
 }
 
+pub const Entry = struct {
+    const Self = @This();
+
+    // extra space for '/' and sentinel
+    buffer: [fatfs.FileInfo.max_name_len + 2]u8,
+    kind: fatfs.Kind,
+
+    pub fn from(info: fatfs.FileInfo) Self {
+        const name = info.name();
+
+        var self = Self{
+            .buffer = undefined,
+            .kind = info.kind,
+        };
+
+        for (0.., name) |i, char| {
+            self.buffer[i] = char;
+        }
+
+        switch (info.kind) {
+            .Directory => {
+                self.buffer[name.len] = '/';
+                self.buffer[name.len + 1] = 0;
+            },
+            .File => {
+                self.buffer[name.len] = 0;
+            },
+        }
+
+        return self;
+    }
+
+    pub fn getCompletion(self: *const Self) []const u8 {
+        return std.mem.sliceTo(&self.buffer, 0);
+    }
+
+    pub fn getName(self: *const Self) []const u8 {
+        const completion = self.getCompletion();
+
+        return switch (self.kind) {
+            .Directory => completion[0 .. completion.len - 1], // without '/'
+            .File => completion,
+        };
+    }
+
+    pub fn print(self: *const Self, shell: anytype) void {
+        const name = self.getName();
+
+        const reset = shell.style(.default);
+        const style = switch (self.kind) {
+            .Directory => shell.style(.blue),
+            .File => reset,
+        };
+
+        if (containsSpace(name)) {
+            shell.print("{s}'{s}'{s} ", .{ style, name, reset });
+        } else {
+            shell.print("{s}{s}{s} ", .{ style, name, reset });
+        }
+    }
+};
+
 pub fn autoComplete(shell: anytype) !void {
     const maybe_input: ?[]const u8 = shell.parser.optional([]const u8) catch unreachable;
 
@@ -103,16 +166,15 @@ pub fn autoComplete(shell: anytype) !void {
         else
             .{ try cwd(), input }
     else
-        .{ try cwd(), "" } // std.mem.startswith(<some_input>, "") always matches
-        ;
+        // std.mem.startsWith(<some_input>, "") always matches
+        .{ try cwd(), "" };
 
     var dir = try fatfs.Dir.open(path);
     defer dir.close();
 
     var n: usize = 0;
     const max_names = 50;
-    // extra space for '/' and sentinel
-    var names: [max_names][fatfs.FileInfo.max_name_len + 2]u8 = undefined;
+    var entries: [max_names]Entry = undefined;
 
     while (try dir.next()) |child| {
         const name = child.name();
@@ -123,20 +185,7 @@ pub fn autoComplete(shell: anytype) !void {
                 std.debug.panic("Exhausted `names` buffer.", .{});
             }
 
-            for (0.., name) |i, char| {
-                names[n][i] = char;
-            }
-
-            switch (child.kind) {
-                .Directory => {
-                    names[n][name.len] = '/';
-                    names[n][name.len + 1] = 0;
-                },
-                .File => {
-                    names[n][name.len] = 0;
-                },
-            }
-
+            entries[n] = Entry.from(child);
             n += 1;
         }
     }
@@ -144,35 +193,29 @@ pub fn autoComplete(shell: anytype) !void {
     switch (n) {
         0 => {},
         1 => {
-            const name = std.mem.sliceTo(&names[0], 0);
+            const completion = entries[0].getCompletion();
 
-            if (std.mem.eql(u8, needle, name)) return;
+            if (std.mem.eql(u8, needle, completion)) return;
 
-            if (containsSpace(name)) {
+            if (containsSpace(completion)) {
                 // remove partial input
                 shell.popInputN(needle.len);
 
                 // write complete path, quoted
                 shell.appendInput("'");
-                shell.appendInput(name);
+                shell.appendInput(completion);
                 shell.appendInput("'");
             } else {
                 // just write the remaining of the name
-                const diff = name[needle.len..name.len];
+                const diff = completion[needle.len..completion.len];
                 shell.appendInput(diff);
             }
         },
         else => {
             shell.print("\n", .{});
 
-            for (names[0..n]) |raw| {
-                const name: []const u8 = std.mem.sliceTo(&raw, 0);
-
-                if (containsSpace(name)) {
-                    shell.print("'{s}' ", .{name});
-                } else {
-                    shell.print("{s} ", .{name});
-                }
+            for (entries[0..n]) |entry| {
+                entry.print(shell);
             }
 
             shell.showPrompt();
