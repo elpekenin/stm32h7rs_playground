@@ -30,6 +30,4 @@ pub fn handle(self: *const Self, shell: *Shell) !void {
     }
 }
 
-pub fn tab(shell: *Shell) !void {
-    return fs.autoComplete(shell, .File);
-}
+pub const tab = fs.autoComplete;

@@ -71,29 +71,53 @@ fn containsSpace(slice: []const u8) bool {
     return false;
 }
 
-// TODO: handle directories
-// eg: `ls var/l<tab>` doesn't work now, should complete to `ls var/log`
-pub fn autoComplete(shell: anytype, kind: fatfs.Kind) !void {
-    const input = shell.parser.optional([]const u8) catch unreachable;
+// find deepest directory in input
+// Examples:
+//   foo -> null
+//   foo/ -> foo
+//   foo/bar -> foo
+//   foo/bar/baz -> foo/bar
+fn findDir(slice: []const u8) ?[]const u8 {
+    var end: usize = slice.len - 1;
+
+    while (end > 0) : (end -= 1) {
+        if (slice[end] == '/') {
+            return slice[0..end];
+        }
+    }
+
+    return null;
+}
+
+pub fn autoComplete(shell: anytype) !void {
+    const maybe_input: ?[]const u8 = shell.parser.optional([]const u8) catch unreachable;
 
     // tokens left means the command looks something like `<command> foo bar<tab>`
     // nothing we can suggest, this is a single arg command
     try shell.parser.assertExhausted();
 
-    var dir = try fatfs.Dir.open(try cwd());
+    const path, const needle = if (maybe_input) |input|
+        if (findDir(input)) |dir|
+            // +1 because `dir` does not contain the '/'
+            .{ toPath(dir), input[dir.len + 1 .. input.len] }
+        else
+            .{ try cwd(), input }
+    else
+        .{ try cwd(), "" } // std.mem.startswith(<some_input>, "") always matches
+        ;
+
+    var dir = try fatfs.Dir.open(path);
     defer dir.close();
 
     var n: usize = 0;
     const max_names = 50;
-    // extra u8 for sentinel value
-    var names: [max_names][fatfs.FileInfo.max_name_len + 1]u8 = undefined;
+    // extra space for '/' and sentinel
+    var names: [max_names][fatfs.FileInfo.max_name_len + 2]u8 = undefined;
 
     while (try dir.next()) |child| {
-        if (child.kind != kind) continue;
-
         const name = child.name();
 
-        if (input == null or std.mem.startsWith(u8, name, input.?)) {
+        if (std.mem.startsWith(u8, name, needle)) {
             if (n == max_names) { // buffer already filled completely
                 @branchHint(.unlikely);
                 std.debug.panic("Exhausted `names` buffer.", .{});
@@ -102,7 +126,16 @@ pub fn autoComplete(shell: anytype, kind: fatfs.Kind) !void {
             for (0.., name) |i, char| {
                 names[n][i] = char;
             }
-            names[n][name.len] = 0;
+
+            switch (child.kind) {
+                .Directory => {
+                    names[n][name.len] = '/';
+                    names[n][name.len + 1] = 0;
+                },
+                .File => {
+                    names[n][name.len] = 0;
+                },
+            }
 
             n += 1;
         }
@@ -113,9 +146,11 @@ pub fn autoComplete(shell: anytype, kind: fatfs.Kind) !void {
         1 => {
             const name = std.mem.sliceTo(&names[0], 0);
 
+            if (std.mem.eql(u8, needle, name)) return;
+
             if (containsSpace(name)) {
                 // remove partial input
-                shell.popInputN(input.?.len);
+                shell.popInputN(needle.len);
 
                 // write complete path, quoted
                 shell.appendInput("'");
@@ -123,23 +158,23 @@ pub fn autoComplete(shell: anytype, kind: fatfs.Kind) !void {
                 shell.appendInput("'");
             } else {
                 // just write the remaining of the name
-                const diff = name[input.?.len..name.len];
+                const diff = name[needle.len..name.len];
                 shell.appendInput(diff);
             }
         },
         else => {
             shell.print("\n", .{});
 
-            name_loop: for (names[0..n]) |raw| {
+            for (names[0..n]) |raw| {
                 const name: []const u8 = std.mem.sliceTo(&raw, 0);
 
                 if (containsSpace(name)) {
                     shell.print("'{s}' ", .{name});
-                    continue :name_loop;
+                } else {
+                    shell.print("{s} ", .{name});
                 }
-
-                shell.print("{s} ", .{name});
             }
+
             shell.showPrompt();
             shell.print("{s}", .{shell.buffer.constSlice()});
         },

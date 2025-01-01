@@ -17,3 +17,5 @@ pub fn handle(self: *const Self, shell: *Shell) !void {
     });
     defer file.close();
 }
+
+pub const tab = fs.autoComplete;

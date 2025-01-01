@@ -12,3 +12,5 @@ pub fn handle(self: *const Self, shell: *Shell) !void {
 
     try fs.mkdir(self.path);
 }
+
+pub const tab = fs.autoComplete;

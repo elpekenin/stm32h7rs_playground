@@ -20,6 +20,4 @@ pub fn handle(self: *const Self, shell: *Shell) !void {
     try fs.unlink(self.path);
 }
 
-pub fn tab(shell: *Shell) !void {
-    return fs.autoComplete(shell, .Directory);
-}
+pub const tab = fs.autoComplete;

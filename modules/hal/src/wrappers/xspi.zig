@@ -1,7 +1,5 @@
 //! Functions reused across XSPI devices (flash and RAM)
 
-// TODO: Run some tests to validate if pointers are indeed NOT modified
-
 const std = @import("std");
 const logger = std.log.scoped(.xspi);
 
