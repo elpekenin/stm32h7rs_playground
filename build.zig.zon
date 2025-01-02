@@ -4,8 +4,12 @@
 
     .dependencies = .{
         .defmt = .{
-            .url = "git+https://github.com/elpekenin/defmt#7d63bb7dbc28f1b5dc5ffaa73a84781da3e410ae",
-            .hash = "12204e7f12d3eba173733b2db680e5b59ed72358ffc26edef3a70f2ca6d1b0f0ab10",
+            .url = "git+https://github.com/elpekenin/defmt#ed32295d39d63aca3e35a78c5a8be5a27202a18b",
+            .hash = "1220ad09ba3218873e6c813a0090c2a48f6d45403f06f1d34c66cb35b9e487c2efcb",
+        },
+        .fatfs = .{
+            .url = "git+https://github.com/ZigEmbeddedGroup/zfat#3cba3a8abdc0956d22df4bc56c2b8d795f7256ad",
+            .hash = "1220a38ae29c1605c82f9309cd8721f1915606252d8120811054419d4e8226cc5d81",
         },
         .foundation = .{
             .url = "git+https://github.com/ZigEmbeddedGroup/foundation-libc#5281055623dff89af7b05572f5aebae0f606e6a1",
@@ -24,12 +28,8 @@
             // .hash = "12205fd51be74c1f7c77283fb5e7c70fb2f631cfed0aa8d71bd9f65abe4900491099",
         },
         .ushell = .{
-            .url = "git+https://github.com/elpekenin/ushell#c2a4e28568a7877ed0e35e1822fe960e14ce36e2",
-            .hash = "1220f815ec7738bce55b8ff31ebc508cf3a8a573d5f06d69c08d1b605307932bda03",
-        },
-        .zfat = .{
-            .url = "git+https://github.com/ZigEmbeddedGroup/zfat#3cba3a8abdc0956d22df4bc56c2b8d795f7256ad",
-            .hash = "1220a38ae29c1605c82f9309cd8721f1915606252d8120811054419d4e8226cc5d81",
+            .url = "git+https://github.com/elpekenin/ushell#fae30d2ec49cdb64e53493a2ce615726d356558b",
+            .hash = "12200c24f5a1df481f766a0db4b464c4b796f8984652066d3e84d73bc35634ea7525",
         },
     },
 

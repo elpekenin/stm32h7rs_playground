@@ -40,21 +40,22 @@ pub fn option(
 
     // specialization for enum printing
     switch (@typeInfo(T)) {
-        .@"enum" => logger.info("'{s}' not specified, using `.{s}`", .{ name, @tagName(default) }),
-        else => logger.info("'{s}' not specified, using `{}`", .{ name, default }),
+        .@"enum" => logger.info("{s}=.{s}", .{ name, @tagName(default) }),
+        else => logger.info("{s}={}", .{ name, default }),
     }
 
     return default;
 }
 
 pub fn fromArgs(b: *Build) Self {
-    b.release_mode = .small; // default is debug mode (not even release)
+    const optimize = b.standardOptimizeOption(.{});
+    logger.info("optimize={s}", .{@tagName(optimize)});
 
     return Self{
         .hal = Hal.fromArgs(b),
         .libc = LibC.fromArgs(b),
         .logging = Logging.fromArgs(b),
-        .optimize = b.standardOptimizeOption(.{}),
+        .optimize = optimize,
         .panic = Panic.fromArgs(b),
         .program = Program.fromArgs(b),
         .target = b.resolveTargetQuery(.{
@@ -100,24 +101,14 @@ pub fn getEntrypoint(self: *const Self, b: *Build) *std.Build.Step.Compile {
     return start;
 }
 
-pub fn getHal(self: *const Self, b: *Build) *Module {
+pub fn getLibC(config: *const Self, b: *Build) *Compile {
     return b.dependency(
-        "hal",
+        config.libc.dependency,
         .{
-            .optimize = self.optimize,
-            .target = self.target,
+            .optimize = config.optimize,
+            .target = config.target,
         },
-    ).module("hal");
-}
-
-pub fn getLibC(self: *const Self, b: *Build) *Compile {
-    return b.dependency(
-        self.libc.dependency,
-        .{
-            .optimize = self.optimize,
-            .target = self.target,
-        },
-    ).artifact(self.libc.artifact);
+    ).artifact(config.libc.artifact);
 }
 
 pub fn getOptions(self: *const Self, b: *Build) *Module {

@@ -12,24 +12,24 @@ fn currentDate(b: *std.Build) []const u8 {
 /// Entrypoint for the build script
 pub fn build(b: *std.Build) !void {
     // Build configuration
-    const build_config = BuildConfig.fromArgs(b);
-    const halconf = build_config.hal.configHeader(b);
-
-    // Actual code to run
-    const program = build_config.getProgram(b);
-    const startup = build_config.getEntrypoint(b);
-
-    // Dependencies/helper modules
-    const hal = build_config.getHal(b);
-    const libc = build_config.getLibC(b);
-    const options = build_config.getOptions(b);
+    const config = BuildConfig.fromArgs(b);
+    const halconf = config.hal.configHeader(b);
+    const options = config.getOptions(b);
     const version = version_info.getOptions(b);
 
-    // Modules that do not depend on build config, just pull them from zon
-    const defmt = b.dependency("defmt", .{}).module("defmt");
+    // Actual code to run
+    const program = config.getProgram(b);
+    const startup = config.getEntrypoint(b);
+
+    // Modules
+    const defmt = b.dependency("defmt", .{
+        .optimize = config.optimize,
+    }).module("defmt");
+
     const fatfs = b.dependency(
-        "zfat",
+        "fatfs",
         .{
+            .optimize = config.optimize,
             .chmod = true,
             //  with .no_advanced: f_stat(), f_getfree(), f_unlink(), f_mkdir(), f_truncate() and f_rename() are removed.
             // .minimize = .no_advanced,
@@ -38,16 +38,34 @@ pub fn build(b: *std.Build) !void {
             .@"static-rtc" = currentDate(b),
         },
     ).module("zfat");
-    const rtt = b.dependency("rtt", .{}).module("rtt");
-    const ushell = b.dependency("ushell", .{}).module("ushell");
 
-    // Not standalone (yet?)
+    const hal = b.dependency(
+        "hal",
+        .{
+            .optimize = config.optimize,
+            .target = config.target,
+        },
+    ).module("hal");
+
+    const libc = config.getLibC(b);
+
     const mx66 = b.addModule("mx66", .{
         .root_source_file = b.path("modules/mx66/mod.zig"),
+        .optimize = config.optimize,
     });
+
+    const rtt = b.dependency("rtt", .{
+        .optimize = config.optimize,
+    }).module("rtt");
+
     const sd_fatfs = b.addModule("sd_fatfs", .{
         .root_source_file = b.path("modules/sd_fatfs.zig"),
+        .optimize = config.optimize,
     });
+
+    const ushell = b.dependency("ushell", .{
+        .optimize = config.optimize,
+    }).module("ushell");
 
     // Put things together
     fatfs.linkLibrary(libc);
