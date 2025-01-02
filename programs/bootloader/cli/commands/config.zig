@@ -79,8 +79,8 @@ pub const Config = enum {
         }
     }
 
-    pub fn handle(self: *const Self, shell: *Shell) void {
-        switch (self.*) {
+    pub fn handle(self: Self, shell: *Shell) void {
+        switch (self) {
             .build => printConfig(shell),
             .cycles => printDummy(shell),
             .rtt => printRtt(shell),

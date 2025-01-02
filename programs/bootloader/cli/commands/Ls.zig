@@ -8,7 +8,7 @@ const Self = @This();
 
 path: ?[]const u8 = null,
 
-pub fn handle(self: *const Self, shell: *Shell) !void {
+pub fn handle(self: Self, shell: *Shell) !void {
     if (self.path) |path| {
         if (!fs.exists(path)) {
             return shell.print("'{s}': No such file or directory", .{path});

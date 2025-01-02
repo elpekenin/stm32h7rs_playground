@@ -6,7 +6,7 @@ const Self = @This();
 
 ms: u32,
 
-pub fn handle(self: *const Self, _: *Shell) void {
+pub fn handle(self: Self, _: *Shell) void {
     hal.zig.timer.sleep(.{
         .milliseconds = self.ms,
     });

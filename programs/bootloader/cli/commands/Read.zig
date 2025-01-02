@@ -9,7 +9,7 @@ pub const description = "read a memory address";
 address: usize,
 bytes: args.ByteMask = .@"4",
 
-pub fn handle(self: *const Self, shell: *Shell) void {
+pub fn handle(self: Self, shell: *Shell) void {
     const ptr: *usize = @ptrFromInt(self.address);
     const value = ptr.* & self.bytes.mask();
     shell.print("{d}", .{value});

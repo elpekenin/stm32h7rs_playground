@@ -5,6 +5,7 @@
 const std = @import("std");
 
 const fatfs = @import("fatfs");
+const ushell = @import("ushell");
 
 const fs = @import("fs.zig");
 const Shell = @import("../cli.zig").Shell;
@@ -16,24 +17,6 @@ fn getDir(slice: []const u8) ?[]const u8 {
     return slice[0 .. end + 1];
 }
 
-fn complete(shell: *Shell, needle: []const u8, final: []const u8) void {
-    if (std.mem.eql(u8, needle, final)) return;
-
-    if (std.mem.containsAtLeast(u8, final, 1, " ")) {
-        // remove partial input
-        shell.popInputN(needle.len);
-
-        // write complete path, quoted
-        shell.appendInput("'");
-        shell.appendInput(final);
-        shell.appendInput("'");
-    } else {
-        // just write the remaining of the name
-        const diff = final[needle.len..final.len];
-        shell.appendInput(diff);
-    }
-}
-
 pub fn Enum(shell: *Shell, E: type) !void {
     const input = shell.parser.optional([]const u8) catch unreachable;
     const needle = input orelse "";
@@ -41,32 +24,8 @@ pub fn Enum(shell: *Shell, E: type) !void {
     const I = @typeInfo(E);
     const fields = I.@"enum".fields;
 
-    var n: usize = 0;
-    var names: [fields.len][:0]const u8 = undefined;
-
-    inline for (fields) |field| {
-        const name = field.name;
-
-        if (std.mem.startsWith(u8, name, needle)) {
-            names[n] = name;
-            n += 1;
-        }
-    }
-
-    switch (n) {
-        0 => {},
-        1 => complete(shell, needle, names[0]),
-        else => {
-            shell.print("\n", .{});
-
-            for (names[0..n]) |name| {
-                shell.print("{s} ", .{name});
-            }
-
-            shell.showPrompt();
-            shell.print("{s}", .{shell.buffer.constSlice()});
-        },
-    }
+    const names = ushell.utils.findMatches(fields, needle);
+    shell.complete(needle, names);
 }
 
 pub fn path(shell: *Shell) !void {
@@ -104,7 +63,7 @@ pub fn path(shell: *Shell) !void {
 
     switch (n) {
         0 => {},
-        1 => complete(shell, needle, entries[0].getCompletion()),
+        1 => shell.applyCompletion(needle, entries[0].getCompletion()),
         else => {
             shell.print("\n", .{});
 
@@ -112,7 +71,7 @@ pub fn path(shell: *Shell) !void {
                 entry.print(shell);
             }
 
-            shell.showPrompt();
+            shell.prompt();
             shell.print("{s}", .{shell.buffer.constSlice()});
         },
     }

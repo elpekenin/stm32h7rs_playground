@@ -113,9 +113,9 @@ pub const Entry = struct {
     pub fn print(self: *const Self, shell: *Shell) void {
         const name = self.getName();
 
-        const reset = shell.style(.default);
+        const reset = shell.style(.{ .foreground = .default });
         const style = switch (self.kind) {
-            .Directory => shell.style(.blue),
+            .Directory => shell.style(.{ .foreground = .blue }),
             .File => reset,
         };
 

@@ -56,7 +56,7 @@ fn playground() !noreturn {
     try sd_fatfs.mount();
 
     var shell = cli.Shell.new(reader, writer);
-    shell.run();
+    shell.loop();
 
     return error.ShellExit;
 }

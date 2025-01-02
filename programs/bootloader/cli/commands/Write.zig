@@ -10,7 +10,7 @@ address: usize,
 value: usize,
 bytes: args.ByteMask = .@"4",
 
-pub fn handle(self: *const Self, _: *Shell) void {
+pub fn handle(self: Self, _: *Shell) void {
     const ptr: *usize = @ptrFromInt(self.address);
     ptr.* = self.value & self.bytes.mask();
 }

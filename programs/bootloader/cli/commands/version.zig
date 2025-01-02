@@ -14,8 +14,8 @@ pub const Version = enum {
     build,
     all,
 
-    pub fn handle(self: *const Self, shell: *Shell) void {
-        switch (self.*) {
+    pub fn handle(self: Self, shell: *Shell) void {
+        switch (self) {
             .zig => shell.print("{s}", .{builtin.zig_version_string}),
             .git => shell.print("{s}", .{version.commit}),
             .build => shell.print("{s}", .{version.datetime}),

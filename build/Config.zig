@@ -48,7 +48,7 @@ pub fn option(
 }
 
 pub fn fromArgs(b: *Build) Self {
-    b.release_mode = .safe; // default is debug mode (not even release)
+    b.release_mode = .small; // default is debug mode (not even release)
 
     return Self{
         .hal = Hal.fromArgs(b),
