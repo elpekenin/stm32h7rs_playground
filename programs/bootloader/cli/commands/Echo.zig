@@ -9,10 +9,15 @@ const Shell = @import("../../cli.zig").Shell;
 const Self = @This();
 
 pub const usage =
-    \\usage:
-    \\  echo ...args -- print args back
-    \\  echo ...args > file -- write args into file (create/overwrite)
-    \\  echo ...args >> file -- write args into file (append)
+    \\usage: echo ...args [{>,>>} file]
+    \\
+    \\write input back
+    \\
+    \\
+    \\options:
+    \\  [none]    write to shell
+    \\  >         write to file
+    \\  >>        append to file
 ;
 pub const allow_extra_args = true;
 

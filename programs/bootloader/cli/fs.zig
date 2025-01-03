@@ -45,7 +45,20 @@ pub inline fn pathOrCwd(maybe_path: ?[]const u8) !fatfs.Path {
     return cwd();
 }
 
-pub fn mkdir(slice: []const u8) !void {
+pub fn mkdir(slice: []const u8, parents: bool) !void {
+    if (parents) {
+        for (0.., slice) |n, char| {
+            if (char != '/') continue;
+
+            const path = toPath(slice[0..n]);
+
+            if (isDir(path)) continue;
+            if (isFile(path)) return error.IsFile;
+
+            try fatfs.mkdir(path);
+        }
+    }
+
     return fatfs.mkdir(toPath(slice));
 }
 
@@ -54,20 +67,13 @@ pub fn unlink(slice: []const u8) !void {
 }
 
 pub fn isFile(slice: []const u8) bool {
-    var file = fatfs.File.open(toPath(slice), .{
-        .access = .read_only,
-        .mode = .open_existing,
-    }) catch return false;
-    defer file.close();
-
-    return true;
+    const stat = fatfs.stat(toPath(slice)) catch return false;
+    return stat.kind == .File;
 }
 
 pub fn isDir(slice: []const u8) bool {
-    var dir = fatfs.Dir.open(toPath(slice)) catch return false;
-    defer dir.close();
-
-    return true;
+    const stat = fatfs.stat(toPath(slice)) catch return false;
+    return stat.kind == .Directory;
 }
 
 pub fn print(shell: *Shell, kind: fatfs.Kind, name: []const u8) void {
