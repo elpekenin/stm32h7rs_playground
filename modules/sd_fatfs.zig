@@ -1,5 +1,7 @@
 //! Bindings to access SD card using fatfs
 
+const std = @import("std");
+
 const hal = @import("hal");
 const fatfs = @import("fatfs");
 
@@ -8,8 +10,6 @@ const bsp = hal.bsp;
 const mountpoint: [:0]const u8 = "0:/";
 
 const state = struct {
-    var init = false;
-
     /// requires pointer stability
     var global_fs: fatfs.FileSystem = undefined;
     var _disk = SdDisk{}; // requires pointer stability
@@ -17,14 +17,12 @@ const state = struct {
     var disk: *fatfs.Disk = &_disk.interface;
 };
 
-pub fn mount() !void {
-    if (state.init) return;
-
-    fatfs.disks[0] = state.disk;
-    try state.global_fs.mount(mountpoint, true);
-
-    state.init = true;
-}
+pub var mount = std.once(struct {
+    fn mount() void {
+        fatfs.disks[0] = state.disk;
+        state.global_fs.mount(mountpoint, true) catch {};
+    }
+}.mount);
 
 pub fn cardPresent() bool {
     return state.disk.getStatusFn(state.disk).disk_present;

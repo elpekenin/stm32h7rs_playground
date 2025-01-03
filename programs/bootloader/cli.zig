@@ -17,13 +17,14 @@ const Commands = union(enum) {
     reboot: commands.Reboot,
     sleep: commands.Sleep,
     touch: commands.Touch,
+    tree: commands.Tree,
     uptime: commands.Uptime,
     version: commands.Version,
     write: commands.Write,
 };
 
 pub const Shell = ushell.MakeShell(Commands, .{
-    .prompt = "stm32h7s7-dk > ",
+    .prompt = "elpekenin@stm32h7s7-dk> ",
     // bigger history size also needs bigger rtt's output buffer to fit all the text
     .max_history_size = 100,
 });

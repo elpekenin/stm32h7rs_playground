@@ -32,30 +32,15 @@ pub fn option(
     description: []const u8,
     comptime default: T,
 ) T {
-    const maybe_val: ?T = b.option(T, name, description);
-
-    if (maybe_val) |val| {
-        return val;
-    }
-
-    // specialization for enum printing
-    switch (@typeInfo(T)) {
-        .@"enum" => logger.info("{s}=.{s}", .{ name, @tagName(default) }),
-        else => logger.info("{s}={}", .{ name, default }),
-    }
-
-    return default;
+    return b.option(T, name, description) orelse default;
 }
 
 pub fn fromArgs(b: *Build) Self {
-    const optimize = b.standardOptimizeOption(.{});
-    logger.info("optimize={s}", .{@tagName(optimize)});
-
     return Self{
         .hal = Hal.fromArgs(b),
         .libc = LibC.fromArgs(b),
         .logging = Logging.fromArgs(b),
-        .optimize = optimize,
+        .optimize = b.standardOptimizeOption(.{}),
         .panic = Panic.fromArgs(b),
         .program = Program.fromArgs(b),
         .target = b.resolveTargetQuery(.{

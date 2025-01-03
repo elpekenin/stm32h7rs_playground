@@ -57,7 +57,7 @@ const fs_logger = if (config.logging.filesystem)
                 return error.FatFSWriteError;
             }
 
-            try sd_fatfs.mount();
+            sd_fatfs.mount.call();
 
             var file = try fatfs.File.open(
                 "/var/log/" ++ config.program,

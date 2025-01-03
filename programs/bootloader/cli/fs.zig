@@ -2,6 +2,7 @@
 
 const std = @import("std");
 
+const fs = @This();
 const fatfs = @import("fatfs");
 
 const Shell = @import("../cli.zig").Shell;
@@ -36,6 +37,14 @@ pub inline fn cwd() !fatfs.Path {
     return fatfs.getcwd(&path);
 }
 
+pub inline fn pathOrCwd(maybe_path: ?[]const u8) !fatfs.Path {
+    if (maybe_path) |path| {
+        return fs.toPath(path);
+    }
+
+    return cwd();
+}
+
 pub fn mkdir(slice: []const u8) !void {
     return fatfs.mkdir(toPath(slice));
 }
@@ -61,8 +70,19 @@ pub fn isDir(slice: []const u8) bool {
     return true;
 }
 
-pub fn exists(slice: []const u8) bool {
-    return isFile(slice) or isDir(slice);
+pub fn print(shell: *Shell, kind: fatfs.Kind, name: []const u8) void {
+    const reset = shell.style(.{ .foreground = .default });
+
+    const style = switch (kind) {
+        .Directory => shell.style(.{ .foreground = .blue }),
+        .File => reset,
+    };
+
+    if (std.mem.containsAtLeast(u8, name, 1, " ")) {
+        shell.print("{s}'{s}'{s} ", .{ style, name, reset });
+    } else {
+        shell.print("{s}{s}{s} ", .{ style, name, reset });
+    }
 }
 
 pub const Entry = struct {
@@ -111,18 +131,6 @@ pub const Entry = struct {
     }
 
     pub fn print(self: *const Self, shell: *Shell) void {
-        const name = self.getName();
-
-        const reset = shell.style(.{ .foreground = .default });
-        const style = switch (self.kind) {
-            .Directory => shell.style(.{ .foreground = .blue }),
-            .File => reset,
-        };
-
-        if (std.mem.containsAtLeast(u8, name, 1, " ")) {
-            shell.print("{s}'{s}'{s} ", .{ style, name, reset });
-        } else {
-            shell.print("{s}{s}{s} ", .{ style, name, reset });
-        }
+        fs.print(shell, self.kind, self.getName());
     }
 };

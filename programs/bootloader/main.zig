@@ -53,7 +53,7 @@ fn playground() !noreturn {
     try defmt_logger.err("Potato {d}", .{@as(u8, 'A')});
     _ = try defmt_logger.writer.write("\nFinished\n");
 
-    try sd_fatfs.mount();
+    sd_fatfs.mount.call();
 
     var shell = cli.Shell.new(reader, writer);
     shell.loop();

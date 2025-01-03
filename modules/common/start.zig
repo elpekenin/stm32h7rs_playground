@@ -78,7 +78,7 @@ pub export fn _start() noreturn {
     // hal.zig.cache.i_cache.enable();
 
     rtt_channels.init();
-    hal.zig.init();
+    hal.zig.init.call();
 
     const ret = program.main() catch |main_err| {
         logger.err("returned an error ({s})", .{@errorName(main_err)});

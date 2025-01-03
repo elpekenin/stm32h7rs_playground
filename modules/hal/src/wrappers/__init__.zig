@@ -171,14 +171,16 @@ fn SystemCoreClockUpdate() void {
 }
 
 /// Initialize HAL and clocks
-pub fn init() void {
-    enableFPU();
-    initHal();
-    initPower();
-    initClocks();
-    SystemCoreClockUpdate();
-    hal.bsp.init();
-}
+pub var init = std.once(struct {
+    fn init() void {
+        enableFPU();
+        initHal();
+        initPower();
+        initClocks();
+        SystemCoreClockUpdate();
+        hal.bsp.init.call();
+    }
+}.init);
 
 // Please zig, do not garbage-collect these, we need to export C funcs, thx!!
 comptime {

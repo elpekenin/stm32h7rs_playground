@@ -7,7 +7,7 @@ const Self = @This();
 path: []const u8,
 
 pub fn handle(self: Self, shell: *Shell) !void {
-    if (fs.exists(self.path)) {
+    if (fs.isFile(self.path) or fs.isDir(self.path)) {
         return shell.print("'{s}': Already exists", .{self.path});
     }
 

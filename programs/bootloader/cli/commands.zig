@@ -12,6 +12,7 @@ pub const Rm = @import("commands/Rm.zig");
 pub const Rmdir = @import("commands/Rmdir.zig");
 pub const Sleep = @import("commands/Sleep.zig");
 pub const Touch = @import("commands/Touch.zig");
+pub const Tree = @import("commands/Tree.zig");
 pub const Uptime = @import("commands/Uptime.zig");
 pub const Version = @import("commands/version.zig").Version;
 pub const Write = @import("commands/Write.zig");

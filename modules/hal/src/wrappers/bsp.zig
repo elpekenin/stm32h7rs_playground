@@ -681,21 +681,23 @@ pub const LEDS: []const DigitalOut = &.{
     },
 };
 
-pub fn init() void {
-    // initialize SD first, so that we can log to it (if such feat is enabled)
-    // as soon as possible
-    SD.DET.init();
-    sd = Sd.new() catch |err| blk: {
-        logger.err("Failed to initialize sd: {s}", .{@errorName(err)});
-        break :blk null;
-    };
+pub var init = std.once(struct {
+    fn init() void {
+        // initialize SD first, so that we can log to it (if such feat is enabled)
+        // as soon as possible
+        SD.DET.init();
+        sd = Sd.new() catch |err| blk: {
+            logger.err("Failed to initialize sd: {s}", .{@errorName(err)});
+            break :blk null;
+        };
 
-    BUTTON.init();
+        BUTTON.init();
 
-    for (LEDS) |pin| {
-        pin.init();
-        pin.set(false);
+        for (LEDS) |pin| {
+            pin.init();
+            pin.set(false);
+        }
+
+        OSPI.init();
     }
-
-    OSPI.init();
-}
+}.init);

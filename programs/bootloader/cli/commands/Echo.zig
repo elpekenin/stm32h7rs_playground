@@ -8,6 +8,12 @@ const Shell = @import("../../cli.zig").Shell;
 
 const Self = @This();
 
+pub const usage =
+    \\usage:
+    \\  echo ...args -- print args back
+    \\  echo ...args > file -- write args into file (create/overwrite)
+    \\  echo ...args >> file -- write args into file (append)
+;
 pub const allow_extra_args = true;
 
 fn getPath(parser: *ushell.Parser) ![]const u8 {

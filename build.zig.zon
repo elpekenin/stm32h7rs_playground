@@ -28,8 +28,8 @@
             // .hash = "12205fd51be74c1f7c77283fb5e7c70fb2f631cfed0aa8d71bd9f65abe4900491099",
         },
         .ushell = .{
-            .url = "git+https://github.com/elpekenin/ushell#fae30d2ec49cdb64e53493a2ce615726d356558b",
-            .hash = "12200c24f5a1df481f766a0db4b464c4b796f8984652066d3e84d73bc35634ea7525",
+            .url = "git+https://github.com/elpekenin/ushell#2df31d2ea37747517bc2dee0aba217f118f47a7b",
+            .hash = "1220485c0684cb10ec42dd7a3b5b81355d67555a55021282cb7518eed27db88361da",
         },
     },
 
