@@ -51,7 +51,8 @@ pub fn handle(self: Self, shell: *Shell) !void {
         }
     }
 
-    // iter() will chdir, we want to end in the same location
+    // iter() will chdir to use relative paths
+    // but we want to end in the same location we ran the command from
     const cwd = try fs.cwd();
     defer fatfs.chdir(cwd) catch {
         shell.print("couldn't go back to ", .{});
@@ -59,7 +60,7 @@ pub fn handle(self: Self, shell: *Shell) !void {
     };
 
     const path = try fs.pathOrCwd(self.path);
-    fs.print(shell, .Directory, path);
+    fs.print(shell, .Directory, std.mem.sliceTo(path, 0));
 
     var stats = Stats{
         .dirs = 0,
