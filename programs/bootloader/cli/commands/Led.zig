@@ -5,7 +5,9 @@ const Shell = @import("../../cli.zig").Shell;
 
 const Self = @This();
 
-pub const description = "control a LED";
+pub const meta: ushell.Meta = .{
+    .description = "control a LED",
+};
 
 n: u2,
 state: bool,

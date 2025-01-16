@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const fatfs = @import("fatfs");
+const zfat = @import("zfat");
 
 const fs = @import("../fs.zig");
 const t = @import("../tab.zig");
@@ -15,11 +15,11 @@ const Stats = struct {
     files: usize,
 };
 
-fn iter(shell: *Shell, path: fatfs.Path, level: usize, stats: *Stats) !void {
+fn iter(shell: *Shell, path: zfat.Path, level: usize, stats: *Stats) !void {
     // so that `Dir.open(child)` works without concatenating slices or the like
-    try fatfs.chdir(path);
+    try zfat.chdir(path);
 
-    var dir = try fatfs.Dir.open(fs.toPath("")); // we just cd'ed into target
+    var dir = try zfat.Dir.open(fs.toPath("")); // we just cd'ed into target
     defer dir.close();
 
     while (try dir.next()) |child| {
@@ -54,7 +54,7 @@ pub fn handle(self: Self, shell: *Shell) !void {
     // iter() will chdir to use relative paths
     // but we want to end in the same location we ran the command from
     const cwd = try fs.cwd();
-    defer fatfs.chdir(cwd) catch {
+    defer zfat.chdir(cwd) catch {
         shell.print("couldn't go back to ", .{});
         fs.print(shell, .Directory, std.mem.sliceTo(cwd, 0));
     };
@@ -66,9 +66,7 @@ pub fn handle(self: Self, shell: *Shell) !void {
         .dirs = 0,
         .files = 0,
     };
-    iter(shell, path, 1, &stats) catch |e| {
-        return shell.print("\nerror: ({s})", .{@errorName(e)});
-    };
+    try iter(shell, path, 1, &stats);
 
     shell.print("\n\n{d} {s}, {d} {s}", .{
         stats.dirs,
@@ -78,4 +76,6 @@ pub fn handle(self: Self, shell: *Shell) !void {
     });
 }
 
-pub const tab = t.path;
+pub fn tab(shell: *Shell, tokens: []const []const u8) !void {
+    return t.path(shell, tokens, 1);
+}

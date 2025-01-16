@@ -1,9 +1,9 @@
-//! Bindings to access SD card using fatfs
+//! Bindings to access SD card using zfat
 
 const std = @import("std");
 
 const hal = @import("hal");
-const fatfs = @import("fatfs");
+const zfat = @import("zfat");
 
 const bsp = hal.bsp;
 
@@ -11,15 +11,15 @@ const mountpoint: [:0]const u8 = "0:/";
 
 const state = struct {
     /// requires pointer stability
-    var global_fs: fatfs.FileSystem = undefined;
+    var global_fs: zfat.FileSystem = undefined;
     var _disk = SdDisk{}; // requires pointer stability
 
-    var disk: *fatfs.Disk = &_disk.interface;
+    var disk: *zfat.Disk = &_disk.interface;
 };
 
 pub var mount = std.once(struct {
     fn mount() void {
-        fatfs.disks[0] = state.disk;
+        zfat.disks[0] = state.disk;
         state.global_fs.mount(mountpoint, true) catch {};
     }
 }.mount);
@@ -34,7 +34,7 @@ const SdDisk = struct {
 
     const sector_size = 512;
 
-    interface: fatfs.Disk = .{
+    interface: zfat.Disk = .{
         .getStatusFn = Self.getStatus,
         .initializeFn = Self.initialize,
         .readFn = Self.read,
@@ -42,35 +42,35 @@ const SdDisk = struct {
         .ioctlFn = Self.ioctl,
     },
 
-    fn getStatus(_: *fatfs.Disk) fatfs.Disk.Status {
-        return fatfs.Disk.Status{
+    fn getStatus(_: *zfat.Disk) zfat.Disk.Status {
+        return zfat.Disk.Status{
             .initialized = bsp.sd.?.initialized(),
             .disk_present = bsp.sd.?.connected(),
             .write_protected = false,
         };
     }
 
-    fn initialize(_: *fatfs.Disk) fatfs.Disk.Error!fatfs.Disk.Status {
+    fn initialize(_: *zfat.Disk) zfat.Disk.Error!zfat.Disk.Status {
         if (bsp.sd == null) {
             return error.DiskNotReady;
         }
 
-        return fatfs.Disk.Status{
+        return zfat.Disk.Status{
             .initialized = bsp.sd.?.initialized(),
             .disk_present = bsp.sd.?.connected(),
             .write_protected = false,
         };
     }
 
-    fn read(_: *fatfs.Disk, buff: [*]u8, sector: fatfs.LBA, count: c_uint) fatfs.Disk.Error!void {
+    fn read(_: *zfat.Disk, buff: [*]u8, sector: zfat.LBA, count: c_uint) zfat.Disk.Error!void {
         bsp.sd.?.read(buff, sector, count) catch return error.DiskNotReady;
     }
 
-    fn write(_: *fatfs.Disk, buff: [*]const u8, sector: fatfs.LBA, count: c_uint) fatfs.Disk.Error!void {
+    fn write(_: *zfat.Disk, buff: [*]const u8, sector: zfat.LBA, count: c_uint) zfat.Disk.Error!void {
         bsp.sd.?.write(buff, sector, count) catch return error.DiskNotReady;
     }
 
-    fn ioctl(interface: *fatfs.Disk, cmd: fatfs.IoCtl, buff: [*]u8) fatfs.Disk.Error!void {
+    fn ioctl(interface: *zfat.Disk, cmd: zfat.IoCtl, buff: [*]u8) zfat.Disk.Error!void {
         if (interface.getStatus().initialized != true) {
             return error.DiskNotReady;
         }

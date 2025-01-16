@@ -5,7 +5,6 @@ Refer to the various projects for their respective licensing. Non comprehensive 
   - ST H7RS HAL
   - ST MX66UW1G46G
   - ST H7RS CMSIS Device
-  - picolibc
   - Segger RTT
   - ElmChan FatFS
 

@@ -1,10 +1,14 @@
+const ushell = @import("ushell");
+
 const args = @import("../args.zig");
 const t = @import("../tab.zig");
 const Shell = @import("../../cli.zig").Shell;
 
 const Self = @This();
 
-pub const description = "read a memory address";
+pub const meta: ushell.Meta = .{
+    .description = "read a memory address",
+};
 
 address: usize,
 bytes: args.ByteMask = .@"4",
@@ -15,7 +19,6 @@ pub fn handle(self: Self, shell: *Shell) void {
     shell.print("{d}", .{value});
 }
 
-pub fn tab(shell: *Shell) !void {
-    _ = try shell.parser.required(usize); // address
-    return t.Enum(shell, args.ByteMask);
+pub fn tab(shell: *Shell, tokens: []const []const u8) !void {
+    return t.Enum(args.ByteMask, shell, tokens, 2);
 }

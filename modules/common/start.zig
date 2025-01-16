@@ -38,17 +38,17 @@ pub const dummy_cycles_config = program.dummy_cycles_config;
 pub const rtt_channels = rtt.RTT(rtt_config);
 
 const symbols = struct {
-    extern var __stack: anyopaque;
+    extern var stack: anyopaque;
 
-    extern var __bss_start: anyopaque;
-    extern var __bss_end: anyopaque;
+    extern var bss_start: anyopaque;
+    extern var bss_end: anyopaque;
 
     // RAM to be filled
-    extern var __data_start: anyopaque;
-    extern var __data_end: anyopaque;
+    extern var data_start: anyopaque;
+    extern var data_end: anyopaque;
 
-    // contents in flash, to be copied in RAM
-    extern var __data_source: anyopaque;
+    // values stored in flash that are copied into RAM
+    extern var data_source: anyopaque;
 };
 
 fn deadlock() noreturn {
@@ -62,16 +62,16 @@ fn deadlock() noreturn {
 /// It sets up the data sections in RAM, to then execute the program.
 pub export fn _start() noreturn {
     // fill BSS with zero
-    const bss_start: [*]u8 = @ptrCast(&symbols.__bss_start);
-    const bss_end: [*]u8 = @ptrCast(&symbols.__bss_end);
+    const bss_start: [*]u8 = @ptrCast(&symbols.bss_start);
+    const bss_end: [*]u8 = @ptrCast(&symbols.bss_end);
     const bss_len = @intFromPtr(bss_end) - @intFromPtr(bss_start);
     @memset(bss_start[0..bss_len], 0);
 
     // load data from flash
-    const data_start: [*]u8 = @ptrCast(&symbols.__data_start);
-    const data_end: [*]u8 = @ptrCast(&symbols.__data_end);
+    const data_start: [*]u8 = @ptrCast(&symbols.data_start);
+    const data_end: [*]u8 = @ptrCast(&symbols.data_end);
     const data_len = @intFromPtr(data_end) - @intFromPtr(data_start);
-    const data_src: [*]const u8 = @ptrCast(&symbols.__data_source);
+    const data_src: [*]const u8 = @ptrCast(&symbols.data_source);
     @memcpy(data_start[0..data_len], data_src[0..data_len]);
 
     // halts, apparently, right after executing the func
@@ -104,8 +104,8 @@ pub export fn _start() noreturn {
     deadlock();
 }
 
-export const vector_table: VectorTable linksection(".data.init.enter") = .{
-    .stack_pointer = &symbols.__stack,
+export const vector_table: VectorTable linksection(".vector_table") = .{
+    .stack_pointer = &symbols.stack,
     .Reset = @import("start.zig")._start,
     .SDMMC1 = hal.bsp.sdIsr,
     .TIM6 = hal.zig.timer.isr,

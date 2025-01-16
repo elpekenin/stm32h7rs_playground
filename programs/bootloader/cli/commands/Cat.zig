@@ -1,4 +1,4 @@
-const fatfs = @import("fatfs");
+const zfat = @import("zfat");
 
 const fs = @import("../fs.zig");
 const t = @import("../tab.zig");
@@ -17,7 +17,7 @@ pub fn handle(self: Self, shell: *Shell) !void {
         return shell.print("'{s}': No such file", .{self.path});
     }
 
-    var file = try fatfs.File.open(fs.toPath(self.path), .{
+    var file = try zfat.File.open(fs.toPath(self.path), .{
         .access = .read_only,
         .mode = .open_existing,
     });
@@ -31,4 +31,6 @@ pub fn handle(self: Self, shell: *Shell) !void {
     }
 }
 
-pub const tab = t.path;
+pub fn tab(shell: *Shell, tokens: []const []const u8) !void {
+    return t.path(shell, tokens, 1);
+}

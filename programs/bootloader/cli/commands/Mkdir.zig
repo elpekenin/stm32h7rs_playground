@@ -1,32 +1,31 @@
 const std = @import("std");
 
+const ushell = @import("ushell");
+
 const fs = @import("../fs.zig");
 const t = @import("../tab.zig");
 const Shell = @import("../../cli.zig").Shell;
 
 const Self = @This();
 
-pub const allow_extra_args = true;
-
-pub const usage =
-    \\usage: mkdir <folder> [-p]
+pub const meta: ushell.Meta = .{
+    .usage =
+    \\usage: mkdir <folder> [--parents,--no-parents]
     \\
     \\create a directory (if it does not exist already)
     \\
     \\
     \\options:
-    \\  -p, --parents    no error if existing, make parent directories as needed
-;
+    \\  --parents       no error if existing and make parent directories as needed
+    \\  --no-parents    error if existing, does not make parents (default behavior)
+    ,
+};
 
 path: []const u8,
+parents: ushell.OptionalFlag,
 
-fn parentsFlagPresent(shell: *Shell) bool {
-    const token = shell.parser.next() orelse return false;
-    return std.mem.eql(u8, token, "-p") or std.mem.eql(u8, token, "--parents");
-}
-
-pub fn handle(self: Self, shell: *Shell) !void {
-    const parents = parentsFlagPresent(shell);
+pub fn handle(self: ushell.Args(Self), shell: *Shell) !void {
+    const parents = self.parents orelse false;
 
     if (fs.isFile(self.path) or fs.isDir(self.path)) {
         if (parents) return;
@@ -36,4 +35,6 @@ pub fn handle(self: Self, shell: *Shell) !void {
     try fs.mkdir(self.path, parents);
 }
 
-pub const tab = t.path;
+pub fn tab(shell: *Shell, tokens: []const []const u8) !void {
+    return t.path(shell, tokens, 1);
+}

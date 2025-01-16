@@ -4,11 +4,11 @@ Long-term goal is to write a UF2 bootloader and maybe a keyboard firmware on top
 
 # File structure
 - `modules` - Building blocks
-  - `application` - (TBD) So far, just a playground for random code ideas
-  - `bootloader` - (WIP) Implementation of UF2 bootloader, into the external OSPI flash
   - `common`: `crt0.c`-like logic
     - Fill data regions and some other initial setup
     - Set up zig's logging and panic
     - Call into main
   - `hal` - STM's vendor HAL + some zig wrappers
-- `ld` - Linker scripts
+- `programs` - Actual "useful" code
+  - `application` - (TBD)
+  - `bootloader` - (WIP) Implementation of UF2 bootloader, into the external OSPI flash

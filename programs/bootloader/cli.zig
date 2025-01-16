@@ -27,4 +27,7 @@ pub const Shell = ushell.MakeShell(Commands, .{
     .prompt = "elpekenin@stm32h7s7-dk> ",
     // bigger history size also needs bigger rtt's output buffer to fit all the text
     .max_history_size = 100,
+    .parser_options = .{
+        .max_tokens = 100,
+    },
 });

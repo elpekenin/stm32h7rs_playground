@@ -13,19 +13,12 @@ const Self = @This();
 const Type = enum {
     bootloader,
     application,
-
-    fn name(self: Type) []const u8 {
-        return switch (self) {
-            .bootloader => "bootloader",
-            .application => "application",
-        };
-    }
 };
 
 type: Type,
 
 pub fn name(self: *const Self) []const u8 {
-    return self.type.name();
+    return @tagName(self.type);
 }
 
 pub fn fromArgs(b: *Build) Self {

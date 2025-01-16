@@ -18,7 +18,7 @@ pub const FLASH_SIZE = 0x08000000;
 const Flag = struct {
     const MAGIC = 0xBEBECAFE;
 
-    var value: u32 linksection(".preserve.0") = undefined;
+    var value: u32 linksection(".noinit") = undefined;
 
     fn set() void {
         value = MAGIC;

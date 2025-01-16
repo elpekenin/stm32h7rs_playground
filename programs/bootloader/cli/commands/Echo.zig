@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const fatfs = @import("fatfs");
+const zfat = @import("zfat");
 const ushell = @import("ushell");
 
 const fs = @import("../fs.zig");
@@ -8,7 +8,8 @@ const Shell = @import("../../cli.zig").Shell;
 
 const Self = @This();
 
-pub const usage =
+pub const meta: ushell.Meta = .{
+    .usage =
     \\usage: echo ...args [{>,>>} file]
     \\
     \\write input back
@@ -18,59 +19,43 @@ pub const usage =
     \\  [none]    write to shell
     \\  >         write to file
     \\  >>        append to file
-;
-pub const allow_extra_args = true;
+    ,
+};
 
-fn getPath(parser: *ushell.Parser) ![]const u8 {
-    const path = try parser.required([]const u8);
-    try parser.assertExhausted();
-    return path;
-}
-
-// get parser back to initial state (only command_name has been consumed)
-fn initialState(parser: *ushell.Parser) void {
-    parser.reset();
-    _ = parser.next();
-}
+args: ushell.RemainingTokens,
 
 fn writeToFile(
     path: []const u8,
-    parser: *ushell.Parser,
-    tokens: usize,
-    mode: fatfs.File.Mode,
+    tokens: []const []const u8,
+    mode: zfat.File.Mode,
 ) !void {
-    var file = try fatfs.File.open(fs.toPath(path), .{ .access = .write_only, .mode = mode });
+    var file = try zfat.File.open(fs.toPath(path), .{ .access = .write_only, .mode = mode });
     defer file.close();
 
-    for (0..tokens) |_| {
-        _ = try file.write(parser.next().?);
+    for (tokens) |token| {
+        _ = try file.write(token);
         _ = try file.write(" ");
     }
 }
 
-pub fn handle(_: *const Self, shell: *Shell) !void {
-    const parser = &shell.parser;
+pub fn handle(self: ushell.Args(Self), shell: *Shell) !void {
+    const tokens = self.args;
 
-    var i: usize = 0;
-    var mode: ?fatfs.File.Mode = null;
-    while (parser.next()) |token| {
-        if (std.mem.eql(u8, token, ">")) {
-            mode = .open_always;
-        } else if (std.mem.eql(u8, token, ">>")) {
-            mode = .open_append;
-        }
+    var mode: ?zfat.File.Mode = null;
 
-        if (mode) |m| {
-            const path = try getPath(parser);
-            initialState(parser);
-            return writeToFile(path, parser, i, m);
-        }
-
-        i += 1;
+    const maybe_redirect = tokens[tokens.len - 2];
+    if (std.mem.eql(u8, maybe_redirect, ">")) {
+        mode = .open_always;
+    } else if (std.mem.eql(u8, maybe_redirect, ">>")) {
+        mode = .open_append;
     }
 
-    initialState(parser);
-    while (parser.next()) |token| {
+    if (mode) |m| {
+        const path = tokens[tokens.len - 1];
+        return writeToFile(path, tokens[0 .. tokens.len - 2], m);
+    }
+
+    for (tokens) |token| {
         shell.print("{s} ", .{token});
     }
 }

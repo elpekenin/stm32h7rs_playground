@@ -11,7 +11,7 @@ const defmt = @import("defmt");
 const hal = @import("hal");
 const mx66 = @import("mx66");
 const rtt = @import("rtt");
-const sd_fatfs = @import("sd_fatfs");
+const sd = @import("sd");
 
 const dfu = @import("dfu.zig");
 const cli = @import("cli.zig");
@@ -53,7 +53,7 @@ fn playground() !noreturn {
     try defmt_logger.err("Potato {d}", .{@as(u8, 'A')});
     _ = try defmt_logger.writer.write("\nFinished\n");
 
-    sd_fatfs.mount.call();
+    sd.mount.call();
 
     var shell = cli.Shell.new(reader, writer);
     shell.loop();

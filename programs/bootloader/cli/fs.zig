@@ -3,20 +3,43 @@
 const std = @import("std");
 
 const fs = @This();
-const fatfs = @import("fatfs");
+const zfat = @import("zfat");
 
 const Shell = @import("../cli.zig").Shell;
 
 comptime {
-    if (fatfs.PathChar != u8) {
+    if (zfat.PathChar != u8) {
         const msg = "Unsupported config";
         @compileError(msg);
     }
 }
 
-pub inline fn toPath(slice: []const u8) fatfs.Path {
+/// Given "foo/bar/baz" input, calling `.next()` will return
+/// foo
+/// foo/bar
+/// foo/bar/baz
+/// null
+const PathIterator = struct {
+    const Self = @This();
+
+    tokenizer: std.mem.SplitIterator(u8, .scalar),
+
+    fn new(slice: []const u8) Self {
+        return .{
+            .tokenizer = std.mem.splitScalar(u8, slice, '/'),
+        };
+    }
+
+    fn next(self: *Self) ?[]const u8 {
+        _ = self.tokenizer.next() orelse return null;
+        const end = self.tokenizer.index orelse unreachable;
+        return self.tokenizer.buffer[0..end];
+    }
+};
+
+pub inline fn toPath(slice: []const u8) zfat.Path {
     const len = 100;
-    var path: [len:0]fatfs.PathChar = undefined;
+    var path: [len:0]zfat.PathChar = undefined;
 
     std.debug.assert(slice.len < len);
 
@@ -29,15 +52,15 @@ pub inline fn toPath(slice: []const u8) fatfs.Path {
 }
 
 pub fn chdir(slice: []const u8) !void {
-    try fatfs.chdir(toPath(slice));
+    try zfat.chdir(toPath(slice));
 }
 
-pub inline fn cwd() !fatfs.Path {
-    var path: [200]fatfs.PathChar = undefined;
-    return fatfs.getcwd(&path);
+pub inline fn cwd() !zfat.Path {
+    var path: [200]zfat.PathChar = undefined;
+    return zfat.getcwd(&path);
 }
 
-pub inline fn pathOrCwd(maybe_path: ?[]const u8) !fatfs.Path {
+pub inline fn pathOrCwd(maybe_path: ?[]const u8) !zfat.Path {
     if (maybe_path) |path| {
         return fs.toPath(path);
     }
@@ -47,42 +70,37 @@ pub inline fn pathOrCwd(maybe_path: ?[]const u8) !fatfs.Path {
 
 pub fn mkdir(slice: []const u8, parents: bool) !void {
     if (parents) {
-        for (0.., slice) |n, char| {
-            if (char != '/') continue;
-
-            const path = toPath(slice[0..n]);
-
+        var iterator: PathIterator = .new(slice);
+        while (iterator.next()) |path| {
             if (isDir(path)) continue;
             if (isFile(path)) return error.IsFile;
-
-            try fatfs.mkdir(path);
+            try zfat.mkdir(toPath(path));
         }
     }
 
-    return fatfs.mkdir(toPath(slice));
+    return zfat.mkdir(toPath(slice));
 }
 
 pub fn unlink(slice: []const u8) !void {
-    try fatfs.unlink(toPath(slice));
+    try zfat.unlink(toPath(slice));
 }
 
 pub fn isFile(slice: []const u8) bool {
-    const stat = fatfs.stat(toPath(slice)) catch return false;
+    const stat = zfat.stat(toPath(slice)) catch return false;
     return stat.kind == .File;
 }
 
 pub fn isDir(slice: []const u8) bool {
-    const stat = fatfs.stat(toPath(slice)) catch return false;
+    const stat = zfat.stat(toPath(slice)) catch return false;
     return stat.kind == .Directory;
 }
 
-pub fn print(shell: *Shell, kind: fatfs.Kind, name: []const u8) void {
-    const reset = shell.style(.{ .foreground = .default });
-
+pub fn print(shell: *Shell, kind: zfat.Kind, name: []const u8) void {
     const style = switch (kind) {
-        .Directory => shell.style(.{ .foreground = .blue }),
-        .File => reset,
+        .Directory => shell.style(.blue),
+        .File => shell.style(.default),
     };
+    const reset = shell.style(.default);
 
     if (std.mem.containsAtLeast(u8, name, 1, " ")) {
         shell.print("{s}'{s}'{s} ", .{ style, name, reset });
@@ -95,10 +113,10 @@ pub const Entry = struct {
     const Self = @This();
 
     // extra space for '/' and sentinel
-    buffer: [fatfs.FileInfo.max_name_len + 2]u8,
-    kind: fatfs.Kind,
+    buffer: [zfat.FileInfo.max_name_len + 2]u8,
+    kind: zfat.Kind,
 
-    pub fn from(info: fatfs.FileInfo) Self {
+    pub fn from(info: zfat.FileInfo) Self {
         const name = info.name();
 
         var self = Self{

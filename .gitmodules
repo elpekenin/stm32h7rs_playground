@@ -1,3 +1,0 @@
-[submodule "lib/picolibc"]
-	path = lib/picolibc
-	url = https://github.com/kassane/picolibc-zig

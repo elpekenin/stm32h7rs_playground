@@ -3,7 +3,7 @@ const std = @import("std");
 const BuildConfig = @import("build/Config.zig");
 const version_info = @import("build/version_info.zig");
 
-/// Fix the fake RTC shown by zfat/FatFS, to the date of building
+/// Lock the fake RTC shown by zfat, to the date of building
 fn currentDate(b: *std.Build) []const u8 {
     const out = b.run(&.{ "date", "+\"%Y-%m-%d\"" });
     return out[1 .. out.len - 2]; // output is wrapped in quotes, remove them
@@ -18,38 +18,25 @@ pub fn build(b: *std.Build) !void {
     const version = version_info.getOptions(b);
 
     // Actual code to run
+    const exe = config.getEntrypoint(b);
     const program = config.getProgram(b);
-    const startup = config.getEntrypoint(b);
 
     // Modules
     const defmt = b.dependency("defmt", .{
         .optimize = config.optimize,
     }).module("defmt");
 
-    const fatfs = b.dependency(
-        "fatfs",
-        .{
-            .optimize = config.optimize,
-            .chmod = true,
-            //  with .no_advanced: f_stat(), f_getfree(), f_unlink(), f_mkdir(), f_truncate() and f_rename() are removed.
-            // .minimize = .no_advanced,
-            .relative_path_api = .enabled_with_getcwd,
-            .@"no-libc" = true,
-            .@"static-rtc" = currentDate(b),
-        },
-    ).module("zfat");
+    const foundation = b.dependency("foundation-libc", .{
+        .optimize = config.optimize,
+        .target = config.target,
+    }).artifact("foundation");
 
-    const hal = b.dependency(
-        "hal",
-        .{
-            .optimize = config.optimize,
-            .target = config.target,
-        },
-    ).module("hal");
+    const hal = b.dependency("hal", .{
+        .optimize = config.optimize,
+        .target = config.target,
+    }).module("hal");
 
-    const libc = config.getLibC(b);
-
-    const mx66 = b.addModule("mx66", .{
+    const mx66 = b.createModule(.{
         .root_source_file = b.path("modules/mx66/mod.zig"),
         .optimize = config.optimize,
     });
@@ -58,8 +45,8 @@ pub fn build(b: *std.Build) !void {
         .optimize = config.optimize,
     }).module("rtt");
 
-    const sd_fatfs = b.addModule("sd_fatfs", .{
-        .root_source_file = b.path("modules/sd_fatfs.zig"),
+    const sd = b.createModule(.{
+        .root_source_file = b.path("modules/sd.zig"),
         .optimize = config.optimize,
     });
 
@@ -67,45 +54,65 @@ pub fn build(b: *std.Build) !void {
         .optimize = config.optimize,
     }).module("ushell");
 
-    // Put things together
-    fatfs.linkLibrary(libc);
+    const zfat = b.dependency("zfat", .{
+        .optimize = config.optimize,
+        .chmod = true,
+        //  with .no_advanced: f_stat(), f_getfree(), f_unlink(), f_mkdir(), f_truncate() and f_rename() are removed.
+        // .minimize = .no_advanced,
+        .relative_path_api = .enabled_with_getcwd,
+        .@"no-libc" = true,
+        .@"static-rtc" = currentDate(b),
+    }).module("zfat");
 
-    hal.linkLibrary(libc);
+    // Put things together
+    exe.linkLibrary(foundation);
+    exe.root_module.addImport("config", options);
+    exe.root_module.addImport("hal", hal);
+    exe.root_module.addImport("program", program);
+    exe.root_module.addImport("rtt", rtt);
+    exe.root_module.addImport("sd", sd);
+    exe.root_module.addImport("zfat", zfat);
+    exe.step.dependOn(&halconf.step); // FIXME: remove hack
+
+    hal.linkLibrary(foundation);
     hal.addConfigHeader(halconf);
 
     mx66.addImport("hal", hal);
     mx66.addImport("program", program);
 
-    sd_fatfs.addImport("fatfs", fatfs);
-    sd_fatfs.addImport("hal", hal);
-
     program.addImport("config", options);
     program.addImport("defmt", defmt);
-    program.addImport("fatfs", fatfs);
     program.addImport("hal", hal);
     program.addImport("mx66", mx66);
     program.addImport("rtt", rtt);
-    program.addImport("sd_fatfs", sd_fatfs);
+    program.addImport("sd", sd);
     program.addImport("ushell", ushell);
     program.addImport("version", version);
+    program.addImport("zfat", zfat);
 
-    startup.linkLibrary(libc);
-    startup.root_module.addImport("config", options);
-    startup.root_module.addImport("fatfs", fatfs);
-    startup.root_module.addImport("hal", hal);
-    startup.root_module.addImport("program", program);
-    startup.root_module.addImport("rtt", rtt);
-    startup.root_module.addImport("sd_fatfs", sd_fatfs);
-    startup.step.dependOn(&halconf.step); // FIXME: remove hack
+    sd.addImport("hal", hal);
+    sd.addImport("zfat", zfat);
+
+    zfat.linkLibrary(foundation);
 
     // Reduce size
-    libc.link_gc_sections = true;
-    libc.link_data_sections = true;
-    libc.link_function_sections = true;
+    foundation.link_gc_sections = true;
+    foundation.link_data_sections = true;
+    foundation.link_function_sections = true;
 
     // Prevent vector table from being optimized away
-    startup.forceUndefinedSymbol("vector_table");
+    exe.forceUndefinedSymbol("vector_table");
 
     // Binary output
-    b.installArtifact(startup);
+    const elf = b.addInstallArtifact(exe, .{});
+    const bin = b.addObjCopy(elf.emitted_bin.?, .{
+        .format = .bin,
+    });
+    const install_bin = b.addInstallBinFile(
+        bin.getOutput(),
+        b.fmt("{s}.bin", .{config.program.name()}),
+    );
+
+    install_bin.step.dependOn(&elf.step);
+    b.default_step.dependOn(&install_bin.step);
 }

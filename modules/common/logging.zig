@@ -49,7 +49,7 @@ const noop_logger = struct {
 //        than to write 4x 50byte ones
 const fs_logger = if (config.logging.filesystem)
     struct {
-        const fatfs = @import("fatfs");
+        const zfat = @import("zfat");
         const sd_fatfs = @import("sd_fatfs");
 
         fn write(_: void, bytes: []const u8) anyerror!usize {
@@ -59,7 +59,7 @@ const fs_logger = if (config.logging.filesystem)
 
             sd_fatfs.mount.call();
 
-            var file = try fatfs.File.open(
+            var file = try zfat.File.open(
                 "/var/log/" ++ config.program,
                 .{
                     .mode = .open_append,

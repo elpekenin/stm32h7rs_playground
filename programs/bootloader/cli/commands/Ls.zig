@@ -1,4 +1,4 @@
-const fatfs = @import("fatfs");
+const zfat = @import("zfat");
 
 const fs = @import("../fs.zig");
 const t = @import("../tab.zig");
@@ -21,7 +21,7 @@ pub fn handle(self: Self, shell: *Shell) !void {
 
     const path = try fs.pathOrCwd(self.path);
 
-    var dir = try fatfs.Dir.open(path);
+    var dir = try zfat.Dir.open(path);
     defer dir.close();
 
     while (try dir.next()) |child| {
@@ -30,4 +30,6 @@ pub fn handle(self: Self, shell: *Shell) !void {
     }
 }
 
-pub const tab = t.path;
+pub fn tab(shell: *Shell, tokens: []const []const u8) !void {
+    return t.path(shell, tokens, 1);
+}

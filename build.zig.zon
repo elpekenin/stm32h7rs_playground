@@ -7,20 +7,12 @@
             .url = "git+https://github.com/elpekenin/defmt#ed32295d39d63aca3e35a78c5a8be5a27202a18b",
             .hash = "1220ad09ba3218873e6c813a0090c2a48f6d45403f06f1d34c66cb35b9e487c2efcb",
         },
-        .fatfs = .{
-            .url = "git+https://github.com/ZigEmbeddedGroup/zfat#3cba3a8abdc0956d22df4bc56c2b8d795f7256ad",
-            .hash = "1220a38ae29c1605c82f9309cd8721f1915606252d8120811054419d4e8226cc5d81",
-        },
-        .foundation = .{
-            .url = "git+https://github.com/ZigEmbeddedGroup/foundation-libc#5281055623dff89af7b05572f5aebae0f606e6a1",
-            .hash = "1220048600075db8d58faa59d9671e7e4056d134d1f53b0efd9774d01321ef3e343e",
+        .@"foundation-libc" = .{
+            .url = "git+https://github.com/ZigEmbeddedGroup/foundation-libc#62de5f43c6947d8f4b99723da3dcb1bc6a38ba80",
+            .hash = "1220cf0070fc0d6dc0e21e3a8e382ea0b99b15d4bc8864b231c390ee4d7c231c61ec",
         },
         .hal = .{
             .path = "modules/hal",
-        },
-        .picolibc = .{
-            .url = "git+https://github.com/allyourcodebase/picolibc-zig#7a128e1d7a3781b3eae7cf3d7c59c66a2bee36e7",
-            .hash = "1220e83a23185cb5a9749e107a3ee4d725f50dc176f48460a89ecd545d249e8f1e87",
         },
         .rtt = .{
             .path = "../zig-rtt", // 0.14 patches
@@ -28,8 +20,12 @@
             // .hash = "12205fd51be74c1f7c77283fb5e7c70fb2f631cfed0aa8d71bd9f65abe4900491099",
         },
         .ushell = .{
-            .url = "git+https://github.com/elpekenin/ushell#2df31d2ea37747517bc2dee0aba217f118f47a7b",
-            .hash = "1220485c0684cb10ec42dd7a3b5b81355d67555a55021282cb7518eed27db88361da",
+            .url = "git+https://github.com/elpekenin/ushell#d02e2e6a179483fbf2be966452423a70d2102edc",
+            .hash = "122078ef2c87e15d74566fd3c3dbb08344e4023b080364d04fa90429bd0eb1344d6d",
+        },
+        .zfat = .{
+            .url = "git+https://github.com/ZigEmbeddedGroup/zfat#78b11cd7153176542930253fc6e77c1041a03c63",
+            .hash = "1220efde8cd5f8e779868d7a2def3c12cab06d501b927403132c6b8b3e3f0387c14c",
         },
     },
 

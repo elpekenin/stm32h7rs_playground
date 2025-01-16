@@ -4,7 +4,7 @@
 
 const std = @import("std");
 
-const fatfs = @import("fatfs");
+const zfat = @import("zfat");
 const ushell = @import("ushell");
 
 const fs = @import("fs.zig");
@@ -17,19 +17,25 @@ fn getDir(slice: []const u8) ?[]const u8 {
     return slice[0 .. end + 1];
 }
 
-pub fn Enum(shell: *Shell, E: type) !void {
-    const input = shell.parser.optional([]const u8) catch unreachable;
+fn getToken(tokens: []const []const u8, index: usize) ?[]const u8 {
+    if (tokens.len <= index) return null;
+    return tokens[index];
+}
+
+pub fn Enum(comptime E: type, shell: *Shell, tokens: []const []const u8, index: usize) !void {
+    const input = getToken(tokens, index);
     const needle = input orelse "";
 
-    const I = @typeInfo(E);
-    const fields = I.@"enum".fields;
-
+    const fields = @typeInfo(E).@"enum".fields;
     const names = ushell.utils.findMatches(fields, needle);
+
     shell.complete(needle, names);
 }
 
-pub fn path(shell: *Shell) !void {
-    const maybe_input = shell.parser.optional([]const u8) catch unreachable;
+pub fn path(shell: *Shell, tokens: []const []const u8, index: usize) !void {
+    // NOTE: tokens[0] is command's name
+
+    const maybe_input = getToken(tokens, index);
 
     const dir_path, const needle = if (maybe_input) |input|
         if (getDir(input)) |dir|
@@ -40,7 +46,7 @@ pub fn path(shell: *Shell) !void {
         // std.mem.startsWith(<some_input>, "") always matches
         .{ try fs.cwd(), "" };
 
-    var dir = try fatfs.Dir.open(dir_path);
+    var dir = try zfat.Dir.open(dir_path);
     defer dir.close();
 
     var n: usize = 0;
