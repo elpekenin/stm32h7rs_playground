@@ -11,7 +11,6 @@ const rtt = @import("rtt");
 const program = @import("program");
 
 const logging = @import("logging.zig");
-const panic_mod = @import("panic.zig");
 
 const VectorTable = @import("vector_table.zig").VectorTable;
 
@@ -30,7 +29,7 @@ pub const std_options: std.Options = .{
         },
     },
 };
-pub const panic = panic_mod.panic;
+pub const Panic = @import("Panic.zig");
 
 // app-level config
 pub const rtt_config = program.rtt_config;

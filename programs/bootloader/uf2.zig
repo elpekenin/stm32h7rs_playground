@@ -39,7 +39,7 @@ const Flag = struct {
     }
 };
 
-fn flashTest() !i32 {
+fn mx66Test() !i32 {
     var flash = try mx66.new(.{
         .protocol = .OPI,
         .rate = .DTR,
@@ -61,7 +61,7 @@ pub const doubleResetChance = Flag.chance;
 
 pub fn jumpToUserCode() !noreturn {
     // fails, for now.
-    _ = flashTest() catch {};
+    _ = mx66Test() catch {};
 
     jump.to(FLASH_BASE);
 }

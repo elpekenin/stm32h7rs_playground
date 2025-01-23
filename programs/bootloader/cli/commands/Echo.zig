@@ -17,8 +17,8 @@ pub const meta: ushell.Meta = .{
     \\
     \\options:
     \\  [none]    write to shell
-    \\  >         write to file
-    \\  >>        append to file
+    \\  >         write to <file>
+    \\  >>        append to <file>
     ,
 };
 

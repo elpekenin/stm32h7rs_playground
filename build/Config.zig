@@ -7,15 +7,11 @@ const Compile = Build.Step.Compile;
 
 const Self = @This();
 
-const Hal = @import("Hal.zig");
 const Logging = @import("Logging.zig");
 const Panic = @import("Panic.zig");
 const Program = @import("Program.zig");
 
-const logger = std.log.scoped(.build);
-
 // sorted alphabetically
-hal: Hal,
 logging: Logging,
 optimize: std.builtin.OptimizeMode,
 panic: Panic,
@@ -35,7 +31,6 @@ pub fn option(
 
 pub fn fromArgs(b: *Build) Self {
     return Self{
-        .hal = Hal.fromArgs(b),
         .logging = Logging.fromArgs(b),
         .optimize = b.standardOptimizeOption(.{}),
         .panic = Panic.fromArgs(b),
@@ -86,7 +81,6 @@ pub fn getEntrypoint(self: *const Self, b: *Build) *std.Build.Step.Compile {
 pub fn getOptions(self: *const Self, b: *Build) *Module {
     const options = b.addOptions();
 
-    self.hal.dumpOptions(options);
     self.logging.dumpOptions(options);
     self.panic.dumpOptions(options);
     self.program.dumpOptions(options);

@@ -96,17 +96,18 @@ pub fn isDir(slice: []const u8) bool {
 }
 
 pub fn print(shell: *Shell, kind: zfat.Kind, name: []const u8) void {
-    const style = switch (kind) {
-        .Directory => shell.style(.blue),
-        .File => shell.style(.default),
-    };
-    const reset = shell.style(.default);
+    switch (kind) {
+        .Directory => shell.applyStyle(.{ .foreground = .Blue }),
+        .File => shell.applyStyle(.{ .foreground = .Default }),
+    }
 
     if (std.mem.containsAtLeast(u8, name, 1, " ")) {
-        shell.print("{s}'{s}'{s} ", .{ style, name, reset });
+        shell.print("'{s}' ", .{name});
     } else {
-        shell.print("{s}{s}{s} ", .{ style, name, reset });
+        shell.print("{s} ", .{name});
     }
+
+    shell.applyStyle(.{ .foreground = .Default });
 }
 
 pub const Entry = struct {

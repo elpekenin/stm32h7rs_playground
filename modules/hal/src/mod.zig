@@ -3,9 +3,7 @@
 //! Also provide some zig wrappers on top of it
 
 /// Raw C code from STM
-pub const c = @cImport({
-    @cInclude("stm32h7rsxx_hal.h");
-});
+pub const c = @import("c");
 
 /// "Tiny" zig wrappers on top
 pub const zig = @import("wrappers/__init__.zig");

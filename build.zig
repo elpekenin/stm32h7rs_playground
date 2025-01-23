@@ -13,7 +13,6 @@ fn currentDate(b: *std.Build) []const u8 {
 pub fn build(b: *std.Build) !void {
     // Build configuration
     const config = BuildConfig.fromArgs(b);
-    const halconf = config.hal.configHeader(b);
     const options = config.getOptions(b);
     const version = version_info.getOptions(b);
 
@@ -21,89 +20,101 @@ pub fn build(b: *std.Build) !void {
     const exe = config.getEntrypoint(b);
     const program = config.getProgram(b);
 
-    // Modules
+    // Steps
     const defmt = b.dependency("defmt", .{
         .optimize = config.optimize,
-    }).module("defmt");
+        .target = config.target,
+    });
+    const defmt_mod = defmt.module("defmt");
 
     const foundation = b.dependency("foundation-libc", .{
         .optimize = config.optimize,
         .target = config.target,
-    }).artifact("foundation");
+        .single_threaded = true,
+    });
+    const libc = foundation.artifact("foundation");
 
     const hal = b.dependency("hal", .{
         .optimize = config.optimize,
         .target = config.target,
-    }).module("hal");
+        .libc_headers = libc.getEmittedIncludeTree(),
+    });
+    const hal_mod = hal.module("hal");
 
     const mx66 = b.createModule(.{
         .root_source_file = b.path("modules/mx66/mod.zig"),
         .optimize = config.optimize,
+        .target = config.target,
     });
 
     const rtt = b.dependency("rtt", .{
         .optimize = config.optimize,
-    }).module("rtt");
+        .target = config.target,
+    });
+    const rtt_mod = rtt.module("rtt");
 
     const sd = b.createModule(.{
         .root_source_file = b.path("modules/sd.zig"),
         .optimize = config.optimize,
+        .target = config.target,
     });
 
     const ushell = b.dependency("ushell", .{
         .optimize = config.optimize,
-    }).module("ushell");
+        .target = config.target,
+    });
+    const ushell_mod = ushell.module("ushell");
 
     const zfat = b.dependency("zfat", .{
         .optimize = config.optimize,
+        .target = config.target,
         .chmod = true,
         //  with .no_advanced: f_stat(), f_getfree(), f_unlink(), f_mkdir(), f_truncate() and f_rename() are removed.
         // .minimize = .no_advanced,
         .relative_path_api = .enabled_with_getcwd,
         .@"no-libc" = true,
         .@"static-rtc" = currentDate(b),
-    }).module("zfat");
+    });
+    const zfat_mod = zfat.module("zfat");
 
-    // Put things together
-    exe.linkLibrary(foundation);
+    // Glue together
+    exe.linkLibrary(libc);
     exe.root_module.addImport("config", options);
-    exe.root_module.addImport("hal", hal);
+    exe.root_module.addImport("hal", hal_mod);
     exe.root_module.addImport("program", program);
-    exe.root_module.addImport("rtt", rtt);
+    exe.root_module.addImport("rtt", rtt_mod);
     exe.root_module.addImport("sd", sd);
-    exe.root_module.addImport("zfat", zfat);
-    exe.step.dependOn(&halconf.step); // FIXME: remove hack
+    exe.root_module.addImport("zfat", zfat_mod);
 
-    hal.linkLibrary(foundation);
-    hal.addConfigHeader(halconf);
+    hal_mod.linkLibrary(libc);
 
-    mx66.addImport("hal", hal);
+    mx66.addImport("hal", hal_mod);
     mx66.addImport("program", program);
 
     program.addImport("config", options);
-    program.addImport("defmt", defmt);
-    program.addImport("hal", hal);
+    program.addImport("defmt", defmt_mod);
+    program.addImport("hal", hal_mod);
     program.addImport("mx66", mx66);
-    program.addImport("rtt", rtt);
+    program.addImport("rtt", rtt_mod);
     program.addImport("sd", sd);
-    program.addImport("ushell", ushell);
+    program.addImport("ushell", ushell_mod);
     program.addImport("version", version);
-    program.addImport("zfat", zfat);
+    program.addImport("zfat", zfat_mod);
 
-    sd.addImport("hal", hal);
-    sd.addImport("zfat", zfat);
+    sd.addImport("hal", hal_mod);
+    sd.addImport("zfat", zfat_mod);
 
-    zfat.linkLibrary(foundation);
+    zfat_mod.linkLibrary(libc);
 
     // Reduce size
-    foundation.link_gc_sections = true;
-    foundation.link_data_sections = true;
-    foundation.link_function_sections = true;
+    libc.link_gc_sections = true;
+    libc.link_data_sections = true;
+    libc.link_function_sections = true;
 
     // Prevent vector table from being optimized away
     exe.forceUndefinedSymbol("vector_table");
 
-    // Binary output
+    // Artifacts
     const elf = b.addInstallArtifact(exe, .{});
     const bin = b.addObjCopy(elf.emitted_bin.?, .{
         .format = .bin,
@@ -113,6 +124,7 @@ pub fn build(b: *std.Build) !void {
         b.fmt("{s}.bin", .{config.program.name()}),
     );
 
+    // Steps
     install_bin.step.dependOn(&elf.step);
     b.default_step.dependOn(&install_bin.step);
 }

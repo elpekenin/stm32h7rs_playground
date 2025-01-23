@@ -113,7 +113,11 @@ pub fn fromArgs(b: *Build) Self {
         const name = field.name;
 
         // if arg passed in, overwrite default
-        const maybe_val = b.option(field.type, name, "control `#define` with the same name");
+        const maybe_val = b.option(
+            field.type,
+            name,
+            "control this config",
+        );
         if (maybe_val) |val| {
             @field(self, name) = val;
         }

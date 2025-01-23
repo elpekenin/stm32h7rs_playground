@@ -1,13 +1,25 @@
 const std = @import("std");
+const LazyPath = std.Build.LazyPath;
+
+const Config = @import("Config.zig");
 
 pub fn build(b: *std.Build) !void {
+    // Options
     const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
+    const config: Config = .fromArgs(b);
+    const libc_headers = b.option(
+        LazyPath,
+        "libc_headers",
+        "path to c's stdlib headers",
+    ) orelse @panic("not configured");
 
+    // Dependencies
     const upstream = b.dependency("upstream", .{});
     const cmsis_5 = b.dependency("CMSIS_5", .{});
     const cmsis_device_h7rs = b.dependency("cmsis_device_h7rs", .{});
 
+    // Steps
     const hal = b.addModule(
         "hal",
         .{
@@ -17,27 +29,57 @@ pub fn build(b: *std.Build) !void {
         },
     );
 
-    hal.addCMacro("STM32H7S7xx", "");
-    hal.addCMacro("USE_HAL_DRIVER", "");
-    hal.addCMacro("__PROGRAM_START", "_start");
-
-    hal.addIncludePath(b.path("include"));
-    hal.addIncludePath(upstream.path("Inc"));
-    hal.addIncludePath(cmsis_5.path("CMSIS/Core/Include"));
-    hal.addIncludePath(cmsis_device_h7rs.path("Include"));
-
     hal.addCSourceFiles(.{
         .flags = flags,
         .files = src,
         .root = upstream.path("Src"),
     });
+
+    const translate = b.addTranslateC(.{
+        .optimize = optimize,
+        .target = target,
+        .link_libc = false,
+        .root_source_file = upstream.path("Inc/stm32h7rsxx_hal.h"),
+    });
+
+    const paths: []const LazyPath = &.{
+        libc_headers,
+        b.path("include"),
+        upstream.path("Inc"),
+        cmsis_5.path("CMSIS/Core/Include"),
+        cmsis_device_h7rs.path("Include"),
+    };
+
+    for (paths) |path| {
+        hal.addIncludePath(path);
+        translate.addIncludePath(path);
+    }
+
+    for (defines) |define| {
+        const name, const value = define;
+        hal.addCMacro(name, value);
+        translate.defineCMacro(name, value);
+    }
+
+    hal.addConfigHeader(config.configHeader(b));
+    translate.addConfigHeader(config.configHeader(b));
+
+    // Artifacts
+    const trans_mod = translate.createModule();
+    hal.addImport("c", trans_mod);
 }
 
-const flags = &.{
+const defines: []const struct { []const u8, []const u8 } = &.{
+    .{ "STM32H7S7xx", "1" },
+    .{ "USE_HAL_DRIVER", "1" },
+    .{ "__PROGRAM_START", "_start" },
+};
+
+const flags: []const []const u8 = &.{
     "-fno-sanitize=undefined",
 };
 
-const src = &.{
+const src: []const []const u8 = &.{
     "stm32h7rsxx_hal_mmc.c",
     "stm32h7rsxx_hal_dts.c",
     "stm32h7rsxx_hal_pka.c",
